@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 egui= {version="0.27.2", features=["callstack"]}
 eframe = {version="0.27.2", features=["wgpu"]}
+tokio = {workspace=true}
 
 ## internal
 hexencer-core={path="../core"}
+hexencer-engine={path="../engine"}

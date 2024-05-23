@@ -1,6 +1,7 @@
 use eframe::wgpu::core::device::DeviceLostInvocation;
 use egui::Vec2;
-use hexencer_core::{MidiEvent, ProjectManager};
+use hexencer_core::{MidiEvent, MidiMessage, ProjectManager};
+use hexencer_engine::Sequencer;
 
 fn main() {
     println!("Hello, world!");
@@ -20,11 +21,12 @@ fn main() {
 
 #[derive(Default)]
 struct Hexencer {
-    project_manager: ProjectManager,
+    sequencer: Sequencer,
+    sequencer_sender: Option<tokio::sync::mpsc::UnboundedReceiver<MidiMessage>>,
 }
 
 impl Hexencer {
-    fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>) -> Self {
         Self::default()
     }
 }
@@ -40,12 +42,16 @@ impl eframe::App for Hexencer {
         egui::SidePanel::left("info").show(ctx, |ui| {
             ui.label("info");
             if ui.button("add track").clicked() {
-                self.project_manager.add_track();
+                self.sequencer.project_manager.add_track();
+            }
+            if ui.button("play").clicked() {
+                println!("play");
             }
         });
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical(|ui| {
                 let track_ids: Vec<usize> = self
+                    .sequencer
                     .project_manager
                     .track_manager
                     .tracks
@@ -80,7 +86,7 @@ fn new_track(app: &mut Hexencer, ctx: &egui::Context, index: usize, ui: &mut egu
                 //     .flat_map(|track| track.events.iter().map(|events| return events.on))
                 //     .collect();
 
-                for event in &mut app.project_manager.track_manager.tracks[index].events {
+                for event in &mut app.sequencer.project_manager.track_manager.tracks[index].events {
                     ui.checkbox(&mut event.on, "Beat");
                 }
             });
