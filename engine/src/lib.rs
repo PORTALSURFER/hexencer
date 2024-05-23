@@ -1,5 +1,5 @@
 use eframe::egui;
-use hexencer_core::{Instrument, MidiEvent, MidiMessage, Note, Track};
+use hexencer_core::{Instrument, MidiEvent, MidiMessage, Note, ProjectManager, Track};
 use midir::MidiOutput;
 use std::collections::HashMap;
 use std::error::Error;
@@ -8,36 +8,22 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::{self, Instant};
 
-struct Sequencer {
+#[derive(Default)]
+pub struct Sequencer {
+    pub project_manager: ProjectManager,
     bpm: f64,
     ppqn: u32,
-    tracks: HashMap<u8, Track>,
-    midiio: tokio::sync::mpsc::UnboundedSender<MidiMessage>,
-    sequence_t1: Vec<u8>,
-    sequence_t2: Vec<u8>,
+    midi_engine: Option<tokio::sync::mpsc::UnboundedSender<MidiMessage>>,
 }
 
 impl Sequencer {
     fn new(tx: tokio::sync::mpsc::UnboundedSender<MidiMessage>) -> Self {
         Self {
+            project_manager: ProjectManager::new(),
             bpm: 120.0,
             ppqn: 480,
-            tracks: HashMap::new(),
-            midiio: tx,
-            sequence_t1: vec![69, 69, 66, 66, 67, 67],
-            sequence_t2: vec![0, 0, 0, 0],
+            midi_engine: Some(tx),
         }
-    }
-
-    fn add_event(&mut self, track_id: u8, event: MidiEvent) {
-        self.tracks
-            .entry(track_id)
-            .or_insert(Track {
-                events: Vec::new(),
-                ..Default::default()
-            })
-            .events
-            .push(event);
     }
 
     fn tick_duration(&self) -> u64 {
@@ -46,7 +32,7 @@ impl Sequencer {
         tick_duration as u64
     }
 
-    async fn run(self) {
+    pub async fn run(self) {
         println!("running sequencer");
         let tick_duration = self.tick_duration();
         let mut interval = time::interval(Duration::from_millis(tick_duration));
@@ -54,73 +40,43 @@ impl Sequencer {
 
         loop {
             interval.tick().await;
-            if current_tick % 480 == 0 {
-                println!("{} ||||", current_tick);
-            } else {
-                // println!("{} ..", current_tick);
-            }
-            self.play_events(current_tick).await;
+            // self.play_events(current_tick);
             current_tick = current_tick + 1;
-
-            // println!("tick {}", current_tick);
-            // self.sequence_t1.pop().map(|note| {
-            //     let _ = self.midiio.send(MidiMessage::NoteOn(
-            //         Note {
-            //             index: note,
-            //             channel: 1,
-            //             velocity: 64,
-            //             duration: 4,
-            //         },
-            //         Instrument {
-            //             name: "".to_string(),
-            //             midi_port: 1,
-            //         },
-            //     ));
-            // });
-            // self.sequence_t2.pop().map(|note| {
-            //     let _ = self.midiio.send(MidiMessage::NoteOn(
-            //         Note {
-            //             index: note,
-            //             channel: 2,
-            //             velocity: 64,
-            //             duration: 4,
-            //         },
-            //         Instrument {
-            //             name: "".to_string(),
-            //             midi_port: 2,
-            //         },
-            //     ));
-            // });
-            // tokio::time::sleep(tick).await;
-            // current_tick = current_tick + 1;
-            // if current_tick == ticks {
-            //     current_tick = 0;
-            // }
-            // if self.sequence_t1.len() < 1 {
-            //     break;
-            // }
         }
     }
 
-    async fn play_events(&self, current_tick: u64) {
-        for track in self.tracks.values() {
-            for event in &track.events {
-                if event.tick == current_tick {
-                    println!("playing event {:?} {:?}", current_tick, event);
-                } else {
-                    // println!("no event");
-                }
+    fn play_events(&self, current_tick: u64, events: &Vec<MidiEvent>) {
+        for event in events {
+            if event.tick == current_tick {
+                println!("playing event {:?} {:?}", current_tick, event);
+            } else {
+                // println!("no event");
             }
         }
+    }
+
+    pub fn play_events2(self, events: Vec<MidiEvent>) {
+        tokio::spawn(async move {
+            println!("running sequencer");
+            let tick_duration = self.tick_duration();
+            let mut interval = time::interval(Duration::from_millis(tick_duration));
+            let mut current_tick = 0;
+
+            loop {
+                println!("playing event {:?}", current_tick);
+                self.play_events(current_tick, &events);
+                interval.tick().await;
+            }
+        });
     }
 }
 
-struct MidiIO {
+struct MidiEngine {
     conn_out: Option<midir::MidiOutputConnection>,
     conn_out2: Option<midir::MidiOutputConnection>,
 }
 
-impl MidiIO {
+impl MidiEngine {
     fn new() -> Self {
         let midi_out = MidiOutput::new("Test Output").unwrap();
         let midi_out2 = MidiOutput::new("Test Output").unwrap();
@@ -203,69 +159,8 @@ impl MidiIO {
 #[tokio::main]
 async fn main() {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    let midi_player = MidiIO::new();
+    let midi_player = MidiEngine::new();
     let mut sequencer = Sequencer::new(tx);
-
-    sequencer.add_event(
-        0,
-        MidiEvent {
-            tick: 480,
-            message: MidiMessage::NoteOn(
-                Note {
-                    index: 69,
-                    channel: 1,
-                    velocity: 64,
-                    duration: 4,
-                },
-                Instrument {
-                    name: "".to_string(),
-                    midi_port: 1,
-                },
-            ),
-            on: true,
-        },
-    );
-
-    sequencer.add_event(
-        0,
-        MidiEvent {
-            tick: 481,
-            message: MidiMessage::NoteOn(
-                Note {
-                    index: 69,
-                    channel: 1,
-                    velocity: 64,
-                    duration: 4,
-                },
-                Instrument {
-                    name: "".to_string(),
-                    midi_port: 1,
-                },
-            ),
-
-            on: true,
-        },
-    );
-    sequencer.add_event(
-        0,
-        MidiEvent {
-            tick: 960,
-            message: MidiMessage::NoteOn(
-                Note {
-                    index: 69,
-                    channel: 1,
-                    velocity: 64,
-                    duration: 4,
-                },
-                Instrument {
-                    name: "".to_string(),
-                    midi_port: 1,
-                },
-            ),
-            on: true,
-        },
-    );
-
     let mp = tokio::spawn(async move {
         midi_player.run(rx).await;
     });

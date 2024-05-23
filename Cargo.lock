@@ -1533,7 +1533,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
-name = "hexencer"
+name = "hexencer-core"
+version = "0.1.0"
+
+[[package]]
+name = "hexencer-engine"
 version = "0.1.0"
 dependencies = [
  "eframe",
@@ -1543,16 +1547,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "hexencer-core"
-version = "0.1.0"
-
-[[package]]
 name = "hexencer-gui"
 version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
  "hexencer-core",
+ "hexencer-engine",
+ "tokio",
 ]
 
 [[package]]

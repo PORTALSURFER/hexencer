@@ -71,6 +71,17 @@ impl TrackManager {
     pub fn add(&mut self, new_track: Track) {
         self.tracks.push(new_track);
     }
+
+    fn get_all_events(&self) -> Vec<MidiEvent> {
+        let mut events: Vec<MidiEvent> = self
+            .tracks
+            .iter()
+            .flat_map(|track| track.events.clone())
+            .collect();
+        events.sort_by_key(|event| event.tick);
+
+        events
+    }
 }
 
 #[derive(Default)]
@@ -78,7 +89,14 @@ pub struct ProjectManager {
     pub track_manager: TrackManager,
     pub instrument_manager: InstrumentManager,
 }
+
 impl ProjectManager {
+    pub fn new() -> Self {
+        Self {
+            track_manager: TrackManager::default(),
+            instrument_manager: InstrumentManager::default(),
+        }
+    }
     pub fn track_count(&self) -> usize {
         self.track_manager.tracks.len()
     }
@@ -87,6 +105,10 @@ impl ProjectManager {
         let track_count = self.track_manager.tracks.len();
         let track = Track::new(track_count, &format!("track {}", track_count));
         self.track_manager.tracks.push(track);
+    }
+
+    pub fn get_all_events(&self) -> Vec<MidiEvent> {
+        self.track_manager.get_all_events()
     }
 }
 
