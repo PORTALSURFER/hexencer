@@ -1,28 +1,36 @@
-use eframe::egui;
-use hexencer_core::{Instrument, MidiEvent, MidiMessage, Note, ProjectManager, Track};
+use hexencer_core::{data::DataLayer, Instrument, MidiEvent, MidiMessage, Note};
 use midir::MidiOutput;
-use std::collections::HashMap;
-use std::error::Error;
-use std::future::Future;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::time::{self, Instant};
+use std::{
+    sync::{Arc, RwLock},
+    time::Duration,
+};
+use tokio::{task, time};
+// use tokio::time::{self, Instant};
+
+pub enum SequencerCommand {
+    Play,
+    Stop,
+}
+type MidiEngineSender = tokio::sync::mpsc::UnboundedSender<MidiMessage>;
 
 #[derive(Default)]
 pub struct Sequencer {
-    pub project_manager: ProjectManager,
+    data_layer: Arc<RwLock<DataLayer>>,
+    midi_engine_sender: Option<MidiEngineSender>,
     bpm: f64,
     ppqn: u32,
-    midi_engine: Option<tokio::sync::mpsc::UnboundedSender<MidiMessage>>,
+    running: bool,
 }
 
 impl Sequencer {
-    fn new(tx: tokio::sync::mpsc::UnboundedSender<MidiMessage>) -> Self {
+    pub fn new(data_layer: Arc<RwLock<DataLayer>>, midi_engine_sender: MidiEngineSender) -> Self {
+        let (midi_engine_sender, midi_engine_receiver) = tokio::sync::mpsc::unbounded_channel();
         Self {
-            project_manager: ProjectManager::new(),
+            data_layer,
+            midi_engine_sender: Some(midi_engine_sender),
             bpm: 120.0,
             ppqn: 480,
-            midi_engine: Some(tx),
+            running: false,
         }
     }
 
@@ -32,17 +40,38 @@ impl Sequencer {
         tick_duration as u64
     }
 
-    pub async fn run(self) {
+    pub async fn init(
+        self,
+        mut command_receiver: tokio::sync::mpsc::UnboundedReceiver<SequencerCommand>,
+    ) {
         println!("running sequencer");
-        let tick_duration = self.tick_duration();
-        let mut interval = time::interval(Duration::from_millis(tick_duration));
-        let mut current_tick = 0;
 
-        loop {
-            interval.tick().await;
-            // self.play_events(current_tick);
-            current_tick = current_tick + 1;
+        while let Some(command) = command_receiver.recv().await {
+            match command {
+                SequencerCommand::Play => {
+                    println!("play");
+                    self.play().await;
+                }
+                SequencerCommand::Stop => println!("stop"),
+            }
         }
+    }
+
+    pub async fn play(&self) {
+        let tick_duration = self.tick_duration();
+        task::spawn(async move {
+            println!("running sequencer");
+            let mut interval = time::interval(Duration::from_millis(tick_duration));
+            let mut current_tick = 0;
+
+            loop {
+                interval.tick().await;
+                println!("tick ..");
+                // self.play_events(current_tick);
+                current_tick = current_tick + 1;
+            }
+        })
+        .await;
     }
 
     fn play_events(&self, current_tick: u64, events: &Vec<MidiEvent>) {
@@ -71,13 +100,15 @@ impl Sequencer {
     }
 }
 
-struct MidiEngine {
+#[derive(Default)]
+pub struct MidiEngine {
     conn_out: Option<midir::MidiOutputConnection>,
     conn_out2: Option<midir::MidiOutputConnection>,
+    running: bool,
 }
 
 impl MidiEngine {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let midi_out = MidiOutput::new("Test Output").unwrap();
         let midi_out2 = MidiOutput::new("Test Output").unwrap();
         // let midi_out2 = MidiOutput::new("Test Output").unwrap();
@@ -96,6 +127,7 @@ impl MidiEngine {
         Self {
             conn_out,
             conn_out2,
+            running: false,
         }
     }
 
@@ -138,7 +170,7 @@ impl MidiEngine {
         println!("Connection closed");
     }
 
-    async fn run(mut self, mut rx: tokio::sync::mpsc::UnboundedReceiver<MidiMessage>) {
+    pub async fn init(mut self, mut rx: tokio::sync::mpsc::UnboundedReceiver<MidiMessage>) {
         println!("running midiio");
         while let Some(v) = rx.recv().await {
             match v {
@@ -154,46 +186,4 @@ impl MidiEngine {
         }
         println!("done");
     }
-}
-
-#[tokio::main]
-async fn main() {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    let midi_player = MidiEngine::new();
-    let mut sequencer = Sequencer::new(tx);
-    let mp = tokio::spawn(async move {
-        midi_player.run(rx).await;
-    });
-
-    let sq = tokio::spawn(async move {
-        sequencer.run().await;
-    });
-
-    tokio::select! {
-        _ = mp => {
-            println!("midi player done");
-        },
-        _ = sq => {
-            println!("sequencer done");
-        }
-    }
-
-    // let options = eframe::NativeOptions {
-    //     viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
-    //     ..Default::default()
-    // };
-}
-
-fn gui() {
-    // eframe::run_simple_native("Gui App", options, move |ctx, _frame| {
-    //     egui::CentralPanel::default().show(ctx, |ui| {
-    //         ui.heading("midi app");
-    //         ui.horizontal(|ui| {
-    //             if ui.button("Play").clicked() {
-    //             }
-    //             if ui.button("Stop").clicked() {
-    //             }
-    //         });
-    //     });
-    // });
 }
