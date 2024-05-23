@@ -32,7 +32,10 @@ impl Sequencer {
     fn add_event(&mut self, track_id: u8, event: MidiEvent) {
         self.tracks
             .entry(track_id)
-            .or_insert(Track { events: Vec::new() })
+            .or_insert(Track {
+                events: Vec::new(),
+                ..Default::default()
+            })
             .events
             .push(event);
     }
@@ -219,6 +222,7 @@ async fn main() {
                     midi_port: 1,
                 },
             ),
+            on: true,
         },
     );
 
@@ -238,6 +242,8 @@ async fn main() {
                     midi_port: 1,
                 },
             ),
+
+            on: true,
         },
     );
     sequencer.add_event(
@@ -256,6 +262,7 @@ async fn main() {
                     midi_port: 1,
                 },
             ),
+            on: true,
         },
     );
 
