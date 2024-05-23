@@ -1,3 +1,5 @@
+use hexencer_core::ProjectManager;
+
 fn main() {
     println!("Hello, world!");
 
@@ -14,19 +16,10 @@ fn main() {
     .expect("failed to start eframe app");
 }
 
-struct TrackManager {
-    tracks: Vec<Track>,
-}
-
-struct InstrumentManager {
-    struments: Vec<Instrument>,
-}
-struct ProjectManager {
-    track_manager: TrackManager,
-    instrument_manager: InstrumentManager,
-}
 #[derive(Default)]
-struct Hexencer {}
+struct Hexencer {
+    project_manager: ProjectManager,
+}
 
 impl Hexencer {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
