@@ -50,3 +50,28 @@ pub struct ProjectManager {
     pub track_manager: TrackManager,
     pub instrument_manager: InstrumentManager,
 }
+impl ProjectManager {
+    pub fn track_count(&self) -> usize {
+        self.track_manager.tracks.len()
+    }
+
+    pub fn add_track(&mut self) {
+        let track = Track::default();
+        self.track_manager.tracks.push(track);
+    }
+}
+
+pub struct Commander {}
+
+impl Commander {
+    pub fn execute(&self, command: &str) {
+        match command {
+            "get_tracks" => {
+                println!("Playing!");
+            }
+            _ => {
+                println!("Unknown command!");
+            }
+        }
+    }
+}
