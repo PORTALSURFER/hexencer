@@ -3,5 +3,5 @@ resolver="2"
 members= [
   "engine",
   "gui"
-, "hexencer-core"]
+, "core"]
 default-run = "gui"

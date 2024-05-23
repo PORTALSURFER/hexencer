@@ -1537,6 +1537,7 @@ name = "hexencer"
 version = "0.1.0"
 dependencies = [
  "eframe",
+ "hexencer-core",
  "midir",
  "tokio",
 ]
@@ -1551,6 +1552,7 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
+ "hexencer-core",
 ]
 
 [[package]]

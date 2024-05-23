@@ -1,4 +1,5 @@
 use eframe::egui;
+use hexencer_core::{Instrument, MidiEvent, MidiMessage, Note, Track};
 use midir::MidiOutput;
 use std::collections::HashMap;
 use std::error::Error;
@@ -6,36 +7,6 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::{self, Instant};
-
-#[derive(Debug)]
-struct Note {
-    index: u8,
-    channel: u8,
-    velocity: u8,
-    duration: u64,
-}
-
-#[derive(Debug)]
-struct Instrument {
-    name: String,
-    midi_port: u8,
-}
-
-#[derive(Debug)]
-enum MidiMessage {
-    NoteOn(Note, Instrument),
-    NoteOff(Note),
-}
-
-#[derive(Debug)]
-struct MidiEvent {
-    tick: u64,
-    message: MidiMessage,
-}
-
-struct Track {
-    events: Vec<MidiEvent>,
-}
 
 struct Sequencer {
     bpm: f64,
