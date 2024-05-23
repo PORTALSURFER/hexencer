@@ -1,5 +1,6 @@
+use eframe::wgpu::core::device::DeviceLostInvocation;
 use egui::Vec2;
-use hexencer_core::ProjectManager;
+use hexencer_core::{MidiEvent, ProjectManager};
 
 fn main() {
     println!("Hello, world!");
@@ -29,6 +30,7 @@ impl Hexencer {
 }
 
 const TRACK_HEIGHT: f32 = 25.0;
+const TRACK_HEADER_WIDTH: f32 = 100.0;
 
 impl eframe::App for Hexencer {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -43,31 +45,46 @@ impl eframe::App for Hexencer {
         });
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical(|ui| {
-                let track_count = self.project_manager.track_count();
-                for i in 0..=track_count {
-                    track(self, ctx, i, ui);
+                let track_ids: Vec<usize> = self
+                    .project_manager
+                    .track_manager
+                    .tracks
+                    .iter()
+                    .map(|track| track.id)
+                    .collect();
+
+                for id in track_ids {
+                    new_track(self, ctx, id, ui);
                 }
             });
         });
     }
 }
 
-fn track(app: &mut Hexencer, ctx: &egui::Context, index: usize, ui: &mut egui::Ui) {
+fn new_track(app: &mut Hexencer, ctx: &egui::Context, index: usize, ui: &mut egui::Ui) {
     egui::Frame::none().fill(egui::Color32::RED).show(ui, |ui| {
-        ui.horizontal( |ui| {
-                    ui.set_min_size(egui::vec2(ui.available_width(), TRACK_HEIGHT));
+        ui.horizontal(|ui| {
+            ui.set_min_size(egui::vec2(ui.available_width(), TRACK_HEIGHT));
             egui::Frame::none()
                 .fill(egui::Color32::BLUE)
                 .show(ui, |ui| {
-                    ui.set_min_width(100.0);
-                     ui.label(format!("Track {}", index));
+                    ui.set_min_width(TRACK_HEADER_WIDTH);
+                    ui.label(format!("Track {}", index));
                 });
             ui.horizontal(|ui| {
-                ui.button("Add Clip")
-                    .on_hover_text("Add a new clip to the track");
-                ui.button("Remove Track").on_hover_text("Remove the track");
+                // let events: Vec<bool> = app
+                //     .project_manager
+                //     .track_manager
+                //     .tracks
+                //     .iter()
+                //     .flat_map(|track| track.events.iter().map(|events| return events.on))
+                //     .collect();
+
+                for event in &mut app.project_manager.track_manager.tracks[index].events {
+                    ui.checkbox(&mut event.on, "Beat");
+                }
             });
-        });;
+        });
     });
 }
 

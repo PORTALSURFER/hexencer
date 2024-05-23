@@ -1,16 +1,17 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Instrument {
     pub name: String,
     pub midi_port: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MidiEvent {
     pub tick: u64,
     pub message: MidiMessage,
+    pub on: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Note {
     pub index: u8,
     pub channel: u8,
@@ -18,7 +19,7 @@ pub struct Note {
     pub duration: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MidiMessage {
     NoteOn(Note, Instrument),
     NoteOff(Note),
@@ -26,12 +27,39 @@ pub enum MidiMessage {
 
 #[derive(Default)]
 pub struct Track {
+    pub id: usize,
+    pub name: String,
     pub events: Vec<MidiEvent>,
+}
+impl Track {
+    fn new(id: usize, name: &str) -> Track {
+        let event = MidiEvent {
+            tick: 0,
+            message: MidiMessage::NoteOn(
+                Note {
+                    index: 60,
+                    channel: 1,
+                    velocity: 100,
+                    duration: 1000,
+                },
+                Instrument {
+                    name: String::from("piano"),
+                    midi_port: 0,
+                },
+            ),
+            on: true,
+        };
+        Self {
+            id,
+            name: String::from(name),
+            events: vec![event; 8],
+        }
+    }
 }
 
 #[derive(Default)]
 pub struct TrackManager {
-    tracks: Vec<Track>,
+    pub tracks: Vec<Track>,
 }
 
 #[derive(Default)]
@@ -56,7 +84,8 @@ impl ProjectManager {
     }
 
     pub fn add_track(&mut self) {
-        let track = Track::default();
+        let track_count = self.track_manager.tracks.len();
+        let track = Track::new(track_count, &format!("track {}", track_count));
         self.track_manager.tracks.push(track);
     }
 }
