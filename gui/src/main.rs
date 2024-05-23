@@ -1,3 +1,4 @@
+use egui::Vec2;
 use hexencer_core::ProjectManager;
 
 fn main() {
@@ -36,25 +37,50 @@ impl eframe::App for Hexencer {
         });
         egui::SidePanel::left("info").show(ctx, |ui| {
             ui.label("info");
+            if ui.button("add track").clicked() {
+                self.project_manager.add_track();
+            }
         });
-        egui::CentralPanel::default().show(ctx, |_ui| {
-            egui::CentralPanel::default().show(ctx, |_ui| {
-                for i in 0..10 {
-                    track(ctx, i);
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.vertical(|ui| {
+                let track_count = self.project_manager.track_count();
+                for i in 0..=track_count {
+                    track(self, ctx, i, ui);
                 }
-                egui::CentralPanel::default().show(ctx, |_ui| {});
             });
         });
     }
 }
 
-fn track(ctx: &egui::Context, index: u32) {
-    egui::TopBottomPanel::top(format!("tracklane_{}", index))
-        .min_height(TRACK_HEIGHT)
-        .show(ctx, |ui| {
+fn track(app: &mut Hexencer, ctx: &egui::Context, index: usize, ui: &mut egui::Ui) {
+    egui::Frame::none().fill(egui::Color32::RED).show(ui, |ui| {
+        ui.horizontal( |ui| {
+                    ui.set_min_size(egui::vec2(ui.available_width(), TRACK_HEIGHT));
+            egui::Frame::none()
+                .fill(egui::Color32::BLUE)
+                .show(ui, |ui| {
+                    ui.set_min_width(100.0);
+                     ui.label(format!("Track {}", index));
+                });
             ui.horizontal(|ui| {
-                ui.add(egui::Label::new(format!("track {}", index)).selectable(false));
-                ui.button("X");
+                ui.button("Add Clip")
+                    .on_hover_text("Add a new clip to the track");
+                ui.button("Remove Track").on_hover_text("Remove the track");
+            });
+        });;
+    });
+}
+
+fn clip(ctx: &egui::Context, ui: &mut egui::Ui) {
+    let id = egui::Id::from("new clip");
+    // ui.button("Clip");
+    egui::Area::new(id)
+        .movable(true)
+        .constrain_to(ui.max_rect())
+        .show(ctx, |ui| {
+            egui::Frame::none().fill(egui::Color32::RED).show(ui, |ui| {
+                ui.allocate_space(egui::vec2(10.0, ui.available_height() - 15.0));
+                //ui.add(egui::Label::new("Clip").selectable(false));
             });
         });
 }
