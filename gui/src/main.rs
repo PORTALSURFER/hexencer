@@ -68,6 +68,13 @@ impl eframe::App for Gui {
             if ui.button("add track").clicked() {
                 self.data_layer.lock().unwrap().project_manager.add_track();
             }
+            if ui.button("remove track").clicked() {
+                self.data_layer
+                    .lock()
+                    .unwrap()
+                    .project_manager
+                    .remove_track();
+            }
             if ui.button("play").clicked() {
                 self.sequencer_sender.as_mut().map(|sender| {
                     let _ = sender.send(SequencerCommand::Play);
