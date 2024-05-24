@@ -39,6 +39,13 @@ impl MidiEvent {
         let index = note.index;
         vec![note_message, index, velocity]
     }
+
+    pub fn get_note_index(&self) -> u8 {
+        match &self.midi_message {
+            MidiMessage::NoteOn(note, _) => note.index,
+            _ => 0,
+        }
+    }
 }
 
 impl Display for MidiEvent {
@@ -87,6 +94,14 @@ impl Note {
 pub enum MidiMessage {
     NoteOn(Note, Instrument),
     NoteOff(Note),
+}
+impl MidiMessage {
+    pub fn get_duration(&self) -> u64 {
+        match self {
+            MidiMessage::NoteOn(note, _) => note.duration,
+            _ => 0,
+        }
+    }
 }
 
 impl Default for MidiMessage {
