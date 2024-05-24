@@ -78,6 +78,11 @@ impl eframe::App for Gui {
                     let _ = sender.send(SequencerCommand::Stop);
                 });
             }
+            if ui.button("reset").clicked() {
+                self.sequencer_sender.as_mut().map(|sender| {
+                    let _ = sender.send(SequencerCommand::Reset);
+                });
+            }
         });
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical(|ui| {

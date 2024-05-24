@@ -8,6 +8,7 @@ pub mod midi;
 pub enum SequencerCommand {
     Play,
     Stop,
+    Reset,
 }
 
 #[derive(Default)]
@@ -52,7 +53,7 @@ impl Sequencer {
                         let events = self.data_layer.lock().unwrap().project_manager.get_all_events();
                         let current_events: Vec<MidiEvent> = events.into_iter().filter(|event| event.tick == self.current_tick && event.on).collect();
 
-                        self.play_events(self.current_tick, current_events);
+                        self.send_to_midi_engine(self.current_tick, current_events);
                         self.current_tick = self.current_tick + 1;
                     }
                 }
@@ -60,33 +61,36 @@ impl Sequencer {
                     match command {
                         SequencerCommand::Play => {
                             println!("play commnd received");
-                            *self.running.lock().unwrap() = true;
+                            self.play();
                         }
                         SequencerCommand::Stop => {
                             println!("stop");
-                            *self.running.lock().unwrap() = false;
+                            self.stop();
+                        }
+                        SequencerCommand::Reset => {
+                            println!("reset");
+                            self.current_tick = 0;
+                            self.stop();
                         }
                     }
-
                 }
             }
         }
     }
 
-    #[deprecated]
-    pub async fn play(
-        data_layer: Arc<Mutex<DataLayer>>,
-        running: Arc<Mutex<bool>>,
-        tick_duration: u64,
-    ) {
-        println!("playing sequencer");
-        // let data_layer = data_layer.lock().unwrap();
-        // let mut midi_events = data_layer.get_midi_events();
+    fn stop(&mut self) {
+        *self.running.lock().unwrap() = false;
     }
 
-    fn play_events(&mut self, current_tick: u64, events: Vec<MidiEvent>) {
+    fn play(&mut self) {
+        *self.running.lock().unwrap() = true;
+    }
+
+    fn send_to_midi_engine(&mut self, current_tick: u64, events: Vec<MidiEvent>) {
         for event in events {
             if let Some(sender) = &mut self.midi_engine_sender {
+                let current_beat = current_tick / self.ppqn as u64;
+                println!("[{}] - {}", current_beat, event.midi_message);
                 sender.send(event.midi_message).unwrap();
             }
         }
