@@ -128,6 +128,37 @@ fn new_track(
             egui::Frame::none().fill(TRACK_HEADER_COLOR).show(ui, |ui| {
                 ui.set_min_width(TRACK_HEADER_WIDTH);
                 ui.label(format!("Track {}", index));
+                let mut port = data_layer
+                    .lock()
+                    .unwrap()
+                    .project_manager
+                    .track_manager
+                    .tracks
+                    .get(index)
+                    .unwrap()
+                    .instrument
+                    .midi_port
+                    .to_string();
+
+                let port_selector = ui.text_edit_singleline(&mut port);
+
+                if port_selector.lost_focus() || port_selector.changed() {
+                    match port.parse::<u8>() {
+                        Ok(value) => {
+                            println!("yay");
+                            data_layer
+                                .lock()
+                                .unwrap()
+                                .project_manager
+                                .track_manager
+                                .tracks
+                                .get_mut(index)
+                                .unwrap()
+                                .set_port(value);
+                        }
+                        Err(_) => println!("port can only be a number"),
+                    }
+                }
             });
             ui.horizontal(|ui| {
                 for event in &mut data_layer
