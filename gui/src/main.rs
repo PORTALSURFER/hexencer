@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 
 use hexencer_core::data::DataLayer;
 use hexencer_engine::{MidiEngine, Sequencer, SequencerCommand};
@@ -10,7 +10,7 @@ type SequencerReceiver = tokio::sync::mpsc::UnboundedReceiver<SequencerCommand>;
 #[tokio::main]
 async fn main() {
     println!("Hello, world!");
-    let data_layer = Arc::new(RwLock::new(DataLayer::default()));
+    let data_layer = Arc::new(Mutex::new(DataLayer::default()));
 
     let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();
     let (midi_sender, midi_receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -19,7 +19,7 @@ async fn main() {
     task::spawn(midi_engine.init(midi_receiver));
 
     let sequencer = Sequencer::new(Arc::clone(&data_layer), midi_sender);
-    task::spawn(sequencer.init(sequencer_receiver));
+    task::spawn(sequencer.listen(sequencer_receiver));
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 768.0]),
@@ -36,14 +36,14 @@ async fn main() {
 
 #[derive(Default)]
 struct Gui {
-    data_layer: Arc<RwLock<DataLayer>>,
+    data_layer: Arc<Mutex<DataLayer>>,
     sequencer_sender: Option<SequencerSender>,
 }
 
 impl Gui {
     fn new(
         cc: &eframe::CreationContext<'_>,
-        data_layer: Arc<RwLock<DataLayer>>,
+        data_layer: Arc<Mutex<DataLayer>>,
         sender: SequencerSender,
     ) -> Self {
         Self {
@@ -64,7 +64,7 @@ impl eframe::App for Gui {
         egui::SidePanel::left("info").show(ctx, |ui| {
             ui.label("info");
             if ui.button("add track").clicked() {
-                self.data_layer.write().unwrap().project_manager.add_track();
+                self.data_layer.lock().unwrap().project_manager.add_track();
             }
             if ui.button("play").clicked() {
                 self.sequencer_sender.as_mut().map(|sender| {
@@ -81,7 +81,7 @@ impl eframe::App for Gui {
             ui.vertical(|ui| {
                 let track_ids: Vec<usize> = self
                     .data_layer
-                    .read()
+                    .lock()
                     .unwrap()
                     .project_manager
                     .track_manager
@@ -103,7 +103,7 @@ const TRACK_COLOR: egui::Color32 = egui::Color32::from_rgb(32, 42, 42);
 const TRACK_HEADER_COLOR: egui::Color32 = egui::Color32::from_rgb(54, 54, 74);
 
 fn new_track(
-    data_layer: Arc<RwLock<DataLayer>>,
+    data_layer: Arc<Mutex<DataLayer>>,
     ctx: &egui::Context,
     index: usize,
     ui: &mut egui::Ui,
@@ -125,7 +125,7 @@ fn new_track(
                 //     .collect();
 
                 for event in &mut data_layer
-                    .write()
+                    .lock()
                     .unwrap()
                     .project_manager
                     .track_manager
