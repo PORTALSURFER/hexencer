@@ -16,6 +16,7 @@ pub struct Sequencer {
     bpm: f64,
     ppqn: u32,
     running: Arc<Mutex<bool>>,
+    current_tick: u64,
 }
 
 impl Sequencer {
@@ -27,6 +28,7 @@ impl Sequencer {
             midi_engine_sender: Some(midi_engine_sender),
             bpm: 120.0,
             ppqn: 480,
+            current_tick: 0,
             running: Arc::new(Mutex::new(false)),
         }
     }
@@ -38,19 +40,38 @@ impl Sequencer {
     }
 
     pub async fn listen(
-        self,
+        mut self,
         mut command_receiver: tokio::sync::mpsc::UnboundedReceiver<SequencerCommand>,
     ) {
         println!("sequencer listening for commands");
-        let mut current_tick = 0;
         let mut interval = time::interval(Duration::from_millis(self.tick_duration()));
         loop {
             tokio::select! {
                 _ = interval.tick() => {
                     if *self.running.lock().unwrap() {
-                        println!("tick .. {}", current_tick);
-                        // self.play_events(current_tick);
-                        current_tick = current_tick + 1;
+                        // println!("tick .. {}", self.current_tick);
+                        let midi_message = MidiMessage::NoteOn(
+                            Note::new(66, 1, 64, 50),
+                            Instrument::new("first", 0),
+                        );
+                        let event1 = MidiEvent::new(0, midi_message, false);
+                        let midi_message = MidiMessage::NoteOn(
+                            Note::new(66, 1, 64, 50),
+                            Instrument::new("first", 0),
+                        );
+                        let event2 = MidiEvent::new(480, midi_message, false);
+                        let midi_message = MidiMessage::NoteOn(
+                            Note::new(66, 1, 64, 50),
+                            Instrument::new("first", 0),
+                        );
+                        let event3 = MidiEvent::new(960, midi_message, false);
+                        let events = vec![event1, event2, event3];
+
+                        let current_events: Vec<&MidiEvent> = events.iter().filter(|event| event.tick == self.current_tick).collect();
+
+                        self.play_events(self.current_tick, current_events);
+                        self.current_tick = self.current_tick + 1;
+
                     }
                 }
                 Some(command) = command_receiver.recv() => {
@@ -82,31 +103,10 @@ impl Sequencer {
         // let mut midi_events = data_layer.get_midi_events();
     }
 
-    #[deprecated]
-    fn play_events(&self, current_tick: u64, events: &Vec<MidiEvent>) {
+    fn play_events(&self, current_tick: u64, events: Vec<&MidiEvent>) {
         for event in events {
-            if event.tick == current_tick {
-                println!("playing event {:?} {:?}", current_tick, event);
-            } else {
-                // println!("no event");
-            }
+            println!("playing event {:?} {:?}", current_tick, event);
         }
-    }
-
-    #[deprecated]
-    pub fn play_events2(self, events: Vec<MidiEvent>) {
-        tokio::spawn(async move {
-            println!("running sequencer");
-            let tick_duration = self.tick_duration();
-            let mut interval = time::interval(Duration::from_millis(tick_duration));
-            let mut current_tick = 0;
-
-            loop {
-                println!("playing event {:?}", current_tick);
-                self.play_events(current_tick, &events);
-                interval.tick().await;
-            }
-        });
     }
 }
 
