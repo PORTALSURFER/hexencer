@@ -6,11 +6,30 @@ pub struct Instrument {
     pub midi_port: u8,
 }
 
+impl Instrument {
+    pub fn new(name: &str, midi_port: u8) -> Self {
+        Self {
+            name: String::from(name),
+            midi_port,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct MidiEvent {
     pub tick: u64,
     pub message: MidiMessage,
     pub on: bool,
+}
+
+impl MidiEvent {
+    pub fn new(tick: u64, midi_message: MidiMessage, on: bool) -> Self {
+        Self {
+            tick,
+            message: midi_message,
+            on,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -19,6 +38,17 @@ pub struct Note {
     pub channel: u8,
     pub velocity: u8,
     pub duration: u64,
+}
+
+impl Note {
+    pub fn new(index: u8, channel: u8, velocity: u8, duration: u64) -> Self {
+        Self {
+            index,
+            channel,
+            velocity,
+            duration,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
