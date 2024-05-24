@@ -47,10 +47,20 @@ impl MidiEngine {
             0 => {
                 println!("sending midi event to port 0");
                 let _ = self.conn_out.as_mut().map(|s| s.send(&event.to_midi()));
+                tokio::time::sleep(Duration::from_millis(event.midi_message.get_duration())).await;
+                let _ = self
+                    .conn_out
+                    .as_mut()
+                    .map(|s| s.send(&[NOTE_OFF_MSG, event.get_note_index()]));
             }
             1 => {
                 println!("sending midi event to port 1");
                 let _ = self.conn_out2.as_mut().map(|s| s.send(&event.to_midi()));
+                tokio::time::sleep(Duration::from_millis(event.midi_message.get_duration())).await;
+                let _ = self
+                    .conn_out2
+                    .as_mut()
+                    .map(|s| s.send(&[NOTE_OFF_MSG, event.get_note_index()]));
             }
             _ => {}
         }
