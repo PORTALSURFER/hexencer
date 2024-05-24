@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 pub mod data;
 
 #[derive(Debug, Clone)]
@@ -18,15 +20,27 @@ impl Instrument {
 #[derive(Debug, Clone)]
 pub struct MidiEvent {
     pub tick: u64,
-    pub message: MidiMessage,
+    pub midi_message: MidiMessage,
     pub on: bool,
+}
+
+impl Display for MidiEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(
+            format!(
+                "tick {}, message {}, on: {}",
+                self.tick, self.midi_message, self.on
+            )
+            .as_str(),
+        )
+    }
 }
 
 impl MidiEvent {
     pub fn new(tick: u64, midi_message: MidiMessage, on: bool) -> Self {
         Self {
             tick,
-            message: midi_message,
+            midi_message,
             on,
         }
     }
@@ -57,6 +71,24 @@ pub enum MidiMessage {
     NoteOff(Note),
 }
 
+impl Default for MidiMessage {
+    fn default() -> Self {
+        Self::NoteOn(
+            Note::new(66, 0, 64, 100),
+            Instrument::new("default instrument", 0),
+        )
+    }
+}
+
+impl Display for MidiMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MidiMessage::NoteOn(_, _) => f.write_str("note on"),
+            MidiMessage::NoteOff(_) => f.write_str("note off"),
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Track {
     pub id: usize,
@@ -64,42 +96,32 @@ pub struct Track {
     pub events: Vec<MidiEvent>,
 }
 impl Track {
-    fn new(id: usize, name: &str) -> Track {
-        let event = MidiEvent {
-            tick: 0,
-            message: MidiMessage::NoteOn(
-                Note {
-                    index: 60,
-                    channel: 1,
-                    velocity: 100,
-                    duration: 1000,
-                },
-                Instrument {
-                    name: String::from("piano"),
-                    midi_port: 0,
-                },
-            ),
-            on: true,
-        };
+    fn new(id: usize, name: &str, channel: u8) -> Track {
+        let mut events = Vec::new();
+
+        for i in 0..=8 {
+            let event = MidiEvent {
+                tick: i * 480,
+                midi_message: MidiMessage::NoteOn(
+                    Note {
+                        index: 66,
+                        channel,
+                        velocity: 64,
+                        duration: 10,
+                    },
+                    Instrument {
+                        name: String::from("piano"),
+                        midi_port: 0,
+                    },
+                ),
+                on: true,
+            };
+            events.push(event);
+        }
         Self {
             id,
             name: String::from(name),
-            events: vec![event; 8],
-        }
-    }
-}
-
-pub struct Commander {}
-
-impl Commander {
-    pub fn execute(&self, command: &str) {
-        match command {
-            "get_tracks" => {
-                println!("Playing!");
-            }
-            _ => {
-                println!("Unknown command!");
-            }
+            events,
         }
     }
 }
