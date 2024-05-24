@@ -24,7 +24,11 @@ impl ProjectManager {
 
     pub fn add_track(&mut self) {
         let track_count = self.track_manager.tracks.len();
-        let track = Track::new(track_count, &format!("track {}", track_count));
+        let track = Track::new(
+            track_count,
+            &format!("track {}", track_count),
+            track_count as u8,
+        );
         self.track_manager.tracks.push(track);
     }
 

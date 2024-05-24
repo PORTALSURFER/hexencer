@@ -1,7 +1,9 @@
 use std::sync::{Arc, Mutex};
 
 use hexencer_core::data::DataLayer;
-use hexencer_engine::{MidiEngine, Sequencer, SequencerCommand};
+use hexencer_engine::midi::MidiEngine;
+use hexencer_engine::{Sequencer, SequencerCommand};
+
 use tokio::task;
 
 type SequencerSender = tokio::sync::mpsc::UnboundedSender<SequencerCommand>;
@@ -16,10 +18,10 @@ async fn main() {
     let (midi_sender, midi_receiver) = tokio::sync::mpsc::unbounded_channel();
 
     let midi_engine = MidiEngine::new();
-    task::spawn(midi_engine.init(midi_receiver));
+    task::spawn(midi_engine.process(midi_receiver));
 
     let sequencer = Sequencer::new(Arc::clone(&data_layer), midi_sender);
-    task::spawn(sequencer.listen(sequencer_receiver));
+    task::spawn(sequencer.process(sequencer_receiver));
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 768.0]),
@@ -116,14 +118,6 @@ fn new_track(
                 ui.label(format!("Track {}", index));
             });
             ui.horizontal(|ui| {
-                // let events: Vec<bool> = app
-                //     .project_manager
-                //     .track_manager
-                //     .tracks
-                //     .iter()
-                //     .flat_map(|track| track.events.iter().map(|events| return events.on))
-                //     .collect();
-
                 for event in &mut data_layer
                     .lock()
                     .unwrap()
