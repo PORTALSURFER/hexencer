@@ -35,6 +35,10 @@ impl ProjectManager {
     pub fn get_all_events(&self) -> Vec<MidiEvent> {
         self.track_manager.get_all_events()
     }
+
+    pub fn remove_track(&mut self) {
+        self.track_manager.tracks.pop();
+    }
 }
 
 #[derive(Default)]
