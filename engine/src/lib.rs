@@ -1,11 +1,7 @@
 use hexencer_core::{data::DataLayer, Instrument, MidiEvent, MidiMessage, Note};
 use midir::MidiOutput;
-use std::{
-    sync::{Arc, RwLock},
-    time::Duration,
-};
+use std::{sync::Arc, sync::Mutex, time::Duration};
 use tokio::{task, time};
-// use tokio::time::{self, Instant};
 
 pub enum SequencerCommand {
     Play,
@@ -15,22 +11,23 @@ type MidiEngineSender = tokio::sync::mpsc::UnboundedSender<MidiMessage>;
 
 #[derive(Default)]
 pub struct Sequencer {
-    data_layer: Arc<RwLock<DataLayer>>,
+    data_layer: Arc<Mutex<DataLayer>>,
     midi_engine_sender: Option<MidiEngineSender>,
     bpm: f64,
     ppqn: u32,
-    running: bool,
+    running: Arc<Mutex<bool>>,
 }
 
 impl Sequencer {
-    pub fn new(data_layer: Arc<RwLock<DataLayer>>, midi_engine_sender: MidiEngineSender) -> Self {
+    pub fn new(data_layer: Arc<Mutex<DataLayer>>, midi_engine_sender: MidiEngineSender) -> Self {
         let (midi_engine_sender, midi_engine_receiver) = tokio::sync::mpsc::unbounded_channel();
+
         Self {
             data_layer,
             midi_engine_sender: Some(midi_engine_sender),
             bpm: 120.0,
             ppqn: 480,
-            running: false,
+            running: Arc::new(Mutex::new(false)),
         }
     }
 
@@ -40,40 +37,52 @@ impl Sequencer {
         tick_duration as u64
     }
 
-    pub async fn init(
+    pub async fn listen(
         self,
         mut command_receiver: tokio::sync::mpsc::UnboundedReceiver<SequencerCommand>,
     ) {
-        println!("running sequencer");
-
-        while let Some(command) = command_receiver.recv().await {
-            match command {
-                SequencerCommand::Play => {
-                    println!("play");
-                    self.play().await;
+        println!("sequencer listening for commands");
+        let mut current_tick = 0;
+        let mut interval = time::interval(Duration::from_millis(self.tick_duration()));
+        loop {
+            tokio::select! {
+                _ = interval.tick() => {
+                    if *self.running.lock().unwrap() {
+                        println!("tick .. {}", current_tick);
+                        // self.play_events(current_tick);
+                        current_tick = current_tick + 1;
+                    }
                 }
-                SequencerCommand::Stop => println!("stop"),
+                Some(command) = command_receiver.recv() => {
+                    match command {
+                        SequencerCommand::Play => {
+                            println!("play commnd received");
+                            *self.running.lock().unwrap() = true;
+                        }
+                        SequencerCommand::Stop => {
+                            println!("stop");
+                            *self.running.lock().unwrap() = false;
+                        }
+                    }
+
+                }
             }
         }
     }
 
-    pub async fn play(&self) {
-        let tick_duration = self.tick_duration();
-        task::spawn(async move {
-            println!("running sequencer");
-            let mut interval = time::interval(Duration::from_millis(tick_duration));
-            let mut current_tick = 0;
+    #[deprecated]
+    pub async fn play(
+        data_layer: Arc<Mutex<DataLayer>>,
+        running: Arc<Mutex<bool>>,
+        tick_duration: u64,
+    ) {
+        println!("playing sequencer");
+        // let data_layer = data_layer.lock().unwrap();
 
-            loop {
-                interval.tick().await;
-                println!("tick ..");
-                // self.play_events(current_tick);
-                current_tick = current_tick + 1;
-            }
-        })
-        .await;
+        // let mut midi_events = data_layer.get_midi_events();
     }
 
+    #[deprecated]
     fn play_events(&self, current_tick: u64, events: &Vec<MidiEvent>) {
         for event in events {
             if event.tick == current_tick {
@@ -84,6 +93,7 @@ impl Sequencer {
         }
     }
 
+    #[deprecated]
     pub fn play_events2(self, events: Vec<MidiEvent>) {
         tokio::spawn(async move {
             println!("running sequencer");
