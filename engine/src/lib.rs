@@ -1,4 +1,4 @@
-use hexencer_core::{data::DataLayer, Instrument, MidiEvent, MidiMessage, Note};
+use hexencer_core::{data::DataLayer, Instrument, MidiEvent, MidiMessage, Note, Track};
 use midi::MidiEngineSender;
 use std::{sync::Arc, sync::Mutex, time::Duration};
 use tokio::{task, time};
@@ -53,6 +53,8 @@ impl Sequencer {
                         let events = self.data_layer.lock().unwrap().project_manager.get_all_events();
                         let current_events: Vec<MidiEvent> = events.into_iter().filter(|event| event.tick == self.current_tick && event.on).collect();
 
+                        // let port = self.data_layer.lock().unwrap().project_manager.track_manager.tracks[0].instrument.midi_port;
+
                         self.send_to_midi_engine(self.current_tick, current_events);
                         self.current_tick = self.current_tick + 1;
                     }
@@ -91,7 +93,7 @@ impl Sequencer {
             if let Some(sender) = &mut self.midi_engine_sender {
                 let current_beat = current_tick / self.ppqn as u64;
                 println!("[{}] - {}", current_beat, event.midi_message);
-                sender.send(event.midi_message).unwrap();
+                sender.send(event).unwrap();
             }
         }
     }

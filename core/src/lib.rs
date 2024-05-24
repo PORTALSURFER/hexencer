@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 pub mod data;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Instrument {
     pub name: String,
     pub midi_port: u8,
@@ -21,7 +21,24 @@ impl Instrument {
 pub struct MidiEvent {
     pub tick: u64,
     pub midi_message: MidiMessage,
+    pub instrument: Instrument,
     pub on: bool,
+}
+
+const NOTE_ON_MSG: u8 = 0x90;
+const NOTE_OFF_MSG: u8 = 0x80;
+const VELOCITY: u8 = 0x64;
+
+impl MidiEvent {
+    pub fn to_midi(&self) -> Vec<u8> {
+        let (note, note_message) = match &self.midi_message {
+            MidiMessage::NoteOn(note, channel) => (note, NOTE_ON_MSG),
+            MidiMessage::NoteOff(note) => (note, NOTE_OFF_MSG),
+        };
+        let velocity = note.velocity;
+        let index = note.index;
+        vec![note_message, index, velocity]
+    }
 }
 
 impl Display for MidiEvent {
@@ -41,6 +58,7 @@ impl MidiEvent {
         Self {
             tick,
             midi_message,
+            instrument: Instrument::default(),
             on,
         }
     }
@@ -94,6 +112,7 @@ pub struct Track {
     pub id: usize,
     pub name: String,
     pub events: Vec<MidiEvent>,
+    pub instrument: Instrument,
 }
 impl Track {
     fn new(id: usize, name: &str, channel: u8) -> Track {
@@ -115,6 +134,7 @@ impl Track {
                     },
                 ),
                 on: true,
+                instrument: Instrument::default(),
             };
             events.push(event);
         }
@@ -122,6 +142,14 @@ impl Track {
             id,
             name: String::from(name),
             events,
+            instrument: Instrument::new("port0", 0),
+        }
+    }
+
+    pub fn set_port(&mut self, port: u8) {
+        self.instrument.midi_port = port;
+        for event in self.events.iter_mut() {
+            event.instrument.midi_port = port;
         }
     }
 }
