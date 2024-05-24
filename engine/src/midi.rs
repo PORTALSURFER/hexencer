@@ -44,7 +44,6 @@ impl MidiEngine {
 
         match note.channel {
             0 => {
-                println!("playing event {:?} {:?} on ouput 1", note, instrument);
                 let _ = self
                     .conn_out
                     .as_mut()
@@ -56,7 +55,6 @@ impl MidiEngine {
                     .map(|s| s.send(&[NOTE_OFF_MSG, note.index, VELOCITY]));
             }
             1 => {
-                println!("playing event {:?} {:?} on ouput 2", note, instrument);
                 let _ = self
                     .conn_out2
                     .as_mut()
