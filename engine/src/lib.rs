@@ -51,7 +51,7 @@ impl Sequencer {
                     if *self.running.lock().unwrap() {
                         // println!("tick .. {}", self.current_tick);
                         let events = self.data_layer.lock().unwrap().project_manager.get_all_events();
-                        let current_events: Vec<MidiEvent> = events.into_iter().filter(|event| event.tick == self.current_tick || event.tick + event.duration as u64 == self.current_tick && event.on).collect();
+                        let current_events: Vec<MidiEvent> = events.into_iter().filter(|event| event.tick == self.current_tick && event.on).collect();
                         self.send_to_midi_engine(self.current_tick, current_events);
                         self.current_tick = self.current_tick + 1;
                     }
