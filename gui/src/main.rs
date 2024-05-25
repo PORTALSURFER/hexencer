@@ -1,7 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use hexencer_core::data::event_list::TrigList;
+use hexencer_core::data::midi_message::MidiMessage;
+use hexencer_core::data::trig_list::EventList;
 use hexencer_core::data::DataLayer;
+use hexencer_core::trig::Event::Midi;
 use hexencer_engine::midi::MidiEngine;
 use hexencer_engine::{Sequencer, SequencerCommand};
 
@@ -172,9 +174,17 @@ fn new_track(
                     .get_mut(index)
                     .unwrap();
 
-                for (tick, trig) in &mut track.trigs.iter_mut() {
+                for (tick, event_entry) in
+                    &mut track.event_list.iter_mut().filter(|(tick, event_entry)| {
+                        let Midi(message) = &event_entry.event;
+                        match message {
+                            MidiMessage::NoteOn { key, velocity } => true,
+                            _ => false,
+                        }
+                    })
+                {
                     if ui
-                        .checkbox(&mut trig.event.on, format!("{}", tick.as_beat()))
+                        .checkbox(&mut event_entry.active, format!("{}", tick.as_beat()))
                         .changed()
                     {
                         changed_triggers.push(tick.clone());

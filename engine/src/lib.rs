@@ -29,7 +29,7 @@ impl Sequencer {
         Self {
             data_layer,
             midi_engine_sender: Some(midi_engine_sender),
-            bpm: 120.0,
+            bpm: 150.0,
             ppqn: 480,
             current_tick: Tick::zero(),
             running: Arc::new(Mutex::new(false)),
@@ -39,7 +39,9 @@ impl Sequencer {
     fn tick_duration(&self) -> u64 {
         let beat_duration = 60.0 / self.bpm;
         let tick_duration = (beat_duration / self.ppqn as f64) * 1000.0;
-        tick_duration as u64
+        let duration = (tick_duration * 1000.0) as u64;
+        println!("duration: {}", duration);
+        duration
     }
 
     pub async fn process(
@@ -47,7 +49,7 @@ impl Sequencer {
         mut command_receiver: tokio::sync::mpsc::UnboundedReceiver<SequencerCommand>,
     ) -> ! {
         println!("sequencer listening for commands");
-        let mut interval = time::interval(Duration::from_millis(self.tick_duration()));
+        let mut interval = time::interval(Duration::from_micros(self.tick_duration()));
         loop {
             tokio::select! {
                 _ = interval.tick() => {
@@ -102,13 +104,18 @@ impl Sequencer {
             .tracks;
 
         for track in tracks {
-            if let Some(trig) = track.trigs.get(&self.current_tick) {
-                println!("{} - {}", track, trig);
-                let message = trig.get_message();
-                let instrument = &track.instrument;
-                self.midi_engine_sender
-                    .as_mut()
-                    .map(|sender| sender.send((message, instrument.port)));
+            // println!("{}", track);
+            if let Some(event_entry) = track.event_list.get(&self.current_tick) {
+                let event = event_entry.event.clone();
+                println!("{} - {}", track, event);
+
+                if event_entry.active {
+                    let message = event.get_message();
+                    let instrument = &track.instrument;
+                    self.midi_engine_sender
+                        .as_mut()
+                        .map(|sender| sender.send((message, instrument.port)));
+                }
             }
         }
     }

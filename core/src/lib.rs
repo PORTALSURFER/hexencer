@@ -3,11 +3,11 @@ pub mod instrument;
 pub mod note;
 pub mod trig;
 
-use data::event_list::TrigList;
+use data::trig_list::{EventBlock, EventList};
 use instrument::Instrument;
 use note::NoteEvent;
 use std::fmt::Display;
-use trig::Trig;
+use trig::{Event, EventEntry, UniqueId};
 
 #[derive(Default, PartialEq, PartialOrd, Ord, Eq, Clone, Debug, Copy)]
 pub struct Tick(u64);
@@ -53,12 +53,18 @@ impl From<u64> for Tick {
     }
 }
 
+impl From<u32> for Tick {
+    fn from(tick: u32) -> Self {
+        Self(tick as u64)
+    }
+}
+
 #[derive(Default)]
 pub struct Track {
     pub id: usize,
     pub name: String,
     pub instrument: Instrument,
-    pub trigs: TrigList,
+    pub event_list: EventList,
 }
 
 impl Display for Track {
@@ -70,24 +76,16 @@ impl Display for Track {
 
 impl Track {
     fn new(id: usize, name: &str) -> Track {
-        let mut trigs = TrigList::new();
-
+        let mut event_list = EventList::new();
         for i in 0..8 {
-            let trig = Trig {
-                event: NoteEvent {
-                    key: 39,
-                    velocity: 127,
-                    length: 120,
-                },
-                on: true,
-            };
-            trigs.insert(Tick::from(i * 480 as usize), trig);
+            let event_block = EventBlock::new_midi(Tick::from(i * 480 as u32), 120, 38, 64);
+            event_list.add_event_block(event_block);
         }
 
         Self {
             id,
             name: String::from(name),
-            trigs,
+            event_list,
             instrument: Instrument::new("port0", 0, 0),
         }
     }

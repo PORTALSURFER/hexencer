@@ -1,7 +1,7 @@
 use super::{ALL_NOTE_ON_MSG, NOTE_OFF_MSG, NOTE_ON_MSG};
 use std::fmt::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum MidiMessage {
     NoteOn { key: u8, velocity: u8 },
     NoteOff { key: u8, velocity: u8 },

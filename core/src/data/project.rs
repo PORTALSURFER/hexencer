@@ -1,5 +1,5 @@
-use super::{event_list::TrigList, track::TrackManager, InstrumentManager};
-use crate::{trig::Trig, Tick, Track};
+use super::{track::TrackManager, trig_list::EventList, InstrumentManager};
+use crate::{trig::EventEntry, Tick, Track};
 
 #[derive(Default)]
 pub struct ProjectManager {
@@ -24,9 +24,9 @@ impl ProjectManager {
         self.track_manager.tracks.push(track);
     }
 
-    pub fn get_all_trigs(&self) -> Vec<(Tick, Trig)> {
-        self.track_manager.get_all_trigs()
-    }
+    // pub fn get_all_event_entries(&self) -> Vec<(Tick, EventEntry)> {
+    // self.track_manager.get_all_event_entries()
+    // }
 
     pub fn remove_track(&mut self) {
         self.track_manager.tracks.pop();
