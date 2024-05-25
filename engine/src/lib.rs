@@ -42,7 +42,7 @@ impl Sequencer {
     pub async fn process(
         mut self,
         mut command_receiver: tokio::sync::mpsc::UnboundedReceiver<SequencerCommand>,
-    ) {
+    ) -> ! {
         println!("sequencer listening for commands");
         let mut interval = time::interval(Duration::from_millis(self.tick_duration()));
         loop {
@@ -51,10 +51,7 @@ impl Sequencer {
                     if *self.running.lock().unwrap() {
                         // println!("tick .. {}", self.current_tick);
                         let events = self.data_layer.lock().unwrap().project_manager.get_all_events();
-                        let current_events: Vec<MidiEvent> = events.into_iter().filter(|event| event.tick == self.current_tick && event.on).collect();
-
-                        // let port = self.data_layer.lock().unwrap().project_manager.track_manager.tracks[0].instrument.midi_port;
-
+                        let current_events: Vec<MidiEvent> = events.into_iter().filter(|event| event.tick == self.current_tick || event.tick + event.duration as u64 == self.current_tick && event.on).collect();
                         self.send_to_midi_engine(self.current_tick, current_events);
                         self.current_tick = self.current_tick + 1;
                     }
@@ -82,6 +79,15 @@ impl Sequencer {
 
     fn stop(&mut self) {
         *self.running.lock().unwrap() = false;
+
+        let instrument = Instrument::new("piano", 0);
+        self.midi_engine_sender
+            .as_mut()
+            .map(|sender| sender.send(MidiEvent::global_note_off(instrument)).unwrap());
+        let instrument = Instrument::new("piano", 1);
+        self.midi_engine_sender
+            .as_mut()
+            .map(|sender| sender.send(MidiEvent::global_note_off(instrument)).unwrap());
     }
 
     fn play(&mut self) {
@@ -92,7 +98,7 @@ impl Sequencer {
         for event in events {
             if let Some(sender) = &mut self.midi_engine_sender {
                 let current_beat = current_tick / self.ppqn as u64;
-                println!("[{}] - {}", current_beat, event.midi_message);
+                println!("[{}] - {}", current_beat, event);
                 sender.send(event).unwrap();
             }
         }

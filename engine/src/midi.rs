@@ -23,7 +23,7 @@ impl MidiEngine {
         let out_ports = midi_out.ports();
         let out_ports2 = midi_out2.ports();
 
-        let port = out_ports.get(4).ok_or("no output port found").unwrap();
+        let port = out_ports.get(2).ok_or("no output port found").unwrap();
         let port2 = out_ports2.get(3).ok_or("no output port found").unwrap();
 
         println!("\nOpening midi connections");
@@ -45,22 +45,10 @@ impl MidiEngine {
 
         match event.instrument.midi_port {
             0 => {
-                println!("sending midi event to port 0");
                 let _ = self.conn_out.as_mut().map(|s| s.send(&event.to_midi()));
-                tokio::time::sleep(Duration::from_millis(event.midi_message.get_duration())).await;
-                let _ = self
-                    .conn_out
-                    .as_mut()
-                    .map(|s| s.send(&[NOTE_OFF_MSG, event.get_note_index()]));
             }
             1 => {
-                println!("sending midi event to port 1");
                 let _ = self.conn_out2.as_mut().map(|s| s.send(&event.to_midi()));
-                tokio::time::sleep(Duration::from_millis(event.midi_message.get_duration())).await;
-                let _ = self
-                    .conn_out2
-                    .as_mut()
-                    .map(|s| s.send(&[NOTE_OFF_MSG, event.get_note_index()]));
             }
             _ => {}
         }
@@ -76,16 +64,6 @@ impl MidiEngine {
         println!("running midiio");
         while let Some(event) = midi_command_receiver.recv().await {
             self.play(&event).await;
-            // match v {
-            //     // MidiMessage::NoteOn(note, instrument) => {
-            //     //     self.play(&note, &instrument).await;
-            //     // }
-            //     // MidiMessage::NoteOff(note) => {
-            //     //     println!("stopping");
-            //     //     self.stop();
-            //     // }
-            // }
         }
-        println!("done waiting for midi events");
     }
 }
