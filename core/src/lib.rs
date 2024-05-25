@@ -3,11 +3,10 @@ pub mod instrument;
 pub mod note;
 pub mod trig;
 
-use std::{collections::BTreeMap, fmt::Display};
-
-use data::{event_list::EventList, ALL_NOTE_ON_MSG, NOTE_OFF_MSG, NOTE_ON_MSG};
+use data::event_list::TrigList;
 use instrument::Instrument;
-use note::Note;
+use note::NoteEvent;
+use std::fmt::Display;
 use trig::Trig;
 
 #[derive(Default, PartialEq, PartialOrd, Ord, Eq, Clone, Debug, Copy)]
@@ -28,6 +27,11 @@ impl Tick {
 
     pub fn reset(&mut self) {
         self.0 = 0;
+    }
+
+    fn offset(mut self, length: u32) -> Self {
+        self.0 = self.0 + length as u64;
+        self
     }
 }
 
@@ -50,74 +54,45 @@ impl From<u64> for Tick {
 }
 
 #[derive(Default)]
-pub struct Trigs(pub BTreeMap<Tick, Trig>);
-
-impl Trigs {
-    pub fn new() -> Self {
-        Self(BTreeMap::new())
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (&Tick, &Trig)> {
-        self.0.iter()
-    }
-
-    pub fn build_event_list(&self) -> EventList {
-        let mut event_list = EventList::new();
-        for (tick, trig) in self.iter() {
-            match trig.on {
-                true => {
-                    event_list.insert(*tick, trig.get_note_on());
-                }
-                false => {
-                    event_list.insert(*tick, trig.get_note_off());
-                }
-            }
-        }
-        event_list
-    }
-}
-
-#[derive(Default)]
 pub struct Track {
     pub id: usize,
     pub name: String,
-    pub trigs: Trigs,
     pub instrument: Instrument,
-    pub event_list: EventList,
+    pub trigs: TrigList,
 }
+
+impl Display for Track {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{}, instrument: {}", self.name, self.instrument))?;
+        Ok(())
+    }
+}
+
 impl Track {
-    fn new(id: usize, name: &str, channel: u8) -> Track {
-        let mut trigs = Trigs::new();
+    fn new(id: usize, name: &str) -> Track {
+        let mut trigs = TrigList::new();
 
         for i in 0..8 {
             let trig = Trig {
-                note: Note {
-                    index: 39,
-                    channel: 0,
+                event: NoteEvent {
+                    key: 39,
                     velocity: 127,
+                    length: 120,
                 },
                 on: true,
-                instrument: Instrument::default(),
-                duration: 100,
             };
-            trigs.0.insert(Tick::from(i * 480 as usize), trig);
+            trigs.insert(Tick::from(i * 480 as usize), trig);
         }
-
-        let event_list = trigs.build_event_list();
 
         Self {
             id,
             name: String::from(name),
             trigs,
             instrument: Instrument::new("port0", 0, 0),
-            event_list,
         }
     }
 
     pub fn set_port(&mut self, port: u8) {
-        self.instrument.midi_port = port;
-        for (_, trig) in self.trigs.0.iter_mut() {
-            trig.instrument.midi_port = port;
-        }
+        self.instrument.port = port;
     }
 }

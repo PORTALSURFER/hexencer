@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use hexencer_core::{
     data::{midi_message::MidiMessage, ALL_NOTE_ON_MSG, NOTE_OFF_MSG, NOTE_ON_MSG},
-    note::Note,
+    note::NoteEvent,
 };
 use midir::MidiOutput;
 

@@ -1,38 +1,38 @@
 use std::fmt::Display;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Note {
-    pub index: u8,
-    pub channel: u8,
+pub struct NoteEvent {
+    pub key: u8,
+    pub length: u32,
     pub velocity: u8,
 }
 
-impl Default for Note {
+impl Default for NoteEvent {
     fn default() -> Self {
         Self {
-            index: 48,
-            channel: 0,
+            key: 48,
+            length: 120,
             velocity: 96,
         }
     }
 }
 
-impl Note {
-    pub fn new(index: u8, channel: u8, velocity: u8) -> Self {
+impl NoteEvent {
+    pub fn new(on: bool, index: u8, length: u32, velocity: u8) -> Self {
         Self {
-            index,
-            channel,
+            key: index,
+            length,
             velocity,
         }
     }
 }
 
-impl Display for Note {
+impl Display for NoteEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(
             format!(
-                "[note|index: {}, channel: {}, velocity: {}",
-                self.index, self.channel, self.velocity
+                "key: {}, length: {}, velocity: {}",
+                self.key, self.length, self.velocity
             )
             .as_str(),
         )

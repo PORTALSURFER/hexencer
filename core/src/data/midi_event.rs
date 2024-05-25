@@ -1,20 +1,16 @@
-use crate::note::Note;
-
 use super::midi_message::MidiMessage;
 
 #[derive(Debug)]
-pub enum MidiEvent {
-    NoteOn(Note),
-    NoteOff(Note),
-    AllNoteOff(),
+pub struct MidiRequest {
+    message: MidiMessage,
+    port: u8,
 }
 
-impl From<MidiEvent> for MidiMessage {
-    fn from(val: MidiEvent) -> Self {
-        match val {
-            MidiEvent::NoteOn(note) => MidiMessage::NoteOn(note),
-            MidiEvent::NoteOff(note) => MidiMessage::NoteOn(note),
-            MidiEvent::AllNoteOff() => MidiMessage::GlobalNoteOff,
-        }
+impl MidiRequest {
+    pub fn get_message(&self) -> &MidiMessage {
+        &self.message
+    }
+    pub fn get_port(&self) -> u8 {
+        self.port
     }
 }

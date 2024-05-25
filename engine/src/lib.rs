@@ -102,24 +102,14 @@ impl Sequencer {
             .tracks;
 
         for track in tracks {
-            if let Some(event) = track.event_list.get(&self.current_tick) {
-                dbg!(event);
+            if let Some(trig) = track.trigs.get(&self.current_tick) {
+                println!("{} - {}", track, trig);
+                let message = trig.get_message();
+                let instrument = &track.instrument;
+                self.midi_engine_sender
+                    .as_mut()
+                    .map(|sender| sender.send((message, instrument.port)));
             }
         }
-        // for track in &self
-        //     .data_layer
-        //     .lock()
-        //     .unwrap()
-        //     .project_manager
-        //     .track_manager
-        //     .tracks
-        // {
-        //     let event = track.event_list.get(self.current_tick.into());
-
-        //     println!("event: {:?}", event);
-        //     // self.midi_engine_sender
-        //     //     .as_mut()
-        //     //     .map(|sender| sender.send((event.into(), 0)));
-        // }
     }
 }

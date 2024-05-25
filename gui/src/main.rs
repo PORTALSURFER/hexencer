@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use hexencer_core::data::event_list::EventList;
+use hexencer_core::data::event_list::TrigList;
 use hexencer_core::data::DataLayer;
 use hexencer_engine::midi::MidiEngine;
 use hexencer_engine::{Sequencer, SequencerCommand};
@@ -138,7 +138,7 @@ fn new_track(
                     .get(index)
                     .unwrap()
                     .instrument
-                    .midi_port
+                    .port
                     .to_string();
 
                 let port_selector = ui.text_edit_singleline(&mut port);
@@ -163,34 +163,28 @@ fn new_track(
             });
             ui.horizontal(|ui| {
                 let mut changed_triggers = Vec::new();
-                for (tick, trig) in &mut data_layer
-                    .lock()
-                    .unwrap()
+
+                let mut data_layer = data_layer.lock().unwrap();
+                let track = data_layer
                     .project_manager
                     .track_manager
-                    .tracks[index]
-                    .trigs
-                    .0
-                {
+                    .tracks
+                    .get_mut(index)
+                    .unwrap();
+
+                for (tick, trig) in &mut track.trigs.iter_mut() {
                     if ui
-                        .checkbox(&mut trig.on, format!("{}", tick.as_beat()))
+                        .checkbox(&mut trig.event.on, format!("{}", tick.as_beat()))
                         .changed()
                     {
                         changed_triggers.push(tick.clone());
                     }
                 }
 
-                if !changed_triggers.is_empty() {
-                    let track = &mut data_layer
-                        .lock()
-                        .unwrap()
-                        .project_manager
-                        .track_manager
-                        .tracks[index];
-                    track.event_list = track.trigs.build_event_list();
-
-                    dbg!(&track.event_list);
-                }
+                // if !changed_triggers.is_empty() {
+                //     let track = &mut data_layer.project_manager.track_manager.tracks[index];
+                //     track.event_list = track.trigs.build_event_list();
+                // }
             });
         });
     });
