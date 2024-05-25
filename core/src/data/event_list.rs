@@ -1,33 +1,38 @@
-use super::midi_event::MidiEvent;
-use crate::Tick;
-use std::collections::BTreeMap;
+use crate::{trig::Trig, Tick};
+use std::{
+    collections::BTreeMap,
+    ops::{Deref, DerefMut},
+};
 
 #[derive(Default, Debug)]
-pub struct EventList(BTreeMap<Tick, MidiEvent>);
+pub struct TrigList(BTreeMap<Tick, Trig>);
 
-impl FromIterator<EventList> for EventList {
-    fn from_iter<T: IntoIterator<Item = EventList>>(iter: T) -> Self {
-        let mut events = EventList::new();
-        for i in iter {
-            events.0.extend(i.0);
-        }
-        events
+impl Deref for TrigList {
+    type Target = BTreeMap<Tick, Trig>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-impl EventList {
-    pub fn insert(&mut self, tick: Tick, event: MidiEvent) {
-        self.0.insert(tick, event);
+impl DerefMut for TrigList {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
+}
 
-    pub fn new() -> EventList {
-        EventList(BTreeMap::new())
-    }
-
-    pub fn get(&self, tick: &Tick) -> Option<&MidiEvent> {
-        match self.0.get(tick) {
-            Some(event) => Some(event),
-            None => None,
+impl FromIterator<(Tick, Trig)> for TrigList {
+    fn from_iter<T: IntoIterator<Item = (Tick, Trig)>>(iter: T) -> Self {
+        let mut map = BTreeMap::new();
+        for (tick, trig) in iter {
+            map.insert(tick, trig);
         }
+        TrigList(map)
+    }
+}
+
+impl TrigList {
+    pub fn new() -> TrigList {
+        TrigList(BTreeMap::new())
     }
 }

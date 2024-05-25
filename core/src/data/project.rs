@@ -1,8 +1,5 @@
-use std::collections::BTreeMap;
-
+use super::{event_list::TrigList, track::TrackManager, InstrumentManager};
 use crate::{trig::Trig, Tick, Track};
-
-use super::{event_list::EventList, track::TrackManager, InstrumentManager};
 
 #[derive(Default)]
 pub struct ProjectManager {
@@ -23,15 +20,11 @@ impl ProjectManager {
 
     pub fn add_track(&mut self) {
         let track_count = self.track_manager.tracks.len();
-        let track = Track::new(
-            track_count,
-            &format!("track {}", track_count),
-            track_count as u8,
-        );
+        let track = Track::new(track_count, &format!("track {}", track_count));
         self.track_manager.tracks.push(track);
     }
 
-    pub fn get_all_trigs(&self) -> Vec<&BTreeMap<Tick, Trig>> {
+    pub fn get_all_trigs(&self) -> Vec<(Tick, Trig)> {
         self.track_manager.get_all_trigs()
     }
 

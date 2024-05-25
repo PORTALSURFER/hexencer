@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use crate::{trig::Trig, Tick, Track};
 
 #[derive(Default)]
@@ -12,7 +10,10 @@ impl TrackManager {
         self.tracks.push(new_track);
     }
 
-    pub fn get_all_trigs(&self) -> Vec<&BTreeMap<Tick, Trig>> {
-        self.tracks.iter().map(|track| &track.trigs.0).collect()
+    pub fn get_all_trigs(&self) -> Vec<(Tick, Trig)> {
+        self.tracks
+            .iter()
+            .flat_map(|track| track.trigs.iter().map(|(&tick, trig)| (tick, trig.clone())))
+            .collect()
     }
 }
