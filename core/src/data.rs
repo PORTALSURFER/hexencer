@@ -1,8 +1,8 @@
-pub mod event_list;
 pub mod midi_event;
 pub mod midi_message;
 mod project;
 mod track;
+pub mod trig_list;
 
 use self::project::ProjectManager;
 use crate::instrument::Instrument;

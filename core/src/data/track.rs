@@ -1,4 +1,7 @@
-use crate::{trig::Trig, Tick, Track};
+use crate::{
+    trig::{Event, EventEntry},
+    Tick, Track,
+};
 
 #[derive(Default)]
 pub struct TrackManager {
@@ -10,10 +13,15 @@ impl TrackManager {
         self.tracks.push(new_track);
     }
 
-    pub fn get_all_trigs(&self) -> Vec<(Tick, Trig)> {
-        self.tracks
-            .iter()
-            .flat_map(|track| track.trigs.iter().map(|(&tick, trig)| (tick, trig.clone())))
-            .collect()
-    }
+    // pub fn get_all_event_entries(&self) -> Vec<(Tick, EventEntry)> {
+    //     self.tracks
+    //         .iter()
+    //         .flat_map(|track| {
+    //             track
+    //                 .event_list
+    //                 .iter()
+    //                 .map(|(&tick, event_entry)| (tick, event_entry))
+    //         })
+    //         .collect()
+    // }
 }
