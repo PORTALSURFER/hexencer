@@ -1,152 +1,79 @@
-use std::fmt::Display;
-
 pub mod data;
+pub mod instrument;
+pub mod note;
+pub mod trig;
 
-#[derive(Debug, Clone, Default)]
-pub struct Instrument {
-    pub name: String,
-    pub midi_port: u8,
-}
+use std::{collections::BTreeMap, fmt::Display};
 
-impl Instrument {
-    pub fn new(name: &str, midi_port: u8) -> Self {
-        Self {
-            name: String::from(name),
-            midi_port,
-        }
+use data::{event_list::EventList, ALL_NOTE_ON_MSG, NOTE_OFF_MSG, NOTE_ON_MSG};
+use instrument::Instrument;
+use note::Note;
+use trig::Trig;
+
+#[derive(Default, PartialEq, PartialOrd, Ord, Eq, Clone, Debug, Copy)]
+pub struct Tick(u64);
+
+impl Tick {
+    pub fn as_beat(&self) -> u32 {
+        (self.0 / 480) as u32 + 1
+    }
+
+    pub fn tick(&mut self) {
+        self.0 = self.0 + 1;
+    }
+
+    pub fn zero() -> Self {
+        Self(0)
+    }
+
+    pub fn reset(&mut self) {
+        self.0 = 0;
     }
 }
 
-impl Display for Instrument {
+impl Display for Tick {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!(
-            "[instrument|name:{}, midi_port:{}]",
-            self.name, self.midi_port
-        ))
+        f.write_str(&format!("{}", self.0))
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct MidiEvent {
-    pub tick: u64,
-    pub midi_message: MidiMessage,
-    pub instrument: Instrument,
-    pub duration: u32,
-    pub on: bool,
+impl From<usize> for Tick {
+    fn from(tick: usize) -> Self {
+        Self(tick as u64)
+    }
 }
 
-const NOTE_ON_MSG: u8 = 0x90;
-const ALL_NOTE_ON_MSG: u8 = 0xB0;
-const NOTE_OFF_MSG: u8 = 0x80;
-const VELOCITY: u8 = 0x64;
+impl From<u64> for Tick {
+    fn from(tick: u64) -> Self {
+        Self(tick)
+    }
+}
 
-impl MidiEvent {
-    pub fn to_midi(&self) -> Vec<u8> {
-        let (note, status) = match &self.midi_message {
-            MidiMessage::NoteOn(note) => (Some(note), NOTE_ON_MSG),
-            MidiMessage::NoteOff(note) => (Some(note), NOTE_OFF_MSG),
-            MidiMessage::GlobalNoteOff => (None, ALL_NOTE_ON_MSG),
-        };
+#[derive(Default)]
+pub struct Trigs(pub BTreeMap<Tick, Trig>);
 
-        let (data_c, data_v) = note
-            .map(|note| (note.index, note.velocity))
-            .unwrap_or((120, 0));
-        vec![status, data_c, data_v]
+impl Trigs {
+    pub fn new() -> Self {
+        Self(BTreeMap::new())
     }
 
-    pub fn get_note_index(&self) -> u8 {
-        match &self.midi_message {
-            MidiMessage::NoteOn(note) => note.index,
-            _ => 0,
+    pub fn iter(&self) -> impl Iterator<Item = (&Tick, &Trig)> {
+        self.0.iter()
+    }
+
+    pub fn build_event_list(&self) -> EventList {
+        let mut event_list = EventList::new();
+        for (tick, trig) in self.iter() {
+            match trig.on {
+                true => {
+                    event_list.insert(*tick, trig.get_note_on());
+                }
+                false => {
+                    event_list.insert(*tick, trig.get_note_off());
+                }
+            }
         }
-    }
-
-    pub fn global_note_off(instrument: Instrument) -> Self {
-        Self {
-            tick: 0,
-            midi_message: MidiMessage::GlobalNoteOff,
-            instrument,
-            on: false,
-            duration: 0,
-        }
-    }
-}
-
-impl Display for MidiEvent {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(
-            format!(
-                "beat:{}, message:{}, instrument:{}",
-                self.tick / 480,
-                self.midi_message,
-                self.instrument
-            )
-            .as_str(),
-        )
-    }
-}
-
-impl MidiEvent {
-    pub fn new(tick: u64, midi_message: MidiMessage, on: bool) -> Self {
-        Self {
-            tick,
-            midi_message,
-            instrument: Instrument::default(),
-            on,
-            duration: 480,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Note {
-    pub index: u8,
-    pub channel: u8,
-    pub velocity: u8,
-}
-
-impl Note {
-    pub fn new(index: u8, channel: u8, velocity: u8) -> Self {
-        Self {
-            index,
-            channel,
-            velocity,
-        }
-    }
-}
-
-impl Display for Note {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(
-            format!(
-                "[note|index: {}, channel: {}, velocity: {}",
-                self.index, self.channel, self.velocity
-            )
-            .as_str(),
-        )
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum MidiMessage {
-    NoteOn(Note),
-    NoteOff(Note),
-    GlobalNoteOff,
-}
-
-impl Default for MidiMessage {
-    fn default() -> Self {
-        Self::NoteOn(Note::new(66, 0, 64))
-    }
-}
-
-impl Display for MidiMessage {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            MidiMessage::NoteOn(note) => f.write_str(&format!("[note_on]{}", note)),
-            MidiMessage::NoteOff(note) => f.write_str(&format!("[note_off]{}", note)),
-            MidiMessage::GlobalNoteOff => f.write_str(&format!("[global_note_off]")),
-        }
+        event_list
     }
 }
 
@@ -154,39 +81,43 @@ impl Display for MidiMessage {
 pub struct Track {
     pub id: usize,
     pub name: String,
-    pub events: Vec<MidiEvent>,
+    pub trigs: Trigs,
     pub instrument: Instrument,
+    pub event_list: EventList,
 }
 impl Track {
     fn new(id: usize, name: &str, channel: u8) -> Track {
-        let mut events = Vec::new();
+        let mut trigs = Trigs::new();
 
-        for i in 0..=8 {
-            let event = MidiEvent {
-                tick: i * 480,
-                midi_message: MidiMessage::NoteOn(Note {
+        for i in 0..8 {
+            let trig = Trig {
+                note: Note {
                     index: 39,
                     channel: 0,
                     velocity: 127,
-                }),
+                },
                 on: true,
                 instrument: Instrument::default(),
                 duration: 100,
             };
-            events.push(event);
+            trigs.0.insert(Tick::from(i * 480 as usize), trig);
         }
+
+        let event_list = trigs.build_event_list();
+
         Self {
             id,
             name: String::from(name),
-            events,
-            instrument: Instrument::new("port0", 0),
+            trigs,
+            instrument: Instrument::new("port0", 0, 0),
+            event_list,
         }
     }
 
     pub fn set_port(&mut self, port: u8) {
         self.instrument.midi_port = port;
-        for event in self.events.iter_mut() {
-            event.instrument.midi_port = port;
+        for (_, trig) in self.trigs.0.iter_mut() {
+            trig.instrument.midi_port = port;
         }
     }
 }

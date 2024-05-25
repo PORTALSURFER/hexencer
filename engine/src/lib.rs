@@ -1,7 +1,10 @@
-use hexencer_core::{data::DataLayer, Instrument, MidiEvent, MidiMessage, Note, Track};
+use hexencer_core::{
+    data::{midi_message::MidiMessage, DataLayer},
+    Tick,
+};
 use midi::MidiEngineSender;
 use std::{sync::Arc, sync::Mutex, time::Duration};
-use tokio::{task, time};
+use tokio::time;
 
 pub mod midi;
 
@@ -18,7 +21,7 @@ pub struct Sequencer {
     bpm: f64,
     ppqn: u32,
     running: Arc<Mutex<bool>>,
-    current_tick: u64,
+    current_tick: Tick,
 }
 
 impl Sequencer {
@@ -28,7 +31,7 @@ impl Sequencer {
             midi_engine_sender: Some(midi_engine_sender),
             bpm: 120.0,
             ppqn: 480,
-            current_tick: 0,
+            current_tick: Tick::zero(),
             running: Arc::new(Mutex::new(false)),
         }
     }
@@ -49,17 +52,14 @@ impl Sequencer {
             tokio::select! {
                 _ = interval.tick() => {
                     if *self.running.lock().unwrap() {
-                        // println!("tick .. {}", self.current_tick);
-                        let events = self.data_layer.lock().unwrap().project_manager.get_all_events();
-                        let current_events: Vec<MidiEvent> = events.into_iter().filter(|event| event.tick == self.current_tick && event.on).collect();
-                        self.send_to_midi_engine(self.current_tick, current_events);
-                        self.current_tick = self.current_tick + 1;
+                        self.process_events();
+                        self.current_tick.tick();
                     }
                 }
                 Some(command) = command_receiver.recv() => {
                     match command {
                         SequencerCommand::Play => {
-                            println!("play commnd received");
+                            println!("play command received");
                             self.play();
                         }
                         SequencerCommand::Stop => {
@@ -68,7 +68,7 @@ impl Sequencer {
                         }
                         SequencerCommand::Reset => {
                             println!("reset");
-                            self.current_tick = 0;
+                            self.current_tick.reset();
                             self.stop();
                         }
                     }
@@ -80,27 +80,46 @@ impl Sequencer {
     fn stop(&mut self) {
         *self.running.lock().unwrap() = false;
 
-        let instrument = Instrument::new("piano", 0);
         self.midi_engine_sender
             .as_mut()
-            .map(|sender| sender.send(MidiEvent::global_note_off(instrument)).unwrap());
-        let instrument = Instrument::new("piano", 1);
+            .map(|sender| sender.send((MidiMessage::GlobalNoteOff, 0)).unwrap());
         self.midi_engine_sender
             .as_mut()
-            .map(|sender| sender.send(MidiEvent::global_note_off(instrument)).unwrap());
+            .map(|sender| sender.send((MidiMessage::GlobalNoteOff, 0)).unwrap());
     }
 
     fn play(&mut self) {
         *self.running.lock().unwrap() = true;
     }
 
-    fn send_to_midi_engine(&mut self, current_tick: u64, events: Vec<MidiEvent>) {
-        for event in events {
-            if let Some(sender) = &mut self.midi_engine_sender {
-                let current_beat = current_tick / self.ppqn as u64;
-                println!("[{}] - {}", current_beat, event);
-                sender.send(event).unwrap();
+    fn process_events(&mut self) {
+        let tracks = &self
+            .data_layer
+            .lock()
+            .unwrap()
+            .project_manager
+            .track_manager
+            .tracks;
+
+        for track in tracks {
+            if let Some(event) = track.event_list.get(&self.current_tick) {
+                dbg!(event);
             }
         }
+        // for track in &self
+        //     .data_layer
+        //     .lock()
+        //     .unwrap()
+        //     .project_manager
+        //     .track_manager
+        //     .tracks
+        // {
+        //     let event = track.event_list.get(self.current_tick.into());
+
+        //     println!("event: {:?}", event);
+        //     // self.midi_engine_sender
+        //     //     .as_mut()
+        //     //     .map(|sender| sender.send((event.into(), 0)));
+        // }
     }
 }
