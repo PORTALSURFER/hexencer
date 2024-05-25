@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 
+use hexencer_core::data::event_list::EventList;
 use hexencer_core::data::DataLayer;
 use hexencer_engine::midi::MidiEngine;
 use hexencer_engine::{Sequencer, SequencerCommand};
@@ -161,15 +162,34 @@ fn new_track(
                 }
             });
             ui.horizontal(|ui| {
-                for event in &mut data_layer
+                let mut changed_triggers = Vec::new();
+                for (tick, trig) in &mut data_layer
                     .lock()
                     .unwrap()
                     .project_manager
                     .track_manager
                     .tracks[index]
-                    .events
+                    .trigs
+                    .0
                 {
-                    ui.checkbox(&mut event.on, "Beat");
+                    if ui
+                        .checkbox(&mut trig.on, format!("{}", tick.as_beat()))
+                        .changed()
+                    {
+                        changed_triggers.push(tick.clone());
+                    }
+                }
+
+                if !changed_triggers.is_empty() {
+                    let track = &mut data_layer
+                        .lock()
+                        .unwrap()
+                        .project_manager
+                        .track_manager
+                        .tracks[index];
+                    track.event_list = track.trigs.build_event_list();
+
+                    dbg!(&track.event_list);
                 }
             });
         });

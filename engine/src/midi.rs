@@ -1,10 +1,13 @@
-use std::time::Duration;
+use std::fmt::Display;
 
-use hexencer_core::{Instrument, MidiEvent, MidiMessage, Note};
+use hexencer_core::{
+    data::{midi_message::MidiMessage, ALL_NOTE_ON_MSG, NOTE_OFF_MSG, NOTE_ON_MSG},
+    note::Note,
+};
 use midir::MidiOutput;
 
-pub type MidiEngineSender = tokio::sync::mpsc::UnboundedSender<MidiEvent>;
-pub type MidiEngineReceiver = tokio::sync::mpsc::UnboundedReceiver<MidiEvent>;
+pub type MidiEngineSender = tokio::sync::mpsc::UnboundedSender<(MidiMessage, u8)>;
+pub type MidiEngineReceiver = tokio::sync::mpsc::UnboundedReceiver<(MidiMessage, u8)>;
 
 #[derive(Default)]
 pub struct MidiEngine {
@@ -37,18 +40,13 @@ impl MidiEngine {
         }
     }
 
-    async fn play(&mut self, event: &MidiEvent) {
-        const NOTE_ON_MSG: u8 = 0x90;
-        const NOTE_OFF_MSG: u8 = 0x80;
-        const VELOCITY: u8 = 0x64;
-        // We're ignoring errors in here
-
-        match event.instrument.midi_port {
+    async fn play(&mut self, message: &MidiMessage, port: u8) {
+        match port {
             0 => {
-                let _ = self.conn_out.as_mut().map(|s| s.send(&event.to_midi()));
+                let _ = self.conn_out.as_mut().map(|s| s.send(&message.to_midi()));
             }
             1 => {
-                let _ = self.conn_out2.as_mut().map(|s| s.send(&event.to_midi()));
+                let _ = self.conn_out2.as_mut().map(|s| s.send(&message.to_midi()));
             }
             _ => {}
         }
@@ -62,8 +60,8 @@ impl MidiEngine {
 
     pub async fn process(mut self, mut midi_command_receiver: MidiEngineReceiver) {
         println!("running midiio");
-        while let Some(event) = midi_command_receiver.recv().await {
-            self.play(&event).await;
+        while let Some((midi_message, port)) = midi_command_receiver.recv().await {
+            self.play(&midi_message, port).await;
         }
     }
 }

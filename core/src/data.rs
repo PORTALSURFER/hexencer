@@ -1,4 +1,16 @@
-use crate::{Instrument, MidiEvent, Track};
+pub mod event_list;
+pub mod midi_event;
+pub mod midi_message;
+mod project;
+mod track;
+
+use self::project::ProjectManager;
+use crate::instrument::Instrument;
+
+pub const NOTE_ON_MSG: u8 = 0x90;
+pub const ALL_NOTE_ON_MSG: u8 = 0xB0;
+pub const NOTE_OFF_MSG: u8 = 0x80;
+pub const VELOCITY: u8 = 0x64;
 
 #[derive(Default)]
 pub struct DataLayer {
@@ -6,64 +18,6 @@ pub struct DataLayer {
 }
 
 #[derive(Default)]
-pub struct ProjectManager {
-    pub track_manager: TrackManager,
-    pub instrument_manager: InstrumentManager,
-}
-
-impl ProjectManager {
-    pub fn new() -> Self {
-        Self {
-            track_manager: TrackManager::default(),
-            instrument_manager: InstrumentManager::default(),
-        }
-    }
-    pub fn track_count(&self) -> usize {
-        self.track_manager.tracks.len()
-    }
-
-    pub fn add_track(&mut self) {
-        let track_count = self.track_manager.tracks.len();
-        let track = Track::new(
-            track_count,
-            &format!("track {}", track_count),
-            track_count as u8,
-        );
-        self.track_manager.tracks.push(track);
-    }
-
-    pub fn get_all_events(&self) -> Vec<MidiEvent> {
-        self.track_manager.get_all_events()
-    }
-
-    pub fn remove_track(&mut self) {
-        self.track_manager.tracks.pop();
-    }
-}
-
-#[derive(Default)]
-pub struct TrackManager {
-    pub tracks: Vec<Track>,
-}
-
-#[derive(Default)]
 pub struct InstrumentManager {
     pub instruments: Vec<Instrument>,
-}
-
-impl TrackManager {
-    pub fn add(&mut self, new_track: Track) {
-        self.tracks.push(new_track);
-    }
-
-    fn get_all_events(&self) -> Vec<MidiEvent> {
-        let mut events: Vec<MidiEvent> = self
-            .tracks
-            .iter()
-            .flat_map(|track| track.events.clone())
-            .collect();
-        events.sort_by_key(|event| event.tick);
-
-        events
-    }
 }
