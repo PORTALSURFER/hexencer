@@ -1,4 +1,4 @@
-use crate::{data::midi_message::MidiMessage, NoteEvent};
+use crate::data::midi_message::MidiMessage;
 use std::{
     fmt::Display,
     sync::atomic::{AtomicU64, Ordering},

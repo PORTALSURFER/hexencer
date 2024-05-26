@@ -1,5 +1,5 @@
 use crate::{
-    trig::{Event, EventEntry, UniqueId},
+    event::{Event, EventEntry, UniqueId},
     Tick,
 };
 use std::{
@@ -71,7 +71,7 @@ pub struct EventBlock {
 }
 
 impl EventBlock {
-    pub fn new_midi(tick: Tick, length: u32, key: u8, velocity: u8) -> Self {
+    pub fn new_midi(tick: Tick, length: u32, key: u8, channel: u8, velocity: u8) -> Self {
         let start_event = Event::Midi(MidiMessage::NoteOn { key, velocity });
         let end_event = Event::Midi(MidiMessage::NoteOff { key, velocity });
         Self {

@@ -1,5 +1,5 @@
 use crate::{
-    trig::{Event, EventEntry},
+    event::{Event, EventEntry},
     Tick, Track,
 };
 
