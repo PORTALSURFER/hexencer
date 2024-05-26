@@ -1,4 +1,5 @@
 pub mod common;
 mod element;
 
-pub use element::track::Track;
+pub use element::clip::*;
+pub use element::track::*;

@@ -1,6 +1,6 @@
 use egui::{
-    epaint, layers::ShapeIdx, Color32, InnerResponse, Rect, Response, Rounding, Sense, Shape,
-    Stroke, Ui, Vec2,
+    epaint, layers::ShapeIdx, Color32, InnerResponse, Margin, Rect, Response, Rounding, Sense,
+    Shape, Stroke, Ui, Vec2,
 };
 
 use crate::ui::common::TRACK_HEIGHT;
