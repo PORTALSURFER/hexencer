@@ -1,5 +1,5 @@
 use super::{track::TrackManager, trig_list::EventList, InstrumentManager};
-use crate::{trig::EventEntry, Tick, Track};
+use crate::{event::EventEntry, Tick, Track};
 
 #[derive(Default)]
 pub struct ProjectManager {

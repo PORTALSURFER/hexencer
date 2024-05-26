@@ -1,13 +1,11 @@
 pub mod data;
+pub mod event;
 pub mod instrument;
 pub mod note;
-pub mod trig;
 
 use data::trig_list::{EventBlock, EventList};
 use instrument::Instrument;
-use note::NoteEvent;
 use std::fmt::Display;
-use trig::{Event, EventEntry, UniqueId};
 
 #[derive(Default, PartialEq, PartialOrd, Ord, Eq, Clone, Debug, Copy)]
 pub struct Tick(u64);
@@ -78,7 +76,7 @@ impl Track {
     fn new(id: usize, name: &str) -> Track {
         let mut event_list = EventList::new();
         for i in 0..8 {
-            let event_block = EventBlock::new_midi(Tick::from(i * 480 as u32), 120, 38, 64);
+            let event_block = EventBlock::new_midi(Tick::from(i * 480 as u32), 120, 38, 0, 64);
             event_list.add_event_block(event_block);
         }
 
@@ -92,5 +90,9 @@ impl Track {
 
     pub fn set_port(&mut self, port: u8) {
         self.instrument.port = port;
+    }
+
+    pub fn set_channel(&mut self, channel: u8) {
+        self.instrument.channel = channel;
     }
 }

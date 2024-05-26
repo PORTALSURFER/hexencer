@@ -84,10 +84,10 @@ impl Sequencer {
 
         self.midi_engine_sender
             .as_mut()
-            .map(|sender| sender.send((MidiMessage::GlobalNoteOff, 0)).unwrap());
+            .map(|sender| sender.send((MidiMessage::GlobalNoteOff, 0, 0)).unwrap());
         self.midi_engine_sender
             .as_mut()
-            .map(|sender| sender.send((MidiMessage::GlobalNoteOff, 0)).unwrap());
+            .map(|sender| sender.send((MidiMessage::GlobalNoteOff, 0, 0)).unwrap());
     }
 
     fn play(&mut self) {
@@ -114,7 +114,7 @@ impl Sequencer {
                     let instrument = &track.instrument;
                     self.midi_engine_sender
                         .as_mut()
-                        .map(|sender| sender.send((message, instrument.port)));
+                        .map(|sender| sender.send((message, instrument.port, instrument.channel)));
                 }
             }
         }
