@@ -13,6 +13,10 @@ impl TrackManager {
         self.tracks.push(new_track);
     }
 
+    pub fn get_track_port(&self, index: usize) -> u8 {
+        self.tracks.get(index).unwrap().instrument.port
+    }
+
     // pub fn get_all_event_entries(&self) -> Vec<(Tick, EventEntry)> {
     //     self.tracks
     //         .iter()

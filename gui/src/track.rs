@@ -28,98 +28,116 @@ pub fn track_ui(
                 let label = egui::Label::new(format!("Track {}", index));
                 ui.add_sized(vec2(50.0, TRACK_HEIGHT), label);
 
-                let mut port = data_layer
+                let port = data_layer
                     .lock()
                     .unwrap()
                     .project_manager
                     .track_manager
-                    .tracks
-                    .get(index)
-                    .unwrap()
-                    .instrument
-                    .port
+                    .get_track_port(index)
                     .to_string();
 
                 ui.add_space(20.0);
 
                 let text_input_rect = egui::vec2(10.0, ui.available_height());
-                let port_selector =
-                    ui.add_sized(text_input_rect, egui::TextEdit::singleline(&mut port));
-                if port_selector.lost_focus() || port_selector.changed() {
-                    match port.parse::<u8>() {
-                        Ok(value) => {
-                            data_layer
-                                .lock()
-                                .unwrap()
-                                .project_manager
-                                .track_manager
-                                .tracks
-                                .get_mut(index)
-                                .unwrap()
-                                .set_port(value);
-                        }
-                        Err(_) => tracing::warn!("port must be a number"),
-                    }
-                }
-                let mut channel = data_layer
+
+                port_selector(ui, text_input_rect, port, &data_layer, index);
+
+                channel_selector(data_layer, index, ui, text_input_rect);
+            });
+            // test_step_sequencer(ui, data_layer, index);
+        });
+    });
+}
+
+fn port_selector(
+    ui: &mut Ui,
+    text_input_rect: Vec2,
+    mut port: String,
+    data_layer: &Arc<Mutex<DataLayer>>,
+    index: usize,
+) {
+    let port_selector = ui.add_sized(text_input_rect, egui::TextEdit::singleline(&mut port));
+    if port_selector.lost_focus() || port_selector.changed() {
+        match port.parse::<u8>() {
+            Ok(value) => {
+                data_layer
                     .lock()
                     .unwrap()
                     .project_manager
                     .track_manager
                     .tracks
-                    .get(index)
+                    .get_mut(index)
                     .unwrap()
-                    .instrument
-                    .channel
-                    .to_string();
+                    .set_port(value);
+            }
+            Err(_) => tracing::warn!("port must be a number"),
+        }
+    }
+}
 
-                let channel_selector = egui::TextEdit::singleline(&mut channel);
-                let response = ui.add_sized(text_input_rect, channel_selector);
-                if response.lost_focus() || response.changed() {
-                    match channel.parse::<u8>() {
-                        Ok(value) => {
-                            data_layer
-                                .lock()
-                                .unwrap()
-                                .project_manager
-                                .track_manager
-                                .tracks
-                                .get_mut(index)
-                                .unwrap()
-                                .set_channel(value);
-                        }
-                        Err(_) => tracing::warn!("port must be a number"),
-                    }
-                }
-            });
-            ui.horizontal(|ui| {
-                let mut changed_triggers = Vec::new();
-                let mut data_layer = data_layer.lock().unwrap();
-                let track = data_layer
+fn channel_selector(
+    data_layer: Arc<Mutex<DataLayer>>,
+    index: usize,
+    ui: &mut Ui,
+    text_input_rect: Vec2,
+) {
+    let mut channel = data_layer
+        .lock()
+        .unwrap()
+        .project_manager
+        .track_manager
+        .tracks
+        .get(index)
+        .unwrap()
+        .instrument
+        .channel
+        .to_string();
+
+    let channel_selector = egui::TextEdit::singleline(&mut channel);
+    let response = ui.add_sized(text_input_rect, channel_selector);
+    if response.lost_focus() || response.changed() {
+        match channel.parse::<u8>() {
+            Ok(value) => {
+                data_layer
+                    .lock()
+                    .unwrap()
                     .project_manager
                     .track_manager
                     .tracks
                     .get_mut(index)
-                    .unwrap();
+                    .unwrap()
+                    .set_channel(value);
+            }
+            Err(_) => tracing::warn!("port must be a number"),
+        }
+    }
+}
 
-                for (tick, event_entry) in
-                    &mut track.event_list.iter_mut().filter(|(tick, event_entry)| {
-                        let hexencer_core::event::Event::Midi(message) = &event_entry.event;
-                        match message {
-                            MidiMessage::NoteOn { key, velocity } => true,
-                            _ => false,
-                        }
-                    })
-                {
-                    if ui
-                        .checkbox(&mut event_entry.active, format!("{}", tick.as_beat()))
-                        .changed()
-                    {
-                        changed_triggers.push(tick.clone());
-                    }
-                }
-            });
-        });
+pub fn test_step_sequencer(ui: &mut Ui, data_layer: Arc<Mutex<DataLayer>>, index: usize) {
+    ui.horizontal(|ui| {
+        let mut changed_triggers = Vec::new();
+        let mut data_layer = data_layer.lock().unwrap();
+        let track = data_layer
+            .project_manager
+            .track_manager
+            .tracks
+            .get_mut(index)
+            .unwrap();
+
+        for (tick, event_entry) in &mut track.event_list.iter_mut().filter(|(tick, event_entry)| {
+            let hexencer_core::event::Event::Midi(message) = &event_entry.event;
+            match message {
+                MidiMessage::NoteOn { key, velocity } => true,
+                _ => false,
+            }
+        }) {
+            if ui
+                .checkbox(&mut event_entry.active, format!("{}", tick.as_beat()))
+                .changed()
+            {
+                changed_triggers.push(tick.clone());
+            }
+        }
     });
 }
 
