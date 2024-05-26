@@ -4,7 +4,7 @@ use egui::{layers::ShapeIdx, vec2, Align, Color32, Margin, Ui, Vec2};
 use hexencer_core::data::{midi_message::MidiMessage, DataLayer};
 
 use crate::ui::{
-    self,
+    self, clip,
     common::{TRACK_COLOR, TRACK_HEADER_COLOR, TRACK_HEADER_WIDTH, TRACK_HEIGHT},
 };
 
@@ -26,7 +26,7 @@ pub fn track_ui(
                 ui.set_min_width(TRACK_HEADER_WIDTH);
 
                 let label = egui::Label::new(format!("Track {}", index));
-                ui.add_sized(vec2(50.0, TRACK_HEIGHT), label);
+                ui.add_sized(vec2(30.0, TRACK_HEIGHT), label);
 
                 let port = data_layer
                     .lock()
@@ -43,6 +43,11 @@ pub fn track_ui(
                 port_selector(ui, text_input_rect, port, &data_layer, index);
 
                 channel_selector(data_layer, index, ui, text_input_rect);
+            });
+
+            let clip_frame = egui::Frame::none().fill(egui::Color32::GREEN);
+            clip_frame.show(ui, |ui| {
+                clip(ctx, ui, &index.to_string());
             });
             // test_step_sequencer(ui, data_layer, index);
         });
@@ -138,21 +143,6 @@ pub fn test_step_sequencer(ui: &mut Ui, data_layer: Arc<Mutex<DataLayer>>, index
                 changed_triggers.push(tick.clone());
             }
         }
-    });
-}
-
-fn clip(ctx: &egui::Context, ui: &mut egui::Ui) {
-    let id = egui::Id::from("new clip");
-    let area = egui::Area::new(id).movable(true);
-    // .constrain_to(ui.max_rect());
-    area.show(ctx, |ui| {
-        let mut frame = egui::Frame::none().fill(egui::Color32::RED);
-        frame.outer_margin = Margin::ZERO;
-        frame.inner_margin = Margin::ZERO;
-        frame.show(ui, |ui| {
-            ui.allocate_space(egui::vec2(50.0, 20.0));
-            //ui.add(egui::Label::new("Clip").selectable(false));
-        });
     });
 }
 
