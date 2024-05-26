@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use egui::{layers::ShapeIdx, Color32, Margin, Ui};
+use egui::{layers::ShapeIdx, vec2, Align, Color32, Margin, Ui, Vec2};
 use hexencer_core::data::{midi_message::MidiMessage, DataLayer};
 
 use crate::ui::{
@@ -24,7 +24,10 @@ pub fn track_ui(
             frame.outer_margin = Margin::ZERO;
             frame.show(ui, |ui| {
                 ui.set_min_width(TRACK_HEADER_WIDTH);
-                ui.label(format!("Track {}", index));
+
+                let label = egui::Label::new(format!("Track {}", index));
+                ui.add_sized(vec2(50.0, TRACK_HEIGHT), label);
+
                 let mut port = data_layer
                     .lock()
                     .unwrap()
@@ -37,10 +40,11 @@ pub fn track_ui(
                     .port
                     .to_string();
 
-                let text_input_rect = egui::vec2(20.0, ui.available_height());
+                ui.add_space(20.0);
+
+                let text_input_rect = egui::vec2(10.0, ui.available_height());
                 let port_selector =
                     ui.add_sized(text_input_rect, egui::TextEdit::singleline(&mut port));
-
                 if port_selector.lost_focus() || port_selector.changed() {
                     match port.parse::<u8>() {
                         Ok(value) => {
