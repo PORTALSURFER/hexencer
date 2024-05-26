@@ -8,3 +8,5 @@ default-run = "gui"
 
 [workspace.dependencies]
 tokio ={ version = "1.37.0", features = ["full"] }
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
