@@ -1,4 +1,5 @@
 pub mod track;
+pub mod ui;
 
 use hexencer_core::data::DataLayer;
 use hexencer_engine::midi::MidiEngine;

@@ -1,6 +1,4 @@
-use std::fmt::Display;
-
-use hexencer_core::data::{midi_message::MidiMessage, ALL_NOTE_ON_MSG, NOTE_OFF_MSG, NOTE_ON_MSG};
+use hexencer_core::data::midi_message::MidiMessage;
 use midir::MidiOutput;
 
 pub type MidiEngineSender = tokio::sync::mpsc::UnboundedSender<(MidiMessage, u8, u8)>;

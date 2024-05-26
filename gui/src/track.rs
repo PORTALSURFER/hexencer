@@ -1,12 +1,12 @@
 use std::sync::{Arc, Mutex};
 
-use egui::{Color32, Margin};
+use egui::{layers::ShapeIdx, Color32, Margin, Ui};
 use hexencer_core::data::{midi_message::MidiMessage, DataLayer};
 
-const TRACK_COLOR: egui::Color32 = egui::Color32::from_rgb(32, 42, 42);
-const TRACK_HEADER_COLOR: egui::Color32 = egui::Color32::from_rgb(54, 54, 74);
-const TRACK_HEIGHT: f32 = 25.0;
-const TRACK_HEADER_WIDTH: f32 = 100.0;
+use crate::ui::{
+    self,
+    common::{TRACK_COLOR, TRACK_HEADER_COLOR, TRACK_HEADER_WIDTH, TRACK_HEIGHT},
+};
 
 pub fn track_ui(
     data_layer: Arc<Mutex<DataLayer>>,
@@ -14,7 +14,7 @@ pub fn track_ui(
     index: usize,
     ui: &mut egui::Ui,
 ) {
-    let track = egui::Frame::none().fill(TRACK_COLOR);
+    let track = ui::Track::new().fill(TRACK_COLOR);
 
     track.show(ui, |ui| {
         ui.horizontal(|ui| {
@@ -114,7 +114,6 @@ pub fn track_ui(
                         changed_triggers.push(tick.clone());
                     }
                 }
-                clip(ctx, ui);
             });
         });
     });
@@ -133,4 +132,30 @@ fn clip(ctx: &egui::Context, ui: &mut egui::Ui) {
             //ui.add(egui::Label::new("Clip").selectable(false));
         });
     });
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[must_use = "You should call .show()"]
+pub struct Track {
+    height: f32,
+    fill: Color32,
+}
+
+impl Track {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Track {
+    pub fn fill(mut self, fill: Color32) -> Self {
+        self.fill = fill;
+        self
+    }
+}
+
+pub struct Prepared {
+    pub track: Track,
+    where_to_put_background: ShapeIdx,
+    pub content_ui: Ui,
 }

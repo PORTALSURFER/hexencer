@@ -1,5 +1,6 @@
-use super::{ALL_NOTE_ON_MSG, NOTE_OFF_MSG, NOTE_ON_MSG};
 use std::fmt::Display;
+
+use super::common::{ALL_NOTE_ON_MSG, NOTE_OFF_MSG, NOTE_ON_MSG};
 
 #[derive(Debug, Clone, Copy)]
 pub enum MidiMessage {
