@@ -47,7 +47,14 @@ pub fn track_ui(
 
             let clip_frame = egui::Frame::none().fill(egui::Color32::GREEN);
             clip_frame.show(ui, |ui| {
-                clip(ctx, ui, &index.to_string());
+                if clip(ctx, ui, &index.to_string(), |ui| {
+                    ui.label("test");
+                })
+                .response
+                .clicked()
+                {
+                    tracing::info!("clicked clip");
+                };
             });
             // test_step_sequencer(ui, data_layer, index);
         });

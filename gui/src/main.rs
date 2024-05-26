@@ -34,7 +34,7 @@ async fn main() {
     task::spawn(sequencer.process(sequencer_receiver));
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 768.0]),
+        viewport: egui::ViewportBuilder::default().with_maximized(true),
         ..Default::default()
     };
 
@@ -68,7 +68,10 @@ impl Gui {
 impl eframe::App for Gui {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
-            ui.label("some toolbar");
+            ui.centered_and_justified(|ui| ui.label("toolbar menu"));
+        });
+        egui::TopBottomPanel::bottom("statusbar").show(ctx, |ui| {
+            ui.centered_and_justified(|ui| ui.label("status info"));
         });
         egui::SidePanel::left("info").show(ctx, |ui| {
             ui.label("info");
