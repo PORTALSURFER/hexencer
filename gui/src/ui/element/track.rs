@@ -75,6 +75,7 @@ pub struct Prepared {
     pub content_ui: Ui,
     rect: Rect,
 }
+
 impl Prepared {
     pub fn end(self, ui: &mut Ui) -> Response {
         self.paint(ui);
