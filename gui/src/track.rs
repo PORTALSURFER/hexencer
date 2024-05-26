@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 
+use egui::{Color32, Margin};
 use hexencer_core::data::{midi_message::MidiMessage, DataLayer};
 
 const TRACK_COLOR: egui::Color32 = egui::Color32::from_rgb(32, 42, 42);
@@ -13,10 +14,15 @@ pub fn track_ui(
     index: usize,
     ui: &mut egui::Ui,
 ) {
-    egui::Frame::none().fill(TRACK_COLOR).show(ui, |ui| {
+    let track = egui::Frame::none().fill(TRACK_COLOR);
+
+    track.show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.set_min_size(egui::vec2(ui.available_width(), TRACK_HEIGHT));
-            egui::Frame::none().fill(TRACK_HEADER_COLOR).show(ui, |ui| {
+            let mut frame = egui::Frame::none().fill(TRACK_HEADER_COLOR);
+            frame.inner_margin = Margin::ZERO;
+            frame.outer_margin = Margin::ZERO;
+            frame.show(ui, |ui| {
                 ui.set_min_width(TRACK_HEADER_WIDTH);
                 ui.label(format!("Track {}", index));
                 let mut port = data_layer
@@ -31,7 +37,7 @@ pub fn track_ui(
                     .port
                     .to_string();
 
-                let text_input_rect = egui::vec2(20.0, ui.available_height() - 4.0);
+                let text_input_rect = egui::vec2(20.0, ui.available_height());
                 let port_selector =
                     ui.add_sized(text_input_rect, egui::TextEdit::singleline(&mut port));
 
@@ -48,7 +54,7 @@ pub fn track_ui(
                                 .unwrap()
                                 .set_port(value);
                         }
-                        Err(_) => println!("port can only be a number"),
+                        Err(_) => tracing::warn!("port must be a number"),
                     }
                 }
                 let mut channel = data_layer
@@ -78,7 +84,7 @@ pub fn track_ui(
                                 .unwrap()
                                 .set_channel(value);
                         }
-                        Err(_) => println!("channel can only be a number"),
+                        Err(_) => tracing::warn!("port must be a number"),
                     }
                 }
             });
@@ -108,6 +114,7 @@ pub fn track_ui(
                         changed_triggers.push(tick.clone());
                     }
                 }
+                clip(ctx, ui);
             });
         });
     });
@@ -115,14 +122,15 @@ pub fn track_ui(
 
 fn clip(ctx: &egui::Context, ui: &mut egui::Ui) {
     let id = egui::Id::from("new clip");
-    // ui.button("Clip");
-    egui::Area::new(id)
-        .movable(true)
-        .constrain_to(ui.max_rect())
-        .show(ctx, |ui| {
-            egui::Frame::none().fill(egui::Color32::RED).show(ui, |ui| {
-                ui.allocate_space(egui::vec2(10.0, ui.available_height() - 15.0));
-                //ui.add(egui::Label::new("Clip").selectable(false));
-            });
+    let area = egui::Area::new(id).movable(true);
+    // .constrain_to(ui.max_rect());
+    area.show(ctx, |ui| {
+        let mut frame = egui::Frame::none().fill(egui::Color32::RED);
+        frame.outer_margin = Margin::ZERO;
+        frame.inner_margin = Margin::ZERO;
+        frame.show(ui, |ui| {
+            ui.allocate_space(egui::vec2(50.0, 20.0));
+            //ui.add(egui::Label::new("Clip").selectable(false));
         });
+    });
 }

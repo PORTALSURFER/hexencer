@@ -26,7 +26,7 @@ impl MidiEngine {
         let port = out_ports.get(2).ok_or("no output port found").unwrap();
         let port2 = out_ports2.get(3).ok_or("no output port found").unwrap();
 
-        println!("\nOpening midi connections");
+        tracing::info!("opening midi connections");
         let conn_out = Some(midi_out.connect(port, "midir-test").unwrap());
         let conn_out2 = Some(midi_out2.connect(port2, "midir-test2").unwrap());
 
@@ -56,13 +56,13 @@ impl MidiEngine {
     }
 
     fn stop(&mut self) {
-        println!("\nClosing connection");
+        tracing::info!("closing midi connections");
         self.conn_out.take().map(|c| c.close());
-        println!("Connection closed");
+        tracing::info!("connection closed");
     }
 
     pub async fn process(mut self, mut midi_command_receiver: MidiEngineReceiver) {
-        println!("running midiio");
+        tracing::info!("running midiio");
         while let Some((midi_message, port, channel)) = midi_command_receiver.recv().await {
             self.play(&midi_message, port, channel).await;
         }

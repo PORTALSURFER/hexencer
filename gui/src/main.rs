@@ -5,6 +5,8 @@ use hexencer_engine::midi::MidiEngine;
 use hexencer_engine::{Sequencer, SequencerCommand};
 use std::sync::{Arc, Mutex};
 use tokio::task;
+use tracing::Level;
+use tracing_subscriber::FmtSubscriber;
 use track::track_ui;
 
 type SequencerSender = tokio::sync::mpsc::UnboundedSender<SequencerCommand>;
@@ -12,7 +14,13 @@ type SequencerReceiver = tokio::sync::mpsc::UnboundedReceiver<SequencerCommand>;
 
 #[tokio::main]
 async fn main() {
-    println!("Hello, world!");
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+    tracing::info!("hexencer started");
+
     let data_layer = Arc::new(Mutex::new(DataLayer::default()));
 
     let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();

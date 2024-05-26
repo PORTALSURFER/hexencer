@@ -40,7 +40,6 @@ impl Sequencer {
         let beat_duration = 60.0 / self.bpm;
         let tick_duration = (beat_duration / self.ppqn as f64) * 1000.0;
         let duration = (tick_duration * 1000.0) as u64;
-        println!("duration: {}", duration);
         duration
     }
 
@@ -48,7 +47,7 @@ impl Sequencer {
         mut self,
         mut command_receiver: tokio::sync::mpsc::UnboundedReceiver<SequencerCommand>,
     ) -> ! {
-        println!("sequencer listening for commands");
+        tracing::info!("sequencer listening for commands");
         let mut interval = time::interval(Duration::from_micros(self.tick_duration()));
         loop {
             tokio::select! {
@@ -61,15 +60,15 @@ impl Sequencer {
                 Some(command) = command_receiver.recv() => {
                     match command {
                         SequencerCommand::Play => {
-                            println!("play command received");
+                            tracing::info!("play command received");
                             self.play();
                         }
                         SequencerCommand::Stop => {
-                            println!("stop");
+                            tracing::info!("stop");
                             self.stop();
                         }
                         SequencerCommand::Reset => {
-                            println!("reset");
+                            tracing::info!("reset");
                             self.current_tick.reset();
                             self.stop();
                         }
@@ -104,10 +103,9 @@ impl Sequencer {
             .tracks;
 
         for track in tracks {
-            // println!("{}", track);
             if let Some(event_entry) = track.event_list.get(&self.current_tick) {
                 let event = event_entry.event.clone();
-                println!("{} - {}", track, event);
+                tracing::info!("{} - {}", track, event);
 
                 if event_entry.active {
                     let message = event.get_message();
