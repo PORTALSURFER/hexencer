@@ -1,6 +1,6 @@
 use egui::{
-    epaint, layers::ShapeIdx, Color32, Context, InnerResponse, Rect, Response, Rounding, Sense,
-    Shape, Stroke, Ui, Vec2,
+    epaint, layers::ShapeIdx, Color32, InnerResponse, Rect, Response, Rounding, Sense, Shape,
+    Stroke, Ui, Vec2,
 };
 
 use crate::ui::common::TRACK_HEIGHT;
@@ -52,18 +52,12 @@ impl Track {
     }
 
     /// use this to process the element so it is painted and returns a response
-    pub fn show<R>(
-        self,
-        ctx: &Context,
-        ui: &mut Ui,
-        add_contents: impl FnOnce(&mut Ui) -> R,
-    ) -> InnerResponse<R> {
-        self.show_dyn(ctx, ui, Box::new(add_contents))
+    pub fn show<R>(self, ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+        self.show_dyn(ui, Box::new(add_contents))
     }
 
     fn show_dyn<'c, R>(
         self,
-        ctx: &Context,
         ui: &mut Ui,
         add_contents: Box<dyn FnOnce(&mut Ui) -> R + 'c>,
     ) -> InnerResponse<R> {

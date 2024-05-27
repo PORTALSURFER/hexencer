@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![allow(dead_code)]
 
 //! the main entry point for the application
 
@@ -16,6 +17,8 @@ use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 use ui::common::{TRACK_HEADER_COLOR, TRACK_HEIGHT};
 use ui::Timeline;
+
+pub use hexencer_core::Id;
 
 #[tokio::main]
 async fn main() {
@@ -45,7 +48,7 @@ async fn main() {
     eframe::run_native(
         "Hexencer",
         options,
-        Box::new(|cc| Box::new(Gui::new(cc, data_layer, sequencer_sender))),
+        Box::new(|_cc| Box::new(Gui::new(data_layer, sequencer_sender))),
     )
     .expect("failed to start eframe app");
 }
@@ -58,7 +61,7 @@ struct Gui {
 
 impl Gui {
     fn new(
-        cc: &eframe::CreationContext<'_>,
+        // cc: &eframe::CreationContext<'_>,
         data_layer: Arc<Mutex<DataLayer>>,
         sender: SequencerSender,
     ) -> Self {
@@ -108,22 +111,18 @@ impl eframe::App for Gui {
                             let label = egui::Label::new(format!("Track {}", id));
                             ui.add_sized(vec2(24.0, TRACK_HEIGHT), label);
 
-                            let port = self
-                                .data_layer
-                                .lock()
-                                .unwrap()
-                                .project_manager
-                                .tracks
-                                .get_track_port(id)
-                                .to_string();
-
-                            // ui.add_space(16.0);
-
-                            let text_input_rect = egui::vec2(8.0, 24.0);
-
-                            let clone = Arc::clone(&self.data_layer);
+                            // let port = self
+                            //     .data_layer
+                            //     .lock()
+                            //     .unwrap()
+                            //     .project_manager
+                            //     .tracks
+                            //     .get_track_port(id)
+                            //     .to_string();
+                            // // ui.add_space(16.0);
+                            // let text_input_rect = egui::vec2(8.0, 24.0);
+                            // let clone = Arc::clone(&self.data_layer);
                             // port_selector(ui, text_input_rect, port, &self.data_layer, id);
-
                             // channel_selector(clone, id, ui, text_input_rect);
                         });
                     }

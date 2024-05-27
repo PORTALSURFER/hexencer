@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![allow(dead_code)]
 
 //! represents elements without clear goal
 
@@ -11,14 +12,11 @@ pub mod event;
 /// instrument types
 pub mod instrument;
 
-/// note types
-pub mod note;
-
-use data::event_list::{EventBlock, EventList};
-use instrument::Instrument;
 use std::fmt::Display;
 
-/// represents a moment in tim
+pub use data::Id;
+
+/// represents a moment in time
 /// events are sent every tick
 #[derive(Default, PartialEq, PartialOrd, Ord, Eq, Clone, Debug, Copy)]
 pub struct Tick(u64);
@@ -59,6 +57,12 @@ impl Tick {
 impl Display for Tick {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!("{}", self.0))
+    }
+}
+
+impl From<i32> for Tick {
+    fn from(tick: i32) -> Self {
+        Self(tick as u64)
     }
 }
 

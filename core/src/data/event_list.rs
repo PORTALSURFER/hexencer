@@ -62,7 +62,7 @@ pub struct EventBlock {
 
 impl EventBlock {
     /// creates a new 'EventBlock' with a `NoteOn` and a `NoteOff` 'Event'
-    pub fn new_midi(tick: Tick, length: u32, key: u8, channel: u8, velocity: u8) -> Self {
+    pub fn new_midi(tick: Tick, length: u32, key: u8, velocity: u8) -> Self {
         let start_event = Event::Midi(MidiMessage::NoteOn { key, velocity });
         let end_event = Event::Midi(MidiMessage::NoteOff { key, velocity });
         Self {

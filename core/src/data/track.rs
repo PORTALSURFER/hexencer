@@ -76,19 +76,23 @@ impl Track {
         // test events
         let mut event_list = EventList::new();
         for i in 0..8 {
-            let event_block = EventBlock::new_midi(Tick::from(i * 480 as u32), 120, 38, 0, 64);
+            let event_block = EventBlock::new_midi(Tick::from(i * 480 as u32), 120, 38, 64);
             event_list.add_event_block(event_block);
         }
 
         // test clips
-        for i in 0..4 {}
+        let mut clips = BTreeMap::new();
+        for i in 0..4 {
+            let clip = Clip::new(&format!("clip_{}", i));
+            clips.insert(Tick::from(480 * i), clip);
+        }
 
         Self {
             id,
             name: String::from(name),
             event_list,
             instrument: Instrument::new("port0", 0, 0),
-            clips: BTreeMap::new(),
+            clips,
         }
     }
 

@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![allow(dead_code)]
 
 //! houses the midi engine
 
