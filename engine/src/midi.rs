@@ -25,12 +25,23 @@ impl MidiEngine {
         let port2 = out_ports2.get(3).ok_or("no output port found").unwrap();
 
         tracing::info!("opening midi connections");
-        let conn_out = Some(midi_out.connect(port, "midir-test").unwrap());
-        let conn_out2 = Some(midi_out2.connect(port2, "midir-test2").unwrap());
+        let conn_out = midi_out.connect(port, "midir-test");
+        let con1 = match conn_out {
+            Ok(conn) => Some(conn),
+
+            Err(e) => None,
+        };
+        let conn_out2 = midi_out2.connect(port2, "midir-test2");
+
+        let con2 = match conn_out2 {
+            Ok(conn) => Some(conn),
+
+            Err(e) => None,
+        };
 
         Self {
-            conn_out,
-            conn_out2,
+            conn_out: con1,
+            conn_out2: con2,
             running: false,
         }
     }

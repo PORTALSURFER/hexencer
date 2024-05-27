@@ -63,7 +63,7 @@ impl Track {
             paint_rect,
             Rounding::ZERO,
             fill,
-            Stroke::NONE,
+            Stroke::new(0.0, Color32::from_rgb(10, 10, 10)),
         ));
         track_shape
     }
