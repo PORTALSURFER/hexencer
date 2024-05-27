@@ -15,4 +15,14 @@ impl Id {
     pub fn new() -> Id {
         Id(uuid::Uuid::new_v4())
     }
+
+    /// convert into a string
+    pub fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+
+    /// get as a slice of bytes
+    pub fn as_bytes(&self) -> &[u8; 16] {
+        self.0.as_bytes()
+    }
 }

@@ -1,11 +1,11 @@
 use egui::layers::ShapeIdx;
-use egui::{emath::*, epaint, Order, Response, Rounding, Sense, Shape, Stroke, Widget};
-use egui::{Context, Id, InnerResponse, LayerId, Margin, Pos2, Rect, Ui, Vec2};
+use egui::{emath::*, epaint, Order, Response, Rounding, Sense, Shape, Stroke};
+use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
 use hexencer_core::Tick;
 
 /// create a new 'clip' and returns it's 'Response'
-pub fn clip(ctx: &Context, ui: &mut Ui, track_name: &str, tick: Tick) -> Response {
-    let id = egui::Id::from(format!("{} clip", track_name));
+pub fn clip(ctx: &Context, ui: &mut Ui, id: &crate::Id, tick: Tick) -> Response {
+    let id = egui::Id::new(id.as_bytes());
     let clip = Clip::new(id, tick);
     clip.show(ctx, ui)
 }
@@ -34,7 +34,7 @@ impl Clip {
     /// creates a new 'Clip'
     /// 'tick' will set the position of the 'Clip' on the 'Track'
     pub fn new(id: Id, tick: Tick) -> Self {
-        let offset = tick.as_f32() / 480.0 * 48.0;
+        let offset = tick.as_f32() / 480.0 * 96.0;
 
         Self {
             id,
@@ -112,7 +112,7 @@ impl Clip {
             paint_rect,
             Rounding::ZERO,
             egui::Color32::from_rgb(120, 140, 50),
-            Stroke::NONE,
+            Stroke::new(1.0, egui::Color32::BLACK),
         ));
         shape
     }

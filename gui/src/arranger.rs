@@ -1,12 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use egui::{layers::ShapeIdx, vec2, Align, Color32, Margin, Ui, Vec2};
+use egui::{layers::ShapeIdx, Color32, Ui};
 use hexencer_core::data::{DataLayer, MidiMessage};
 
-use crate::ui::{
-    self, clip,
-    common::{TRACK_COLOR, TRACK_HEADER_COLOR, TRACK_HEADER_WIDTH, TRACK_HEIGHT},
-};
+use crate::ui::{self, common::TRACK_COLOR};
 
 /// creates a new track ui element
 pub fn track(
@@ -16,13 +13,13 @@ pub fn track(
     ui: &mut egui::Ui,
 ) {
     let track = ui::Track::new().fill(TRACK_COLOR);
-    track.show(ctx, ui, |ui| {
+    track.show(ui, |ui| {
         ui.horizontal(|ui| {
             let data = data_layer.lock().unwrap();
             let track = data.project_manager.tracks.get(index);
             if let Some(track) = track {
                 for (tick, clip) in &track.clips {
-                    ui::clip(ctx, ui, &clip.name, *tick);
+                    ui::clip(ctx, ui, clip.get_id(), *tick);
                 }
             }
             // ui.set_min_size(egui::vec2(ui.available_width(), TRACK_HEIGHT));
@@ -46,7 +43,7 @@ fn _test_step_sequencer(ui: &mut Ui, data_layer: Arc<Mutex<DataLayer>>, index: u
         for (tick, event_entry) in &mut track.event_list.iter_mut().filter(|(_, event_entry)| {
             let hexencer_core::event::Event::Midi(message) = &event_entry.event;
             match message {
-                MidiMessage::NoteOn { key, velocity } => true,
+                MidiMessage::NoteOn { .. } => true,
                 _ => false,
             }
         }) {
