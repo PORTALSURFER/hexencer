@@ -113,7 +113,7 @@ impl Sequencer {
 
         for track in tracks.iter() {
             if let Some(event_entry) = track.event_list.get(&self.current_tick) {
-                let event = event_entry.event.clone();
+                let event = event_entry.inner.clone();
                 tracing::info!("{} - {}", track, event);
 
                 if event_entry.active {

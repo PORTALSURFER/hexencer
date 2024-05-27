@@ -3,6 +3,10 @@ name = "hexencer-engine"
 version = "0.1.0"
 edition = "2021"
 
+license = "MIT"
+documentation = "https://github.com/PORTALSURFER/hexencer"
+repository = "https://github.com/PORTALSURFER/hexencer"
+homepage = "https://github.com/PORTALSURFER/hexencer"
 [dependencies]
 midir = "0.10.0"
 eframe = "0.27.2"

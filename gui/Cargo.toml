@@ -2,6 +2,10 @@
 name = "hexencer-gui"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+documentation = "https://github.com/PORTALSURFER/hexencer"
+repository = "https://github.com/PORTALSURFER/hexencer"
+homepage = "https://github.com/PORTALSURFER/hexencer"
 
 [dependencies]
 egui= {version="0.27.2", features=["callstack"]}

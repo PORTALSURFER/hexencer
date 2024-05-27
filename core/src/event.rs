@@ -1,38 +1,41 @@
-use crate::data::Id;
+use crate::data::DataId;
 use crate::data::MidiMessage;
 
 use std::fmt::Display;
 
 /// wraps events
-#[deprecated(note = "change code to use event directly")]
 #[derive(Debug, Clone)]
-pub struct EventEntry {
-    id: Id,
-    /// event this entry wraps
-    pub event: Event,
+pub struct Event {
+    id: DataId,
+    /// type of this event
+    pub inner: EventType,
     /// true if this event is active and should be used
     pub active: bool,
 }
 
-impl EventEntry {
+impl Event {
     /// creates a new event entry
-    pub fn new(id: Id, event: Event, active: bool) -> Self {
-        Self { id, event, active }
+    pub fn new(id: DataId, event: EventType, active: bool) -> Self {
+        Self {
+            id,
+            inner: event,
+            active,
+        }
     }
 }
 
 /// event type
 #[derive(Debug, Clone)]
-pub enum Event {
+pub enum EventType {
     /// midi event
     Midi(MidiMessage),
 }
 
-impl Event {
+impl EventType {
     /// get copy of the midi message in this event
     pub fn get_message(&self) -> MidiMessage {
         match self {
-            Event::Midi(message) => message.clone(),
+            EventType::Midi(message) => message.clone(),
         }
     }
     // pub fn get_key(&self) -> u8 {
@@ -76,15 +79,15 @@ impl Event {
     // }
 }
 
-impl Display for Event {
+impl Display for EventType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Event::Midi(message) => f.write_str(&format!("{}", message)),
+            EventType::Midi(message) => f.write_str(&format!("{}", message)),
         }
     }
 }
 
-impl Event {
+impl EventType {
     /// creates a new midi event
     pub fn new(event: MidiMessage) -> Self {
         Self::Midi(event)

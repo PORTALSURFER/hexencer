@@ -14,7 +14,7 @@ pub mod instrument;
 
 use std::fmt::Display;
 
-pub use data::Id;
+pub use data::DataId;
 
 /// represents a moment in time
 /// events are sent every tick

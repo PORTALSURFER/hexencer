@@ -5,7 +5,7 @@ mod midi_message;
 mod project;
 mod track;
 
-pub use common::Id;
+pub use common::DataId;
 pub use midi_message::MidiMessage;
 
 /// event list
@@ -17,7 +17,7 @@ use crate::instrument::Instrument;
 /// holds state of the editor, like note editor or automation editor modes.
 #[derive(Default)]
 pub struct EditorState {
-    selected_clip: Id,
+    selected_clip: DataId,
 }
 
 /// object which holds all the persistent data objects used by the application

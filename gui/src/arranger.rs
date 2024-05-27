@@ -4,6 +4,7 @@ use egui::{layers::ShapeIdx, Color32, Ui};
 use hexencer_core::data::{DataLayer, MidiMessage};
 
 use crate::ui::{self, common::TRACK_COLOR};
+pub const SELECTED_CLIP: &'static str = "selected_clip";
 
 /// creates a new track ui element
 pub fn track(
@@ -19,7 +20,16 @@ pub fn track(
             let track = data.project_manager.tracks.get(index);
             if let Some(track) = track {
                 for (tick, clip) in &track.clips {
-                    ui::clip(ctx, ui, clip.get_id(), *tick);
+                    if ui::clip(ctx, ui, clip.get_id(), *tick).clicked() {
+                        tracing::info!("clicked {}", clip.get_id().to_string());
+
+                        ui.memory_mut(|mem| {
+                            mem.data.insert_temp(SELECTED_CLIP.into(), clip.get_id());
+                            // .get_temp_mut_or_insert_with(SELECTED_CLIP.into(), || {
+                            //     clip.get_id()
+                            // });
+                        });
+                    };
                 }
             }
             // ui.set_min_size(egui::vec2(ui.available_width(), TRACK_HEIGHT));
@@ -41,7 +51,7 @@ fn _test_step_sequencer(ui: &mut Ui, data_layer: Arc<Mutex<DataLayer>>, index: u
         let track = data_layer.project_manager.tracks.get_mut(index).unwrap();
 
         for (tick, event_entry) in &mut track.event_list.iter_mut().filter(|(_, event_entry)| {
-            let hexencer_core::event::Event::Midi(message) = &event_entry.event;
+            let hexencer_core::event::EventType::Midi(message) = &event_entry.inner;
             match message {
                 MidiMessage::NoteOn { .. } => true,
                 _ => false,

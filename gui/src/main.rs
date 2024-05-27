@@ -18,7 +18,7 @@ use tracing_subscriber::FmtSubscriber;
 use ui::common::{TRACK_HEADER_COLOR, TRACK_HEIGHT};
 use ui::Timeline;
 
-pub use hexencer_core::Id;
+pub use hexencer_core::DataId;
 
 #[tokio::main]
 async fn main() {
