@@ -6,7 +6,7 @@
 mod arranger;
 mod ui;
 
-use arranger::track;
+use arranger::{track, SELECTED_CLIP};
 use egui::{vec2, Frame, Margin, Ui, Vec2};
 use hexencer_core::data::DataLayer;
 use hexencer_engine::midi::MidiEngine;
@@ -166,6 +166,20 @@ impl eframe::App for Gui {
             .default_height(editor_height)
             .resizable(true)
             .show(ctx, |ui| {
+                if let Some(selected_clip_id) =
+                    ui.memory(|mem| mem.data.get_temp::<DataId>(SELECTED_CLIP.into()))
+                {
+                    if let Some(selected_clip) = self
+                        .data_layer
+                        .lock()
+                        .unwrap()
+                        .project_manager
+                        .find_clip(selected_clip_id)
+                    {
+                        ui.label(format!("Selected clip: {}", selected_clip.name));
+                    }
+                }
+
                 ui.centered_and_justified(|ui| ui.label("editor"));
             });
 

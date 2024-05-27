@@ -20,8 +20,8 @@ pub fn track(
             let track = data.project_manager.tracks.get(index);
             if let Some(track) = track {
                 for (tick, clip) in &track.clips {
-                    if ui::clip(ctx, ui, clip.get_id(), *tick).clicked() {
-                        tracing::info!("clicked {}", clip.get_id().to_string());
+                    if ui::clip(ctx, ui, clip.get_id(), *tick).drag_started() {
+                        // tracing::info!("clicked {}", clip.get_id().to_string());
 
                         ui.memory_mut(|mem| {
                             mem.data.insert_temp(SELECTED_CLIP.into(), clip.get_id());

@@ -1,4 +1,5 @@
 use super::{
+    clip::Clip,
     track::{Track, Tracks},
     InstrumentManager,
 };
@@ -32,5 +33,16 @@ impl ProjectManager {
 
     pub fn remove_track(&mut self) {
         self.tracks.pop();
+    }
+
+    pub fn find_clip(&self, selected_clip_id: crate::DataId) -> Option<&Clip> {
+        for track in self.tracks.iter() {
+            for (_, clip) in track.clips.iter() {
+                if clip.get_id() == selected_clip_id {
+                    return Some(clip);
+                }
+            }
+        }
+        None
     }
 }

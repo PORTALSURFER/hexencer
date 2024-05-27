@@ -76,7 +76,7 @@ impl Clip {
 
         let rect = Rect::from_min_size(new_pos, size);
         let mut move_response = {
-            let move_response = ui.interact(rect, self.id, Sense::click_and_drag());
+            let move_response = ui.interact(rect, self.id, Sense::drag());
 
             if move_response.dragged() {
                 let delta = move_response.drag_delta();
