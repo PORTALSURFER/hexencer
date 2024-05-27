@@ -1,4 +1,4 @@
-use crate::data::midi_message::MidiMessage;
+use crate::data::MidiMessage;
 use std::fmt::Display;
 
 // #[derive(Debug, Clone, Copy)]

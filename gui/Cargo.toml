@@ -12,6 +12,6 @@ tokio = {workspace=true}
 tracing = {workspace=true}
 tracing-subscriber = {workspace=true}
 
-## internal
+## internal libs
 hexencer-core={path="../core"}
 hexencer-engine={path="../engine"}

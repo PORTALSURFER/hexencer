@@ -1,13 +1,17 @@
 use egui::{epaint, pos2, vec2, Color32, Rect, Response, Rounding, Sense, Shape, Stroke, Ui};
 
+/// visually shows the tick/time
 pub struct Timeline {
     height: f32,
 }
 
 impl Timeline {
+    /// create a new timeline with the given height
     pub fn new(height: f32) -> Self {
         Self { height }
     }
+
+    /// renders the 'Timeline' and returns the 'Response'
     pub fn show(&self, ui: &mut Ui) -> Response {
         let rect = Rect::from_min_size(ui.max_rect().min, vec2(ui.available_width(), self.height));
         self.paint(ui, rect);

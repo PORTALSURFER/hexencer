@@ -7,3 +7,4 @@ edition = "2021"
 ## workspace
 tracing = {workspace=true}
 tracing-subscriber = {workspace=true}
+uuid = {workspace=true}

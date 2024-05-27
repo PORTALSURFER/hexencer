@@ -1,17 +1,21 @@
-use hexencer_core::data::midi_message::MidiMessage;
+use hexencer_core::data::MidiMessage;
 use midir::MidiOutput;
 
+/// sender type used to send commands to the midi engine
 pub type MidiEngineSender = tokio::sync::mpsc::UnboundedSender<(MidiMessage, u8, u8)>;
+/// receiver type used to receive commands on the midi engine
 pub type MidiEngineReceiver = tokio::sync::mpsc::UnboundedReceiver<(MidiMessage, u8, u8)>;
 
+/// reponsible for setting up midi connections, and sending, receiving, midi requests from them
 #[derive(Default)]
 pub struct MidiEngine {
     conn_out: Option<midir::MidiOutputConnection>,
     conn_out2: Option<midir::MidiOutputConnection>,
-    running: bool,
+    _running: bool,
 }
 
 impl MidiEngine {
+    /// create a new 'MidiEngine'
     pub fn new() -> Self {
         let midi_out = MidiOutput::new("Test Output").unwrap();
         let midi_out2 = MidiOutput::new("Test Output2").unwrap();
@@ -29,20 +33,20 @@ impl MidiEngine {
         let con1 = match conn_out {
             Ok(conn) => Some(conn),
 
-            Err(e) => None,
+            Err(_) => None,
         };
         let conn_out2 = midi_out2.connect(port2, "midir-test2");
 
         let con2 = match conn_out2 {
             Ok(conn) => Some(conn),
 
-            Err(e) => None,
+            Err(_) => None,
         };
 
         Self {
             conn_out: con1,
             conn_out2: con2,
-            running: false,
+            _running: false,
         }
     }
 
@@ -64,13 +68,15 @@ impl MidiEngine {
         }
     }
 
-    fn stop(&mut self) {
+    /// close the midi connections
+    pub fn close(&mut self) {
         tracing::info!("closing midi connections");
         self.conn_out.take().map(|c| c.close());
         tracing::info!("connection closed");
     }
 
-    pub async fn process(mut self, mut midi_command_receiver: MidiEngineReceiver) {
+    /// start listening and processing midi engine commands
+    pub async fn listen(mut self, mut midi_command_receiver: MidiEngineReceiver) {
         tracing::info!("running midiio");
         while let Some((midi_message, port, channel)) = midi_command_receiver.recv().await {
             self.play(&midi_message, port, channel).await;

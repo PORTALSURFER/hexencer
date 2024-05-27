@@ -1,20 +1,21 @@
-pub mod arranger;
-pub mod ui;
+#![deny(missing_docs)]
 
-use arranger::track_ui;
+//! the main entry point for the application
+
+mod arranger;
+mod ui;
+
+use arranger::track;
 use egui::{vec2, Frame, Margin, Ui, Vec2};
 use hexencer_core::data::DataLayer;
 use hexencer_engine::midi::MidiEngine;
-use hexencer_engine::{Sequencer, SequencerCommand};
+use hexencer_engine::{Sequencer, SequencerCommand, SequencerSender};
 use std::sync::{Arc, Mutex};
 use tokio::task;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
-use ui::common::{TRACK_HEADER_COLOR, TRACK_HEADER_WIDTH, TRACK_HEIGHT};
+use ui::common::{TRACK_HEADER_COLOR, TRACK_HEIGHT};
 use ui::Timeline;
-
-type SequencerSender = tokio::sync::mpsc::UnboundedSender<SequencerCommand>;
-type SequencerReceiver = tokio::sync::mpsc::UnboundedReceiver<SequencerCommand>;
 
 #[tokio::main]
 async fn main() {
@@ -31,10 +32,10 @@ async fn main() {
     let (midi_sender, midi_receiver) = tokio::sync::mpsc::unbounded_channel();
 
     let midi_engine = MidiEngine::new();
-    task::spawn(midi_engine.process(midi_receiver));
+    task::spawn(midi_engine.listen(midi_receiver));
 
     let sequencer = Sequencer::new(Arc::clone(&data_layer), midi_sender);
-    task::spawn(sequencer.process(sequencer_receiver));
+    task::spawn(sequencer.listen(sequencer_receiver));
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size(egui::vec2(1920.0, 1080.0)),
@@ -92,7 +93,6 @@ impl eframe::App for Gui {
                         .lock()
                         .unwrap()
                         .project_manager
-                        .track_manager
                         .tracks
                         .iter()
                         .map(|track| track.id)
@@ -113,7 +113,7 @@ impl eframe::App for Gui {
                                 .lock()
                                 .unwrap()
                                 .project_manager
-                                .track_manager
+                                .tracks
                                 .get_track_port(id)
                                 .to_string();
 
@@ -160,6 +160,16 @@ impl eframe::App for Gui {
                     });
                 }
             });
+
+        let editor_height = 200.0;
+        egui::TopBottomPanel::bottom("editor")
+            .min_height(editor_height)
+            .default_height(editor_height)
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.centered_and_justified(|ui| ui.label("editor"));
+            });
+
         let mut frame = Frame::none();
         frame.outer_margin = Margin::ZERO;
         frame.inner_margin = Margin::ZERO;
@@ -174,7 +184,6 @@ impl eframe::App for Gui {
                     .lock()
                     .unwrap()
                     .project_manager
-                    .track_manager
                     .tracks
                     .iter()
                     .map(|track| track.id)
@@ -182,7 +191,7 @@ impl eframe::App for Gui {
 
                 for id in track_ids {
                     let clone = Arc::clone(&self.data_layer);
-                    track_ui(clone, ctx, id, ui);
+                    track(clone, ctx, id, ui);
                 }
             });
         });
@@ -204,7 +213,6 @@ fn port_selector(
                     .lock()
                     .unwrap()
                     .project_manager
-                    .track_manager
                     .tracks
                     .get_mut(index)
                     .unwrap()
@@ -225,7 +233,6 @@ fn channel_selector(
         .lock()
         .unwrap()
         .project_manager
-        .track_manager
         .tracks
         .get(index)
         .unwrap()
@@ -242,7 +249,6 @@ fn channel_selector(
                     .lock()
                     .unwrap()
                     .project_manager
-                    .track_manager
                     .tracks
                     .get_mut(index)
                     .unwrap()

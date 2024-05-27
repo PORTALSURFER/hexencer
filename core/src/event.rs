@@ -1,32 +1,22 @@
-use crate::data::midi_message::MidiMessage;
-use std::{
-    fmt::Display,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use crate::data::Id;
+use crate::data::MidiMessage;
 
-static UNIQUE_ID: AtomicU64 = AtomicU64::new(0);
+use std::fmt::Display;
 
-#[derive(Debug, Clone)]
-pub struct UniqueId(u64);
-
-impl UniqueId {
-    pub fn new() -> Self {
-        Self(UNIQUE_ID.fetch_add(1, Ordering::SeqCst))
-    }
-
-    pub fn get(&self) -> u64 {
-        self.0
-    }
-}
-
+/// wraps events
+#[deprecated(note = "change code to use event directly")]
 #[derive(Debug, Clone)]
 pub struct EventEntry {
-    pub id: UniqueId,
+    id: Id,
+    /// event this entry wraps
     pub event: Event,
+    /// true if this event is active and should be used
     pub active: bool,
 }
+
 impl EventEntry {
-    pub fn new(id: UniqueId, event: Event, active: bool) -> Self {
+    /// creates a new event entry
+    pub fn new(id: Id, event: Event, active: bool) -> Self {
         Self { id, event, active }
     }
 }
@@ -34,10 +24,12 @@ impl EventEntry {
 /// event type
 #[derive(Debug, Clone)]
 pub enum Event {
+    /// midi event
     Midi(MidiMessage),
 }
 
 impl Event {
+    /// get copy of the midi message in this event
     pub fn get_message(&self) -> MidiMessage {
         match self {
             Event::Midi(message) => message.clone(),
@@ -93,6 +85,7 @@ impl Display for Event {
 }
 
 impl Event {
+    /// creates a new midi event
     pub fn new(event: MidiMessage) -> Self {
         Self::Midi(event)
     }
