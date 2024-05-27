@@ -1,7 +1,10 @@
 use std::sync::{Arc, Mutex};
 
 use egui::{layers::ShapeIdx, Color32, Ui};
-use hexencer_core::data::{DataLayer, MidiMessage};
+use hexencer_core::{
+    data::{DataLayer, MidiMessage},
+    Tick,
+};
 
 use crate::ui::{self, common::TRACK_COLOR};
 pub const SELECTED_CLIP: &'static str = "selected_clip";
@@ -14,7 +17,7 @@ pub fn track(
     ui: &mut egui::Ui,
 ) {
     let track = ui::Track::new().fill(TRACK_COLOR);
-    track.show(ui, |ui| {
+    let response = track.show(ui, |ui| {
         ui.horizontal(|ui| {
             let data = data_layer.lock().unwrap();
             let track = data.project_manager.tracks.get(index);
@@ -42,6 +45,14 @@ pub fn track(
             // });
         });
     });
+
+    if response.response.clicked() {
+        tracing::info!("Track clicked!");
+        data_layer
+            .lock()
+            .unwrap()
+            .add_clip(index, Tick::from(6 * 480), "new clip");
+    }
 }
 
 fn _test_step_sequencer(ui: &mut Ui, data_layer: Arc<Mutex<DataLayer>>, index: usize) {
