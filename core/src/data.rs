@@ -1,19 +1,36 @@
-pub mod common;
-pub mod midi_event;
-pub mod midi_message;
+mod clip;
+mod common;
+mod midi_event;
+mod midi_message;
 mod project;
 mod track;
-pub mod trig_list;
+
+pub use common::Id;
+pub use midi_message::MidiMessage;
+
+/// event list
+pub mod event_list;
 
 use self::project::ProjectManager;
 use crate::instrument::Instrument;
 
+/// holds state of the editor, like note editor or automation editor modes.
 #[derive(Default)]
-pub struct DataLayer {
-    pub project_manager: ProjectManager,
+pub struct EditorState {
+    selected_clip: Id,
 }
 
+/// object which holds all the persistent data objects used by the application
+#[derive(Default)]
+pub struct DataLayer {
+    /// interface for loading and storing projects
+    pub project_manager: ProjectManager,
+    /// represents the current state of the editor, like note editor or automation editor modes.
+    pub editor_state: EditorState,
+}
+
+/// keeps track and manages all instruments
 #[derive(Default)]
 pub struct InstrumentManager {
-    pub instruments: Vec<Instrument>,
+    inner: Vec<Instrument>,
 }

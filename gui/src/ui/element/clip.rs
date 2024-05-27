@@ -1,30 +1,29 @@
 use egui::layers::ShapeIdx;
-use egui::{emath::*, epaint, Order, Response, Rounding, Sense, Shape, Stroke};
+use egui::{emath::*, epaint, Order, Response, Rounding, Sense, Shape, Stroke, Widget};
 use egui::{Context, Id, InnerResponse, LayerId, Margin, Pos2, Rect, Ui, Vec2};
+use hexencer_core::Tick;
 
-pub fn clip<R>(
-    ctx: &Context,
-    ui: &mut Ui,
-    track_name: &str,
-    add_contents: impl FnOnce(&mut Ui) -> R,
-) -> InnerResponse<R> {
+/// create a new 'clip' and returns it's 'Response'
+pub fn clip(ctx: &Context, ui: &mut Ui, track_name: &str, tick: Tick) -> Response {
     let id = egui::Id::from(format!("{} clip", track_name));
-    let clip = Clip::new(id);
-    clip.show(ctx, ui, add_contents)
+    let clip = Clip::new(id, tick);
+    clip.show(ctx, ui)
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct State {
+struct State {
     pub pivot_pos: Pos2,
 }
 
+/// widget used to represent 'Clips' on a 'Track'
 #[must_use = "You should call .show()"]
 #[derive(Clone, Copy, Debug)]
 pub struct Clip {
-    pub id: Id,
+    id: Id,
     active: bool,
-    new_pos: Option<Pos2>,
-    order: Order,
+    _pos: Option<Pos2>,
+    _order: Order,
+    offset: f32,
 }
 
 fn quantize(x: f32, initial: f32, step_size: u32) -> f32 {
@@ -32,36 +31,36 @@ fn quantize(x: f32, initial: f32, step_size: u32) -> f32 {
 }
 
 impl Clip {
-    pub fn new(id: Id) -> Self {
+    /// creates a new 'Clip'
+    /// 'tick' will set the position of the 'Clip' on the 'Track'
+    pub fn new(id: Id, tick: Tick) -> Self {
+        let offset = tick.as_f32() / 480.0 * 48.0;
+
         Self {
             id,
             active: true,
-            new_pos: None,
-            order: Order::Middle,
+            _pos: None,
+            _order: Order::Middle,
+            offset,
         }
     }
 
-    pub fn show<R>(
-        self,
-        ctx: &Context,
-        ui: &mut Ui,
-        add_contents: impl FnOnce(&mut Ui) -> R,
-    ) -> InnerResponse<R> {
-        let mut prepared = self.begin(ctx, ui);
-        let inner = add_contents(&mut prepared.content_ui);
+    /// renders this element and returns the 'Response'
+    pub fn show(self, ctx: &Context, ui: &mut Ui) -> Response {
+        let prepared = self.begin(ctx, ui);
         let response = prepared.end(ctx, ui);
-        InnerResponse { inner, response }
+        response
     }
 
     fn begin(self, ctx: &Context, ui: &mut Ui) -> Prepared {
         let where_to_put_background = ui.painter().add(Shape::Noop);
-        let outer_rect_bounds = ui.available_rect_before_wrap();
 
         let height = ui.available_height();
         let width = 96.0;
         let size = Vec2::new(width, height);
 
-        let start_pos = ui.max_rect().min;
+        let mut start_pos = ui.max_rect().min;
+        start_pos.x += self.offset;
         let mut state = ctx.memory(|mem| {
             mem.data.get_temp::<State>(self.id).unwrap_or(State {
                 pivot_pos: start_pos,

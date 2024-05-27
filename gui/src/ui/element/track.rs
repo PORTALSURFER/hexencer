@@ -1,10 +1,11 @@
 use egui::{
-    epaint, layers::ShapeIdx, Color32, InnerResponse, Margin, Rect, Response, Rounding, Sense,
+    epaint, layers::ShapeIdx, Color32, Context, InnerResponse, Rect, Response, Rounding, Sense,
     Shape, Stroke, Ui, Vec2,
 };
 
 use crate::ui::common::TRACK_HEIGHT;
 
+/// Track bar onto which clip elements can be placed and moved
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[must_use = "You should call .show()"]
 pub struct Track {
@@ -13,6 +14,7 @@ pub struct Track {
 }
 
 impl Track {
+    /// creates a new 'Track' element
     pub fn new() -> Self {
         Self::default()
     }
@@ -28,25 +30,40 @@ impl Track {
 
         let content_ui = ui.child_ui(rect, *ui.layout());
 
+        let track_response = self.allocate_space(ui, rect);
+
         Prepared {
             track: self,
             where_to_put_background,
             content_ui,
             rect,
+            track_response,
         }
     }
 
+    fn allocate_space(&self, ui: &mut Ui, rect: Rect) -> Response {
+        ui.allocate_rect(rect, Sense::click_and_drag())
+    }
+
+    /// assign the color to be used for element background fill
     pub fn fill(mut self, fill: Color32) -> Self {
         self.fill = fill;
         self
     }
 
-    pub fn show<R>(self, ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-        self.show_dyn(ui, Box::new(add_contents))
+    /// use this to process the element so it is painted and returns a response
+    pub fn show<R>(
+        self,
+        ctx: &Context,
+        ui: &mut Ui,
+        add_contents: impl FnOnce(&mut Ui) -> R,
+    ) -> InnerResponse<R> {
+        self.show_dyn(ctx, ui, Box::new(add_contents))
     }
 
-    pub fn show_dyn<'c, R>(
+    fn show_dyn<'c, R>(
         self,
+        ctx: &Context,
         ui: &mut Ui,
         add_contents: Box<dyn FnOnce(&mut Ui) -> R + 'c>,
     ) -> InnerResponse<R> {
@@ -74,12 +91,17 @@ pub struct Prepared {
     where_to_put_background: ShapeIdx,
     pub content_ui: Ui,
     rect: Rect,
+    track_response: Response,
 }
 
 impl Prepared {
     pub fn end(self, ui: &mut Ui) -> Response {
         self.paint(ui);
-        self.allocate_space(ui)
+
+        if self.track_response.clicked() {
+            tracing::info!("Track clicked!");
+        }
+        self.track_response
     }
 
     pub fn paint(&self, ui: &Ui) {
@@ -88,9 +110,5 @@ impl Prepared {
             let shape = self.track.paint(paint_rect);
             ui.painter().set(self.where_to_put_background, shape);
         }
-    }
-
-    fn allocate_space(&self, ui: &mut Ui) -> Response {
-        ui.allocate_rect(self.rect, Sense::hover())
     }
 }
