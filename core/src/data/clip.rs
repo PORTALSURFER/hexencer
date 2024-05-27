@@ -1,10 +1,10 @@
-use super::{common::Id, event_list::EventList};
+use super::{common::DataId, event_list::EventList};
 
 /// A clip is a collection of events
 /// They house things like notes and automation data
 #[derive(Default)]
 pub struct Clip {
-    id: Id,
+    id: DataId,
     /// visual name of the clip
     pub name: String,
     events: EventList,
@@ -13,7 +13,7 @@ pub struct Clip {
 impl Clip {
     pub fn new(name: &str) -> Self {
         Self {
-            id: Id::new(),
+            id: DataId::new(),
             name: String::from(name),
             events: EventList::new(),
         }
@@ -23,7 +23,7 @@ impl Clip {
         self.id.to_string()
     }
 
-    pub fn get_id(&self) -> &Id {
-        &self.id
+    pub fn get_id(&self) -> DataId {
+        self.id.clone()
     }
 }

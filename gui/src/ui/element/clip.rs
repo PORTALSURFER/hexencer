@@ -1,12 +1,14 @@
 use egui::layers::ShapeIdx;
-use egui::{emath::*, epaint, Order, Response, Rounding, Sense, Shape, Stroke};
+use egui::{emath::*, epaint, Color32, Order, Response, Rounding, Sense, Shape, Stroke};
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
-use hexencer_core::Tick;
+use hexencer_core::{DataId, Tick};
+
+use crate::arranger::SELECTED_CLIP;
 
 /// create a new 'clip' and returns it's 'Response'
-pub fn clip(ctx: &Context, ui: &mut Ui, id: &crate::Id, tick: Tick) -> Response {
-    let id = egui::Id::new(id.as_bytes());
-    let clip = Clip::new(id, tick);
+pub fn clip(ctx: &Context, ui: &mut Ui, id: crate::DataId, tick: Tick) -> Response {
+    let egui_id = egui::Id::new(id.as_bytes());
+    let clip = Clip::new(id, egui_id, tick);
     clip.show(ctx, ui)
 }
 
@@ -19,6 +21,7 @@ struct State {
 #[must_use = "You should call .show()"]
 #[derive(Clone, Copy, Debug)]
 pub struct Clip {
+    data_id: DataId,
     id: Id,
     active: bool,
     _pos: Option<Pos2>,
@@ -33,10 +36,11 @@ fn quantize(x: f32, initial: f32, step_size: u32) -> f32 {
 impl Clip {
     /// creates a new 'Clip'
     /// 'tick' will set the position of the 'Clip' on the 'Track'
-    pub fn new(id: Id, tick: Tick) -> Self {
+    pub fn new(data_id: DataId, id: Id, tick: Tick) -> Self {
         let offset = tick.as_f32() / 480.0 * 96.0;
 
         Self {
+            data_id,
             id,
             active: true,
             _pos: None,
@@ -72,7 +76,7 @@ impl Clip {
 
         let rect = Rect::from_min_size(new_pos, size);
         let mut move_response = {
-            let move_response = ui.interact(rect, self.id, Sense::drag());
+            let move_response = ui.interact(rect, self.id, Sense::click_and_drag());
 
             if move_response.dragged() {
                 let delta = move_response.drag_delta();
@@ -107,11 +111,12 @@ impl Clip {
         }
     }
 
-    fn paint(&self, paint_rect: Rect) -> Shape {
+    fn paint(&self, paint_rect: Rect, fill_color: Color32) -> Shape {
         let shape = Shape::Rect(epaint::RectShape::new(
             paint_rect,
             Rounding::ZERO,
-            egui::Color32::from_rgb(120, 140, 50),
+            fill_color,
+            // egui::Color32::from_rgb(120, 140, 50),
             Stroke::new(1.0, egui::Color32::BLACK),
         ));
         shape
@@ -131,15 +136,24 @@ pub struct Prepared {
 }
 impl Prepared {
     fn end(self, ctx: &Context, ui: &mut Ui) -> egui::Response {
+        const SELECTED_COLOR: egui::Color32 = egui::Color32::from_rgb(255, 0, 0);
+        const DEFAULT_COLOR: egui::Color32 = egui::Color32::from_rgb(0, 255, 0);
+
+        let selected_color =
+            match ui.memory(|mem| mem.data.get_temp::<DataId>(SELECTED_CLIP.into())) {
+                Some(s) if s == self.clip.data_id => SELECTED_COLOR,
+                _ => DEFAULT_COLOR,
+            };
+
         ctx.memory_mut(|memory| memory.data.insert_temp(self.clip.id, self.state));
-        self.paint(ui);
+        self.paint(ui, selected_color);
         self.move_response
     }
 
-    fn paint(&self, ui: &Ui) {
+    fn paint(&self, ui: &Ui, fill_color: Color32) {
         let paint_rect = self.rect;
         if ui.is_rect_visible(paint_rect) {
-            let shape = self.clip.paint(paint_rect);
+            let shape = self.clip.paint(paint_rect, fill_color);
             ui.painter().set(self.where_to_put_background, shape);
         }
     }
