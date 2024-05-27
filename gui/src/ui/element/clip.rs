@@ -27,6 +27,10 @@ pub struct Clip {
     order: Order,
 }
 
+fn quantize(x: f32, initial: f32, step_size: u32) -> f32 {
+    initial + ((x - initial) / step_size as f32).floor() * step_size as f32
+}
+
 impl Clip {
     pub fn new(id: Id) -> Self {
         Self {
@@ -51,27 +55,29 @@ impl Clip {
 
     fn begin(self, ctx: &Context, ui: &mut Ui) -> Prepared {
         let where_to_put_background = ui.painter().add(Shape::Noop);
-
         let outer_rect_bounds = ui.available_rect_before_wrap();
 
         let height = ui.available_height();
-        let width = 100.0;
+        let width = 96.0;
         let size = Vec2::new(width, height);
 
         let start_pos = ui.max_rect().min;
-
         let mut state = ctx.memory(|mem| {
             mem.data.get_temp::<State>(self.id).unwrap_or(State {
                 pivot_pos: start_pos,
             })
         });
 
-        let rect = Rect::from_min_size(state.pivot_pos, size);
+        let quantized = quantize(state.pivot_pos.x, start_pos.x, 24);
+        let new_pos = pos2(quantized, state.pivot_pos.y);
+
+        let rect = Rect::from_min_size(new_pos, size);
         let mut move_response = {
             let move_response = ui.interact(rect, self.id, Sense::drag());
 
             if move_response.dragged() {
-                state.pivot_pos.x += move_response.drag_delta().x;
+                let delta = move_response.drag_delta();
+                state.pivot_pos.x += delta.x;
             }
 
             if move_response.dragged() || move_response.clicked() {
