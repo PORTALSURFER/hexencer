@@ -1,0 +1,18 @@
+[env]
+CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
+
+[tasks.doc_clean]
+command = "cargo"
+args = ["clean", "--doc"]
+
+[tasks.doc_gen]
+command = "cargo"
+args = ["doc", "--no-deps", "--open"]
+
+[tasks.doc]
+dependencies = [
+    "doc_clean",
+    "doc_gen",
+]
+
+
