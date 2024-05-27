@@ -92,9 +92,6 @@ impl Prepared {
     pub fn end(self, ui: &mut Ui) -> Response {
         self.paint(ui);
 
-        if self.track_response.clicked() {
-            tracing::info!("Track clicked!");
-        }
         self.track_response
     }
 

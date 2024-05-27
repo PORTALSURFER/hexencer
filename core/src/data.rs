@@ -12,7 +12,7 @@ pub use midi_message::MidiMessage;
 pub mod event_list;
 
 use self::project::ProjectManager;
-use crate::instrument::Instrument;
+use crate::{instrument::Instrument, Tick};
 
 /// holds state of the editor, like note editor or automation editor modes.
 #[derive(Default)]
@@ -27,6 +27,17 @@ pub struct DataLayer {
     pub project_manager: ProjectManager,
     /// represents the current state of the editor, like note editor or automation editor modes.
     pub editor_state: EditorState,
+}
+
+impl DataLayer {
+    /// add a new clip to the track specified by 'track_id'
+    pub fn add_clip(&mut self, track_id: usize, tick: Tick, name: &str) {
+        self.project_manager
+            .tracks
+            .get_mut(track_id)
+            .unwrap()
+            .add_clip(tick, name);
+    }
 }
 
 /// keeps track and manages all instruments

@@ -103,4 +103,8 @@ impl Track {
     pub fn set_channel(&mut self, channel: u8) {
         self.instrument.channel = channel;
     }
+
+    pub(crate) fn add_clip(&mut self, tick: Tick, name: &str) {
+        self.clips.insert(tick, Clip::new(name));
+    }
 }
