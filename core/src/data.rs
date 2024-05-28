@@ -27,6 +27,7 @@ pub struct DataLayer {
     pub project_manager: ProjectManager,
     /// represents the current state of the editor, like note editor or automation editor modes.
     pub editor_state: EditorState,
+    tick: Tick,
 }
 
 impl DataLayer {
@@ -37,6 +38,16 @@ impl DataLayer {
             .get_mut(track_id)
             .unwrap()
             .add_clip(tick, name);
+    }
+
+    /// set the playhead tick
+    pub fn set_tick(&mut self, tick: Tick) {
+        self.tick = tick;
+    }
+
+    /// get the current playhead tick
+    pub fn get_tick(&self) -> Tick {
+        self.tick
     }
 }
 
