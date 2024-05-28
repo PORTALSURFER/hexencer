@@ -19,29 +19,32 @@ impl MidiEngine {
     pub fn new() -> Self {
         let midi_out = MidiOutput::new("Test Output").unwrap();
         let midi_out2 = MidiOutput::new("Test Output2").unwrap();
-        // let midi_out2 = MidiOutput::new("Test Output").unwrap();
 
-        // Get an output port (read from console if multiple are available)
+        let mut con1 = None;
+        let mut con2 = None;
+
         let out_ports = midi_out.ports();
         let out_ports2 = midi_out2.ports();
 
-        let port = out_ports.get(2).ok_or("no output port found").unwrap();
-        let port2 = out_ports2.get(3).ok_or("no output port found").unwrap();
+        let port = out_ports.get(2);
+        let port2 = out_ports2.get(3);
 
-        tracing::info!("opening midi connections");
-        let conn_out = midi_out.connect(port, "midir-test");
-        let con1 = match conn_out {
-            Ok(conn) => Some(conn),
+        if port.is_some() && port2.is_some() {
+            tracing::info!("opening midi connections");
+            let conn_out = midi_out.connect(port.unwrap(), "midir-test");
+            con1 = match conn_out {
+                Ok(conn) => Some(conn),
 
-            Err(_) => None,
-        };
-        let conn_out2 = midi_out2.connect(port2, "midir-test2");
+                Err(_) => None,
+            };
+            let conn_out2 = midi_out2.connect(port2.unwrap(), "midir-test2");
 
-        let con2 = match conn_out2 {
-            Ok(conn) => Some(conn),
+            con2 = match conn_out2 {
+                Ok(conn) => Some(conn),
 
-            Err(_) => None,
-        };
+                Err(_) => None,
+            };
+        }
 
         Self {
             conn_out: con1,

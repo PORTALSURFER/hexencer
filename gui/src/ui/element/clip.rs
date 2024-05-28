@@ -5,6 +5,9 @@ use hexencer_core::{DataId, Tick};
 
 use crate::arranger::SELECTED_CLIP;
 
+pub const DEFAULT_CLIP_WIDTH: f32 = 96.0;
+pub const BEAT_WIDTH: f32 = 24.0;
+
 /// create a new 'clip' and returns it's 'Response'
 pub fn clip(ctx: &Context, ui: &mut Ui, id: crate::DataId, tick: Tick) -> Response {
     let egui_id = egui::Id::new(id.as_bytes());
@@ -37,7 +40,7 @@ impl Clip {
     /// creates a new 'Clip'
     /// 'tick' will set the position of the 'Clip' on the 'Track'
     pub fn new(data_id: DataId, id: Id, tick: Tick) -> Self {
-        let offset = tick.as_f32() / 480.0 * 96.0;
+        let offset = tick.as_f32() / 480.0 * DEFAULT_CLIP_WIDTH;
 
         Self {
             data_id,
@@ -60,7 +63,7 @@ impl Clip {
         let where_to_put_background = ui.painter().add(Shape::Noop);
 
         let height = ui.available_height();
-        let width = 96.0;
+        let width = DEFAULT_CLIP_WIDTH;
         let size = Vec2::new(width, height);
 
         let mut start_pos = ui.max_rect().min;
