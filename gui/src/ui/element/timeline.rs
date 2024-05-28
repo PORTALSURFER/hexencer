@@ -1,5 +1,7 @@
 use egui::{epaint, pos2, vec2, Color32, Rect, Response, Rounding, Sense, Shape, Stroke, Ui};
 
+use crate::ui::BEAT_WIDTH;
+
 /// visually shows the tick/time
 pub struct Timeline {
     height: f32,
@@ -32,8 +34,8 @@ impl Timeline {
 
         for i in 0..100 {
             let fill = Color32::from_rgb(60, 69, 69);
-            let rect2 = Rect::from_min_size(rect.min, vec2(24.0, self.height));
-            let rect2 = rect2.translate(vec2(i as f32 * 24.0, 0.0));
+            let rect2 = Rect::from_min_size(rect.min, vec2(BEAT_WIDTH, self.height));
+            let rect2 = rect2.translate(vec2(i as f32 * BEAT_WIDTH, 0.0));
 
             let rect_shape = Shape::Rect(epaint::RectShape::new(
                 rect2,

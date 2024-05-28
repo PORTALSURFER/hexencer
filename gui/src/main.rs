@@ -7,7 +7,10 @@ mod arranger;
 mod ui;
 
 use arranger::{track, SELECTED_CLIP};
-use egui::{epaint, vec2, Frame, Margin, Ui, Vec2};
+use egui::{
+    epaint, vec2, Color32, FontId, Frame, Galley, Id, LayerId, Margin, Order, Pos2, Rect, Stroke,
+    Ui, Vec2,
+};
 use hexencer_core::data::DataLayer;
 use hexencer_engine::midi::MidiEngine;
 use hexencer_engine::{Sequencer, SequencerCommand, SequencerSender};
@@ -16,7 +19,7 @@ use tokio::task;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 use ui::common::{TRACK_HEADER_COLOR, TRACK_HEIGHT};
-use ui::Timeline;
+use ui::{Timeline, BEAT_WIDTH, DEFAULT_CLIP_WIDTH};
 
 pub use hexencer_core::DataId;
 
@@ -186,14 +189,61 @@ impl eframe::App for Gui {
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             {
+                let layer_id = LayerId::new(Order::Foreground, "debug_cursor_time".into());
+                let id = Id::new("debug__cursor_time");
+                let rect = ctx.screen_rect();
                 let debug_cursor_time = Ui::new(ctx.clone(), layer_id, id, rect, rect);
+                let ctx_pos = match ctx.input(|i| i.pointer.latest_pos()) {
+                    Some(mouse_pos) => {
+                        let mut pos = mouse_pos;
+                        pos.y += 20.0;
+                        pos
+                    }
+                    _ => Pos2::new(0.0, 0.0),
+                };
+                let font_id = FontId::monospace(12.0);
+                let text_color = Color32::RED;
+                let galley = ctx.fonts(|f| {
+                    f.layout(
+                        String::from({
+                            let available_width = ui.available_width();
+                            let size_of_beat = available_width / BEAT_WIDTH;
+
+                            let ui_position = ui.max_rect().min;
+                            let ui_size = ui.max_rect().size();
+
+                            let ui_mouse_pos =
+                                (ctx_pos.x - ui_position.x, ctx_pos.y - ui_position.y);
+
+                            let test = available_width / size_of_beat;
+
+                            let output_text = if ui_mouse_pos.0 >= 0.0
+                                && ui_mouse_pos.0 <= ui_size.x
+                                && ui_mouse_pos.1 >= 0.0
+                                && ui_mouse_pos.1 <= ui_size.y
+                            {
+                                format!("{:?} - {:?}", ui_mouse_pos.0, ui_mouse_pos.0 / test)
+                            } else {
+                                String::from("out of bounds")
+                            };
+
+                            output_text
+                        }),
+                        font_id,
+                        text_color,
+                        10000.0,
+                    )
+                });
+                let underline = Stroke::NONE;
+                let fallback_color = Color32::BLUE;
                 debug_cursor_time.painter().add(epaint::TextShape {
-                    pos: vec2(100.0, 100.0),
-                    text: "test".to_string(),
-                    font: Default::default(),
-                    color: Default::default(),
-                    size: 20.0,
-                    id: Default::default(),
+                    pos: ctx_pos,
+                    galley,
+                    underline,
+                    fallback_color,
+                    override_text_color: None,
+                    opacity_factor: 1.0,
+                    angle: 0.0,
                 });
             }
             Timeline::new(10.0).show(ui);
@@ -226,7 +276,7 @@ fn track_header(ui: &mut Ui, id: usize) {
     frame.outer_margin = Margin::ZERO;
     frame.show(ui, |ui| {
         let label = egui::Label::new(format!("Track {}", id));
-        ui.add_sized(vec2(24.0, TRACK_HEIGHT), label);
+        ui.add_sized(vec2(BEAT_WIDTH, TRACK_HEIGHT), label);
 
         // let port = self
         //     .data_layer
