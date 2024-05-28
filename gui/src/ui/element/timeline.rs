@@ -22,7 +22,6 @@ impl Timeline {
 
     fn paint(&self, ui: &mut Ui, rect: Rect) {
         ui.set_clip_rect(ui.min_rect());
-
         let fill = Color32::from_rgb(40, 40, 40);
         let rect_shape = Shape::Rect(epaint::RectShape::new(
             rect,
@@ -32,6 +31,7 @@ impl Timeline {
         ));
         ui.painter().add(rect_shape);
 
+        let mut shapes = Vec::new();
         for i in 0..100 {
             let fill = Color32::from_rgb(60, 69, 69);
             let rect2 = Rect::from_min_size(rect.min, vec2(BEAT_WIDTH, self.height));
@@ -43,7 +43,7 @@ impl Timeline {
                 fill,
                 Stroke::new(1.0, Color32::from_rgb(100, 100, 100)),
             ));
-            ui.painter().add(rect_shape);
+            shapes.push(rect_shape);
 
             let line = Shape::line_segment(
                 [
@@ -52,7 +52,8 @@ impl Timeline {
                 ],
                 Stroke::new(1.0, Color32::from_rgb(100, 100, 100)),
             );
-            ui.painter().add(line);
+            shapes.push(line);
         }
+        ui.painter().extend(shapes);
     }
 }

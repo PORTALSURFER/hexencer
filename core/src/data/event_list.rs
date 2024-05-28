@@ -48,6 +48,11 @@ impl EventList {
     }
 
     /// gets a mutable iterator over the 'EventList', sorted by 'Tick'
+    pub fn iter(&self) -> impl Iterator<Item = (&Tick, &Event)> {
+        self.0.iter()
+    }
+
+    /// gets a mutable iterator over the 'EventList', sorted by 'Tick'
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Tick, &mut Event)> {
         self.0.iter_mut()
     }

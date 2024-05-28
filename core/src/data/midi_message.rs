@@ -32,6 +32,14 @@ impl MidiMessage {
             MidiMessage::AllNoteOff => [ALL_NOTE_ON_MSG, 123, 0],
         }
     }
+
+    pub(crate) fn get_key(&self) -> u8 {
+        match self {
+            MidiMessage::NoteOn { key, .. } => *key,
+            MidiMessage::NoteOff { key, .. } => *key,
+            MidiMessage::AllNoteOff => 0,
+        }
+    }
 }
 
 impl Default for MidiMessage {
