@@ -8,8 +8,7 @@ mod ui;
 
 use arranger::{track, SELECTED_CLIP};
 use egui::{
-    epaint, vec2, Color32, FontId, Frame, Galley, Id, LayerId, Margin, Order, Pos2, Rect, Stroke,
-    Ui, Vec2,
+    epaint, vec2, Color32, FontId, Frame, Id, LayerId, Margin, Order, Pos2, Stroke, Ui, Vec2,
 };
 use hexencer_core::data::DataLayer;
 use hexencer_engine::midi::MidiEngine;
@@ -19,9 +18,12 @@ use tokio::task;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 use ui::common::{TRACK_HEADER_COLOR, TRACK_HEIGHT};
-use ui::{Timeline, BEAT_WIDTH, DEFAULT_CLIP_WIDTH};
+use ui::{NoteEditor, Timeline, BEAT_WIDTH};
 
 pub use hexencer_core::DataId;
+
+/// color used for all regular edges in the ui
+pub const EDGE_COLOR: Color32 = Color32::from_rgb(20, 20, 20);
 
 #[tokio::main]
 async fn main() {
@@ -123,6 +125,24 @@ impl Gui {
             });
         }
     }
+
+    fn editor_ui(&mut self, ui: &mut Ui) {
+        if let Some(selected_clip_id) =
+            ui.memory(|mem| mem.data.get_temp::<DataId>(SELECTED_CLIP.into()))
+        {
+            if let Some(selected_clip) = self
+                .data_layer
+                .lock()
+                .unwrap()
+                .project_manager
+                .find_clip(selected_clip_id)
+            {
+                NoteEditor::new(selected_clip).show(ui);
+            }
+        };
+
+        // ui.centered_and_justified(|ui| ui.label("editor"));
+    }
 }
 
 impl eframe::App for Gui {
@@ -159,26 +179,18 @@ impl eframe::App for Gui {
             });
 
         let editor_height = 200.0;
+        let mut editor_frame = Frame::none();
+        editor_frame.outer_margin = Margin::ZERO;
+        editor_frame.inner_margin = Margin::ZERO;
+        let fill = egui::Color32::from_rgb(20, 20, 20);
+        editor_frame = editor_frame.fill(fill);
         egui::TopBottomPanel::bottom("editor")
+            .frame(editor_frame)
+            // .resizable(true)
             .min_height(editor_height)
             .default_height(editor_height)
-            .resizable(true)
             .show(ctx, |ui| {
-                if let Some(selected_clip_id) =
-                    ui.memory(|mem| mem.data.get_temp::<DataId>(SELECTED_CLIP.into()))
-                {
-                    if let Some(selected_clip) = self
-                        .data_layer
-                        .lock()
-                        .unwrap()
-                        .project_manager
-                        .find_clip(selected_clip_id)
-                    {
-                        ui.label(format!("Selected clip: {}", selected_clip.name));
-                    }
-                }
-
-                ui.centered_and_justified(|ui| ui.label("editor"));
+                self.editor_ui(ui);
             });
 
         let mut frame = Frame::none();

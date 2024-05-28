@@ -1,5 +1,9 @@
-pub mod clip;
+mod clip;
 mod note_editor;
-pub mod timeline;
+mod timeline;
+mod track;
 
-pub(crate) mod track;
+pub use clip::*;
+pub use note_editor::*;
+pub use timeline::*;
+pub use track::*;

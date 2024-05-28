@@ -39,6 +39,7 @@ impl ProjectManager {
         for track in self.tracks.iter() {
             for (_, clip) in track.clips.iter() {
                 if clip.get_id() == selected_clip_id {
+                    let clip = clip.to_owned();
                     return Some(clip);
                 }
             }

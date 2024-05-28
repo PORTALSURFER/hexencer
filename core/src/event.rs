@@ -2,6 +2,7 @@ use crate::data::DataId;
 use crate::data::MidiMessage;
 
 use std::fmt::Display;
+use std::sync::Arc;
 
 /// wraps events
 #[derive(Debug, Clone)]
@@ -20,6 +21,14 @@ impl Event {
             id,
             inner: event,
             active,
+        }
+    }
+
+    /// returns the key of this event or 0 if none is found
+    pub fn get_key(&self) -> u8 {
+        match self.inner {
+            EventType::Midi(midi_message) => midi_message.get_key(),
+            _ => 0,
         }
     }
 }

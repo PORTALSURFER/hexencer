@@ -142,6 +142,9 @@ impl Prepared {
         const SELECTED_COLOR: egui::Color32 = egui::Color32::from_rgb(255, 0, 0);
         const DEFAULT_COLOR: egui::Color32 = egui::Color32::from_rgb(0, 255, 0);
 
+        //NOTE To store a state common for all your widgets (a singleton), use Id::NULL as the key.
+        // then store a global state object in there to save things like selected clips or anything else interesting
+        // for the entire gui to see
         let selected_color =
             match ui.memory(|mem| mem.data.get_temp::<DataId>(SELECTED_CLIP.into())) {
                 Some(s) if s == self.clip.data_id => SELECTED_COLOR,

@@ -5,6 +5,7 @@ mod midi_message;
 mod project;
 mod track;
 
+pub use clip::Clip;
 pub use common::DataId;
 pub use midi_message::MidiMessage;
 
