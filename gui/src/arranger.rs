@@ -24,25 +24,14 @@ pub fn track(
             if let Some(track) = track {
                 for (tick, clip) in &track.clips {
                     if ui::clip(ctx, ui, clip.get_id(), *tick).drag_started() {
-                        // tracing::info!("clicked {}", clip.get_id().to_string());
+                        tracing::info!("clicked {}", clip.get_id().to_string());
 
                         ui.memory_mut(|mem| {
                             mem.data.insert_temp(SELECTED_CLIP.into(), clip.get_id());
-                            // .get_temp_mut_or_insert_with(SELECTED_CLIP.into(), || {
-                            //     clip.get_id()
-                            // });
                         });
                     };
                 }
             }
-            // ui.set_min_size(egui::vec2(ui.available_width(), TRACK_HEIGHT));
-
-            // let clip_frame = egui::Frame::none().fill(egui::Color32::GREEN);
-            // clip_frame.show(ui, |ui| {
-            // if clip(ctx, ui, &index.to_string()).clicked() {
-            // tracing::info!("clicked clip");
-            // };
-            // });
         });
     });
 

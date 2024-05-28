@@ -7,7 +7,7 @@ mod arranger;
 mod ui;
 
 use arranger::{track, SELECTED_CLIP};
-use egui::{vec2, Frame, Margin, Ui, Vec2};
+use egui::{epaint, vec2, Frame, Margin, Ui, Vec2};
 use hexencer_core::data::DataLayer;
 use hexencer_engine::midi::MidiEngine;
 use hexencer_engine::{Sequencer, SequencerCommand, SequencerSender};
@@ -42,6 +42,7 @@ async fn main() {
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size(egui::vec2(1920.0, 1080.0)),
+
         ..Default::default()
     };
 
@@ -70,6 +71,55 @@ impl Gui {
             sequencer_sender: Some(sender),
         }
     }
+
+    fn track_header_list(&mut self, ui: &mut Ui) {
+        ui.vertical(|ui| {
+            let track_ids: Vec<usize> = self
+                .data_layer
+                .lock()
+                .unwrap()
+                .project_manager
+                .tracks
+                .iter()
+                .map(|track| track.id)
+                .collect();
+
+            for id in track_ids {
+                track_header(ui, id);
+            }
+        });
+    }
+
+    fn track_manager_controls(&mut self, ui: &mut Ui) {
+        if ui.button("add track").clicked() {
+            self.data_layer.lock().unwrap().project_manager.add_track();
+        }
+        if ui.button("remove track").clicked() {
+            self.data_layer
+                .lock()
+                .unwrap()
+                .project_manager
+                .remove_track();
+        }
+    }
+
+    fn sequencer_controls(&mut self, ui: &mut Ui) {
+        if ui.button("play").clicked() {
+            self.sequencer_sender.as_mut().map(|sender| {
+                let _ = sender.send(SequencerCommand::Play);
+            });
+        }
+        if ui.button("stop").clicked() {
+            self.sequencer_sender.as_mut().map(|sender| {
+                let _ = sender.send(SequencerCommand::Stop);
+            });
+        }
+        if ui.button("reset").clicked() {
+            self.sequencer_sender.as_mut().map(|sender| {
+                let _ = sender.send(SequencerCommand::Reset);
+            });
+        }
+    }
 }
 
 impl eframe::App for Gui {
@@ -84,80 +134,25 @@ impl eframe::App for Gui {
             ui.centered_and_justified(|ui| ui.label("toolbar menu"));
         });
         egui::TopBottomPanel::bottom("statusbar").show(ctx, |ui| {
-            ui.centered_and_justified(|ui| ui.label("status info"));
+            // ui.centered_and_justified(|ui| ui.label("status info"));
+
+            let current_tick = self.data_layer.lock().unwrap().get_tick();
+            ui.label(&format!("{}", &current_tick.as_time()));
         });
 
         egui::SidePanel::left("tracks")
             .resizable(false)
             .show(ctx, |ui| {
-                ui.vertical(|ui| {
-                    let track_ids: Vec<usize> = self
-                        .data_layer
-                        .lock()
-                        .unwrap()
-                        .project_manager
-                        .tracks
-                        .iter()
-                        .map(|track| track.id)
-                        .collect();
-
-                    for id in track_ids {
-                        let mut frame = egui::Frame::none().fill(TRACK_HEADER_COLOR);
-                        frame.inner_margin = Margin::ZERO;
-                        frame.outer_margin = Margin::ZERO;
-                        frame.show(ui, |ui| {
-                            // ui.set_min_width(TRACK_HEADER_WIDTH);
-
-                            let label = egui::Label::new(format!("Track {}", id));
-                            ui.add_sized(vec2(24.0, TRACK_HEIGHT), label);
-
-                            // let port = self
-                            //     .data_layer
-                            //     .lock()
-                            //     .unwrap()
-                            //     .project_manager
-                            //     .tracks
-                            //     .get_track_port(id)
-                            //     .to_string();
-                            // // ui.add_space(16.0);
-                            // let text_input_rect = egui::vec2(8.0, 24.0);
-                            // let clone = Arc::clone(&self.data_layer);
-                            // port_selector(ui, text_input_rect, port, &self.data_layer, id);
-                            // channel_selector(clone, id, ui, text_input_rect);
-                        });
-                    }
-                });
+                self.track_header_list(ui);
             });
 
         egui::SidePanel::right("info")
             .resizable(false)
             .show(ctx, |ui| {
                 ui.label("info");
-                if ui.button("add track").clicked() {
-                    self.data_layer.lock().unwrap().project_manager.add_track();
-                }
-                if ui.button("remove track").clicked() {
-                    self.data_layer
-                        .lock()
-                        .unwrap()
-                        .project_manager
-                        .remove_track();
-                }
-                if ui.button("play").clicked() {
-                    self.sequencer_sender.as_mut().map(|sender| {
-                        let _ = sender.send(SequencerCommand::Play);
-                    });
-                }
-                if ui.button("stop").clicked() {
-                    self.sequencer_sender.as_mut().map(|sender| {
-                        let _ = sender.send(SequencerCommand::Stop);
-                    });
-                }
-                if ui.button("reset").clicked() {
-                    self.sequencer_sender.as_mut().map(|sender| {
-                        let _ = sender.send(SequencerCommand::Reset);
-                    });
-                }
+                self.track_manager_controls(ui);
+                ui.add_space(20.0);
+                self.sequencer_controls(ui);
             });
 
         let editor_height = 200.0;
@@ -190,6 +185,17 @@ impl eframe::App for Gui {
         frame = frame.fill(fill);
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
+            {
+                let debug_cursor_time = Ui::new(ctx.clone(), layer_id, id, rect, rect);
+                debug_cursor_time.painter().add(epaint::TextShape {
+                    pos: vec2(100.0, 100.0),
+                    text: "test".to_string(),
+                    font: Default::default(),
+                    color: Default::default(),
+                    size: 20.0,
+                    id: Default::default(),
+                });
+            }
             Timeline::new(10.0).show(ui);
             ui.vertical(|ui| {
                 let track_ids: Vec<usize> = self
@@ -208,7 +214,34 @@ impl eframe::App for Gui {
                 }
             });
         });
+
+        // Request a new frame
+        ctx.request_repaint();
     }
+}
+
+fn track_header(ui: &mut Ui, id: usize) {
+    let mut frame = egui::Frame::none().fill(TRACK_HEADER_COLOR);
+    frame.inner_margin = Margin::ZERO;
+    frame.outer_margin = Margin::ZERO;
+    frame.show(ui, |ui| {
+        let label = egui::Label::new(format!("Track {}", id));
+        ui.add_sized(vec2(24.0, TRACK_HEIGHT), label);
+
+        // let port = self
+        //     .data_layer
+        //     .lock()
+        //     .unwrap()
+        //     .project_manager
+        //     .tracks
+        //     .get_track_port(id)
+        //     .to_string();
+        // // ui.add_space(16.0);
+        // let text_input_rect = egui::vec2(8.0, 24.0);
+        // let clone = Arc::clone(&self.data_layer);
+        // port_selector(ui, text_input_rect, port, &self.data_layer, id);
+        // channel_selector(clone, id, ui, text_input_rect);
+    });
 }
 
 fn port_selector(

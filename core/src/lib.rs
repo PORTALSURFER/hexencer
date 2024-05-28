@@ -5,16 +5,15 @@
 
 /// houses common data types
 pub mod data;
-
 /// houses event types
 pub mod event;
-
 /// instrument types
 pub mod instrument;
 
-use std::fmt::Display;
-
 pub use data::DataId;
+
+use std::fmt::Display;
+use std::time::Duration;
 
 /// represents a moment in time
 /// events are sent every tick
@@ -22,6 +21,27 @@ pub use data::DataId;
 pub struct Tick(u64);
 
 impl Tick {
+    /// convert tick to a time string
+    pub fn as_time(&self) -> String {
+        let bpm = 120.0;
+        let ppqn = 480.0;
+        let seconds_in_beat = 60.0 / bpm;
+        let seconds_in_tick = seconds_in_beat / ppqn;
+
+        let total_seconds = self.0 as f64 * seconds_in_tick;
+
+        let duration = Duration::from_secs_f64(total_seconds);
+
+        let minutes = duration.as_secs() / 60;
+        let seconds = duration.as_secs() % 60;
+        let milliseconds = duration.subsec_millis();
+
+        String::from(format!(
+            "{}:{}:{}",
+            minutes as u32, seconds as u32, milliseconds as u32,
+        ))
+    }
+
     /// turns this 'Tick' into a more human readable beat
     pub fn as_beat(&self) -> u32 {
         (self.0 / 480) as u32 + 1

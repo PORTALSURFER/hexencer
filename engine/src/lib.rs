@@ -70,6 +70,7 @@ impl Sequencer {
                     if *self.running.lock().unwrap() {
                         self.process_events();
                         self.current_tick.tick();
+                        self.data_layer.lock().unwrap().set_tick(self.current_tick);
                     }
                 }
                 Some(command) = command_receiver.recv() => {
