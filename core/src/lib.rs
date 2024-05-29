@@ -1,41 +1,88 @@
+#![deny(missing_docs)]
+#![allow(dead_code)]
+
+//! represents elements without clear goal
+
+/// houses common data types
 pub mod data;
+/// houses event types
 pub mod event;
+/// instrument types
 pub mod instrument;
-pub mod note;
 
-use data::trig_list::{EventBlock, EventList};
-use instrument::Instrument;
+pub use data::DataId;
+
 use std::fmt::Display;
+use std::time::Duration;
 
+/// represents a moment in time
+/// events are sent every tick
 #[derive(Default, PartialEq, PartialOrd, Ord, Eq, Clone, Debug, Copy)]
 pub struct Tick(u64);
 
 impl Tick {
+    /// convert tick to a time string
+    pub fn as_time(&self) -> String {
+        let bpm = 120.0;
+        let ppqn = 480.0;
+        let seconds_in_beat = 60.0 / bpm;
+        let seconds_in_tick = seconds_in_beat / ppqn;
+
+        let total_seconds = self.0 as f64 * seconds_in_tick;
+
+        let duration = Duration::from_secs_f64(total_seconds);
+
+        let minutes = duration.as_secs() / 60;
+        let seconds = duration.as_secs() % 60;
+        let milliseconds = duration.subsec_millis();
+
+        String::from(format!(
+            "{}:{}:{}",
+            minutes as u32, seconds as u32, milliseconds as u32,
+        ))
+    }
+
+    /// turns this 'Tick' into a more human readable beat
     pub fn as_beat(&self) -> u32 {
         (self.0 / 480) as u32 + 1
     }
 
+    /// move the tick one step forward in time
     pub fn tick(&mut self) {
         self.0 = self.0 + 1;
     }
 
+    /// created a zero tick
     pub fn zero() -> Self {
         Self(0)
     }
 
+    /// reset the tick to 0
     pub fn reset(&mut self) {
         self.0 = 0;
     }
 
+    /// adds an offset to this 'Tick'
     fn offset(mut self, length: u32) -> Self {
         self.0 = self.0 + length as u64;
         self
+    }
+
+    /// returns this 'Tick' as an 'f32'
+    pub fn as_f32(&self) -> f32 {
+        self.0 as f32
     }
 }
 
 impl Display for Tick {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!("{}", self.0))
+    }
+}
+
+impl From<i32> for Tick {
+    fn from(tick: i32) -> Self {
+        Self(tick as u64)
     }
 }
 
@@ -54,45 +101,5 @@ impl From<u64> for Tick {
 impl From<u32> for Tick {
     fn from(tick: u32) -> Self {
         Self(tick as u64)
-    }
-}
-
-#[derive(Default)]
-pub struct Track {
-    pub id: usize,
-    pub name: String,
-    pub instrument: Instrument,
-    pub event_list: EventList,
-}
-
-impl Display for Track {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("{}, instrument: {}", self.name, self.instrument))?;
-        Ok(())
-    }
-}
-
-impl Track {
-    fn new(id: usize, name: &str) -> Track {
-        let mut event_list = EventList::new();
-        for i in 0..8 {
-            let event_block = EventBlock::new_midi(Tick::from(i * 480 as u32), 120, 38, 0, 64);
-            event_list.add_event_block(event_block);
-        }
-
-        Self {
-            id,
-            name: String::from(name),
-            event_list,
-            instrument: Instrument::new("port0", 0, 0),
-        }
-    }
-
-    pub fn set_port(&mut self, port: u8) {
-        self.instrument.port = port;
-    }
-
-    pub fn set_channel(&mut self, channel: u8) {
-        self.instrument.channel = channel;
     }
 }

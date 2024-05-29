@@ -1,46 +1,50 @@
-use crate::data::midi_message::MidiMessage;
-use std::{
-    fmt::Display,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use crate::data::DataId;
+use crate::data::MidiMessage;
 
-static UNIQUE_ID: AtomicU64 = AtomicU64::new(0);
+use std::fmt::Display;
+use std::sync::Arc;
 
+/// wraps events
 #[derive(Debug, Clone)]
-pub struct UniqueId(u64);
-
-impl UniqueId {
-    pub fn new() -> Self {
-        Self(UNIQUE_ID.fetch_add(1, Ordering::SeqCst))
-    }
-
-    pub fn get(&self) -> u64 {
-        self.0
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct EventEntry {
-    pub id: UniqueId,
-    pub event: Event,
+pub struct Event {
+    id: DataId,
+    /// type of this event
+    pub inner: EventType,
+    /// true if this event is active and should be used
     pub active: bool,
 }
-impl EventEntry {
-    pub fn new(id: UniqueId, event: Event, active: bool) -> Self {
-        Self { id, event, active }
+
+impl Event {
+    /// creates a new event entry
+    pub fn new(id: DataId, event: EventType, active: bool) -> Self {
+        Self {
+            id,
+            inner: event,
+            active,
+        }
+    }
+
+    /// returns the key of this event or 0 if none is found
+    pub fn get_key(&self) -> u8 {
+        match self.inner {
+            EventType::Midi(midi_message) => midi_message.get_key(),
+            _ => 0,
+        }
     }
 }
 
 /// event type
 #[derive(Debug, Clone)]
-pub enum Event {
+pub enum EventType {
+    /// midi event
     Midi(MidiMessage),
 }
 
-impl Event {
+impl EventType {
+    /// get copy of the midi message in this event
     pub fn get_message(&self) -> MidiMessage {
         match self {
-            Event::Midi(message) => message.clone(),
+            EventType::Midi(message) => message.clone(),
         }
     }
     // pub fn get_key(&self) -> u8 {
@@ -84,15 +88,16 @@ impl Event {
     // }
 }
 
-impl Display for Event {
+impl Display for EventType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Event::Midi(message) => f.write_str(&format!("{}", message)),
+            EventType::Midi(message) => f.write_str(&format!("{}", message)),
         }
     }
 }
 
-impl Event {
+impl EventType {
+    /// creates a new midi event
     pub fn new(event: MidiMessage) -> Self {
         Self::Midi(event)
     }
