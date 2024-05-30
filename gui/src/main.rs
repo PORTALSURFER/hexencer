@@ -4,6 +4,7 @@
 //! the main entry point for the application
 
 mod arranger;
+mod memory;
 mod ui;
 
 use arranger::{track, SELECTED_CLIP};
@@ -66,11 +67,7 @@ struct Gui {
 }
 
 impl Gui {
-    fn new(
-        // cc: &eframe::CreationContext<'_>,
-        data_layer: Arc<Mutex<DataLayer>>,
-        sender: SequencerSender,
-    ) -> Self {
+    fn new(data_layer: Arc<Mutex<DataLayer>>, sender: SequencerSender) -> Self {
         Self {
             data_layer,
             sequencer_sender: Some(sender),
@@ -140,8 +137,6 @@ impl Gui {
                 NoteEditor::new(selected_clip).show(ui);
             }
         };
-
-        // ui.centered_and_justified(|ui| ui.label("editor"));
     }
 }
 
@@ -153,12 +148,13 @@ impl eframe::App for Gui {
             style.spacing.indent = 0.0
         });
 
+        // let gui_state = GuiState::default();
+        // ctx.memory_mut(|memory| memory.data.insert_temp(Id::NULL, gui_state));
+
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
             ui.centered_and_justified(|ui| ui.label("toolbar menu"));
         });
         egui::TopBottomPanel::bottom("statusbar").show(ctx, |ui| {
-            // ui.centered_and_justified(|ui| ui.label("status info"));
-
             let current_tick = self.data_layer.lock().unwrap().get_tick();
             ui.label(&format!("{}", &current_tick.as_time()));
         });
@@ -186,7 +182,6 @@ impl eframe::App for Gui {
         editor_frame = editor_frame.fill(fill);
         egui::TopBottomPanel::bottom("editor")
             .frame(editor_frame)
-            // .resizable(true)
             .min_height(editor_height)
             .default_height(editor_height)
             .show(ctx, |ui| {
