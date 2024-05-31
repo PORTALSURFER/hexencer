@@ -8,7 +8,7 @@ use std::{collections::BTreeMap, fmt::Display};
 
 type TrackCollection = Vec<Track>;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Tracks {
     inner: TrackCollection,
 }
@@ -55,7 +55,7 @@ impl Tracks {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Track {
     pub id: usize,
     pub name: String,

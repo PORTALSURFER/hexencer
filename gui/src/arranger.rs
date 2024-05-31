@@ -1,12 +1,12 @@
 use std::sync::{Arc, Mutex};
 
 use egui::{layers::ShapeIdx, Color32, Ui};
-use hexencer_core::{
-    data::{DataLayer, MidiMessage},
-    Tick,
-};
+use hexencer_core::{data::DataLayer, Tick};
 
-use crate::ui::{self, common::TRACK_COLOR};
+use crate::{
+    memory::GuiState,
+    ui::{self, common::TRACK_COLOR},
+};
 pub const SELECTED_CLIP: &'static str = "selected_clip";
 
 /// creates a new track ui element
@@ -16,7 +16,7 @@ pub fn track(
     index: usize,
     ui: &mut egui::Ui,
 ) {
-    let track = ui::Track::new().fill(TRACK_COLOR);
+    let track = ui::TrackWidget::new().fill(TRACK_COLOR);
     let response = track.show(ui, |ui| {
         ui.horizontal(|ui| {
             let data = data_layer.lock().unwrap();
@@ -26,9 +26,9 @@ pub fn track(
                     if ui::clip(ctx, ui, clip.get_id(), *tick).drag_started() {
                         tracing::info!("clicked {}", clip.get_id().to_string());
 
-                        ui.memory_mut(|mem| {
-                            mem.data.insert_temp(SELECTED_CLIP.into(), clip.get_id());
-                        });
+                        let mut gui_state = GuiState::load(ui);
+                        gui_state.selected_clip = Some(clip.get_id());
+                        gui_state.store(ui);
                     };
                 }
             }
@@ -42,29 +42,6 @@ pub fn track(
             .unwrap()
             .add_clip(index, Tick::from(6 * 480), "new clip");
     }
-}
-
-fn _test_step_sequencer(ui: &mut Ui, data_layer: Arc<Mutex<DataLayer>>, index: usize) {
-    ui.horizontal(|ui| {
-        let mut changed_triggers = Vec::new();
-        let mut data_layer = data_layer.lock().unwrap();
-        let track = data_layer.project_manager.tracks.get_mut(index).unwrap();
-
-        for (tick, event_entry) in &mut track.event_list.iter_mut().filter(|(_, event_entry)| {
-            let hexencer_core::event::EventType::Midi(message) = &event_entry.inner;
-            match message {
-                MidiMessage::NoteOn { .. } => true,
-                _ => false,
-            }
-        }) {
-            if ui
-                .checkbox(&mut event_entry.active, format!("{}", tick.as_beat()))
-                .changed()
-            {
-                changed_triggers.push(tick.clone());
-            }
-        }
-    });
 }
 
 /// gui representation of track

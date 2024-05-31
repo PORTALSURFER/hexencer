@@ -4,7 +4,7 @@ use super::{
     InstrumentManager,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ProjectManager {
     pub tracks: Tracks,
     pub instrument_manager: InstrumentManager,

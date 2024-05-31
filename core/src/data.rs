@@ -16,13 +16,13 @@ use self::project::ProjectManager;
 use crate::{instrument::Instrument, Tick};
 
 /// holds state of the editor, like note editor or automation editor modes.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct EditorState {
     selected_clip: DataId,
 }
 
 /// object which holds all the persistent data objects used by the application
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct DataLayer {
     /// interface for loading and storing projects
     pub project_manager: ProjectManager,
@@ -53,7 +53,7 @@ impl DataLayer {
 }
 
 /// keeps track and manages all instruments
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct InstrumentManager {
     inner: Vec<Instrument>,
 }

@@ -257,11 +257,11 @@ impl State {
     }
 }
 
-pub struct NoteEditor<'c> {
+pub struct NoteEditorWidget<'c> {
     clip: &'c Clip,
 }
 
-impl<'c> NoteEditor<'c> {
+impl<'c> NoteEditorWidget<'c> {
     pub fn new(clip: &'c Clip) -> Self {
         Self { clip }
     }
@@ -289,16 +289,18 @@ impl<'c> NoteEditor<'c> {
         let response = ui.allocate_rect(editor_rect, Sense::drag());
 
         let note_height = state.step_size;
-        for (tick, event) in self.clip.events.iter() {
-            let tick = tick.as_f32();
-            let key = event.get_key();
-            let editor_rect = ui.available_rect_before_wrap();
-            let pos = Pos2::new(
-                editor_rect.min.x + tick,
-                editor_rect.min.y - (key as f32 * EDITOR_NOTE_HEIGHT),
-            );
+        for (tick, events) in self.clip.events.iter() {
+            for event in events.iter() {
+                let tick = tick.as_f32();
+                let key = event.get_key();
+                let editor_rect = ui.available_rect_before_wrap();
+                let pos = Pos2::new(
+                    editor_rect.min.x + tick,
+                    editor_rect.min.y - (key as f32 * EDITOR_NOTE_HEIGHT),
+                );
 
-            clip_note(pos, ui, note_height);
+                clip_note(pos, ui, note_height);
+            }
         }
 
         if response.drag_started_by(egui::PointerButton::Primary) {

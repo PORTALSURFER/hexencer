@@ -2,10 +2,9 @@ use crate::data::DataId;
 use crate::data::MidiMessage;
 
 use std::fmt::Display;
-use std::sync::Arc;
 
 /// wraps events
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Event {
     id: DataId,
     /// type of this event
@@ -28,13 +27,12 @@ impl Event {
     pub fn get_key(&self) -> u8 {
         match self.inner {
             EventType::Midi(midi_message) => midi_message.get_key(),
-            _ => 0,
         }
     }
 }
 
 /// event type
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum EventType {
     /// midi event
     Midi(MidiMessage),
