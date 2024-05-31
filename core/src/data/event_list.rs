@@ -39,7 +39,7 @@ impl EventList {
     }
 
     /// adds an 'EventBlock' to the 'EventList'
-    pub fn add_event_block(&mut self, event_block: EventBlock) {
+    pub fn add_event_block(&mut self, event_block: EventSegment) {
         let note_on_entry = Event::new(event_block.id.clone(), event_block.start.1, true);
         let note_off_entry = Event::new(event_block.id.clone(), event_block.end.1, true);
 
@@ -64,13 +64,13 @@ impl EventList {
 }
 
 /// represents a block defined by a starting and ending 'Event'
-pub struct EventBlock {
+pub struct EventSegment {
     id: DataId,
     start: (Tick, EventType),
     end: (Tick, EventType),
 }
 
-impl EventBlock {
+impl EventSegment {
     /// creates a new 'EventBlock' with a `NoteOn` and a `NoteOff` 'Event'
     pub fn new_midi(tick: Tick, length: u32, key: u8, velocity: u8) -> Self {
         let start_event = EventType::Midi(MidiMessage::NoteOn { key, velocity });
