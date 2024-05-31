@@ -6,6 +6,7 @@ use std::fmt::Display;
 /// wraps events
 #[derive(Debug, Clone, Copy)]
 pub struct Event {
+    /// id of this event
     id: DataId,
     /// type of this event
     pub inner: EventType,
@@ -29,6 +30,11 @@ impl Event {
             EventType::Midi(midi_message) => midi_message.get_key(),
         }
     }
+
+    /// get the end of this note event, TODO conflic with EventSegment which also has note end
+    pub fn get_note_end(&self) -> f32 {
+        96.0
+    }
 }
 
 /// event type
@@ -42,7 +48,7 @@ impl EventType {
     /// get copy of the midi message in this event
     pub fn get_message(&self) -> MidiMessage {
         match self {
-            EventType::Midi(message) => message.clone(),
+            EventType::Midi(message) => *message,
         }
     }
     // pub fn get_key(&self) -> u8 {

@@ -1,11 +1,16 @@
 #![deny(missing_docs)]
+#![deny(clippy::missing_docs_in_private_items)]
 #![allow(dead_code)]
 
 //! the main entry point for the application
 
+/// arranger part of the gui
 mod arranger;
+/// utilities for loading and storing data to egui memory
 mod memory;
+/// ui elements
 mod ui;
+/// the main viewport
 mod viewport;
 
 use egui::{Color32, IconData};
@@ -23,6 +28,7 @@ pub use hexencer_core::DataId;
 /// color used for all regular edges in the ui
 pub const EDGE_COLOR: Color32 = Color32::from_rgb(20, 20, 20);
 
+/// initialize the logging system
 fn init_logger() {
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::INFO)
@@ -32,6 +38,7 @@ fn init_logger() {
     tracing::info!("hexencer started");
 }
 
+/// starts up the midi engine and listens for commands, return the sender to send commands to the midi engine
 fn start_midi_engine() -> MidiEngineSender {
     let (midi_sender, midi_receiver) = tokio::sync::mpsc::unbounded_channel();
     let midi_engine = MidiEngine::new();
@@ -39,6 +46,7 @@ fn start_midi_engine() -> MidiEngineSender {
     midi_sender
 }
 
+/// starts up the sequencer engine and listens for commands, returns the sender to send commands to the sequencer
 fn start_sequencer_engine(
     midi_sender: MidiEngineSender,
     data_layer: Arc<Mutex<DataLayer>>,
@@ -75,16 +83,17 @@ async fn main() {
     .expect("failed to start eframe app");
 }
 
+/// load icon from png image
 fn load_icon(path: &str) -> IconData {
     let image = image::open(path).expect("failed to open icon image");
     if let Some(image) = image.as_rgba8() {
         let (width, height) = image.dimensions();
         let rgba = image.clone().into_vec();
-        return IconData {
+        IconData {
             rgba,
             width,
             height,
-        };
+        }
     } else {
         IconData::default()
     }

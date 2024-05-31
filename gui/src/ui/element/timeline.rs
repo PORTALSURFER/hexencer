@@ -4,6 +4,7 @@ use crate::ui::BEAT_WIDTH;
 
 /// visually shows the tick/time
 pub struct TimelineWidget {
+    /// height of the timeline widget
     height: f32,
 }
 
@@ -20,6 +21,7 @@ impl TimelineWidget {
         ui.allocate_rect(rect, Sense::hover())
     }
 
+    /// paints the timeline widget elements
     fn paint(&self, ui: &mut Ui, rect: Rect) {
         ui.set_clip_rect(ui.min_rect());
         let fill = Color32::from_rgb(40, 40, 40);
