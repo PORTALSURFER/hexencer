@@ -1,7 +1,9 @@
 use std::ops::RangeInclusive;
 
 use egui::{
-    emath::Real, epaint, lerp, pos2, Color32, Id, PointerButton, Pos2, Rect, Response, Rounding,
+    emath::Real,
+    epaint::{self, CircleShape},
+    lerp, pos2, vec2, Color32, Id, LayerId, Order, PointerButton, Pos2, Rect, Response, Rounding,
     Sense, Shape, Stroke, Ui, Vec2,
 };
 
@@ -79,29 +81,55 @@ impl EditorPoint {
 }
 
 impl Transform {
-    fn zoom(&mut self, zoom_delta: f32, screen_hover_pos: Pos2) {
+    fn zoom(&mut self, zoom_delta: f32, screen_hover_pos: Pos2, ui: &mut Ui) {
         let zoom_rate = 0.001;
         let zoom_delta = zoom_delta * zoom_rate;
-        let new_scale = (self.scale + zoom_delta).clamp(0.1, 10.0);
+        let clamped_scale = (self.scale + zoom_delta).clamp(1.0, 1.5);
 
-        let pointer_in_editor = (screen_hover_pos - self.translation) / self.scale;
+        let pointer_in_editor_space = (screen_hover_pos - self.translation) / self.scale;
+        self.scale = clamped_scale;
 
-        self.scale = new_scale;
+        let new_translation = screen_hover_pos - (pointer_in_editor_space * self.scale);
+        self.translation = vec2(self.translation.x, new_translation.y);
 
-        tracing::info!("pointer in editor {:?}", pointer_in_editor);
-        tracing::info!("new_scale {:?}:", new_scale);
+        let pointer_in_editor_space_clamped = pos2(1.0, pointer_in_editor_space.y);
+        let scaled = pointer_in_editor_space * self.scale;
+        let scaled_clamped = pos2(1.0, scaled.y);
+        let new_center_clamped = pos2(10.0, new_translation.y);
+        debug_dot(ui, pointer_in_editor_space_clamped, Color32::RED);
+        debug_dot(ui, scaled_clamped, Color32::LIGHT_BLUE);
+        debug_dot(ui, new_center_clamped, Color32::GREEN);
 
-        let new_translation = screen_hover_pos - pointer_in_editor * self.scale;
-        self.translation = new_translation;
-
-        // let center = self.value_from_position(center);
-        // tracing::info!("center {:?}", center);
-        // let mut new_bounds = self.bounds;
-        // new_bounds.zoom(zoom_factor, center);
-
-        // if new_bounds.is_valid() {
-        //     self.bounds = new_bounds;
-        // }
+        let editor_origin = pos2(150.0, 0.0);
+        let editor_translation = pos2(150.0, self.translation.y);
+        debug_line(ui, editor_origin, editor_translation, Color32::RED);
+        let pointer_origin_before_scaling = pos2(200.0, 0.0);
+        let pointer_translation_before_scaling = pos2(200.0, pointer_in_editor_space.y);
+        debug_line(
+            ui,
+            pointer_origin_before_scaling,
+            pointer_translation_before_scaling,
+            Color32::GREEN,
+        );
+        let pointer_origin_scaled = pos2(125.0, 0.0);
+        let pointer_translation_scaled = pos2(125.0, pointer_in_editor_space.y * self.scale);
+        debug_line(
+            ui,
+            pointer_origin_scaled,
+            pointer_translation_scaled,
+            Color32::LIGHT_YELLOW,
+        );
+        let transform_offset_origin = pos2(175.0, self.translation.y);
+        let transform_offset = pos2(
+            175.0,
+            screen_hover_pos.y + (pointer_in_editor_space.y * self.scale),
+        );
+        debug_line(
+            ui,
+            transform_offset_origin,
+            transform_offset,
+            Color32::from_rgb(255, 0, 255),
+        );
     }
 
     /// Convert a position in the frame to a value in the bounds.
@@ -130,8 +158,29 @@ impl Transform {
     }
 
     fn apply(&self, point: Pos2) -> Pos2 {
-        point * self.scale + self.translation
+        point + self.translation
     }
+
+    fn inverse_apply(&self, point: Pos2) -> Pos2 {
+        point - self.translation
+    }
+}
+
+fn debug_line(ui: &mut Ui, origin: Pos2, target: Pos2, color: Color32) {
+    let top_layer = LayerId::new(Order::Foreground, Id::new("debug_line"));
+    ui.with_layer_id(top_layer, |ui| {
+        ui.painter()
+            .line_segment([origin, target], Stroke::new(1.0, color));
+    });
+}
+
+fn debug_dot(ui: &Ui, point: Pos2, color: Color32) {
+    ui.painter().add(CircleShape {
+        center: point,
+        radius: 2.0,
+        fill: color,
+        stroke: Stroke::NONE,
+    });
 }
 
 /// Remap a value from one range to another.
@@ -148,9 +197,9 @@ where
 
 #[derive(Clone)]
 pub struct State {
-    pub note_height: f32,
     pub last_click_pos_for_zoom: Option<Pos2>,
     pub transform: Transform,
+    pub step_size: f32,
 }
 
 impl State {
@@ -175,15 +224,14 @@ impl<'c> NoteEditor<'c> {
     pub fn show(self, ui: &mut Ui) -> Response {
         let fill_color = Color32::from_rgb(50, 50, 50);
         let editor_rect = ui.available_rect_before_wrap();
-        // ui.set_clip_rect(editor_rect);
 
         let id = Id::new("note_editor");
 
         let min_auto_bounds = EditorBounds::NONE;
         let mut state = State::load(ui, id).unwrap_or_else(|| State {
-            note_height: 10.0,
             last_click_pos_for_zoom: None,
             transform: Transform::new(editor_rect, min_auto_bounds, 1.0),
+            step_size: 10.0,
         });
         let shape = epaint::RectShape::new(
             editor_rect,
@@ -194,7 +242,7 @@ impl<'c> NoteEditor<'c> {
         ui.painter().add(shape);
         let response = ui.allocate_rect(editor_rect, Sense::drag());
 
-        let note_height = state.note_height;
+        let note_height = state.step_size;
         for (tick, event) in self.clip.events.iter() {
             let tick = tick.as_f32();
             let key = event.get_key();
@@ -208,7 +256,6 @@ impl<'c> NoteEditor<'c> {
         }
 
         if response.drag_started_by(egui::PointerButton::Primary) {
-            tracing::info!("add note");
             let mouse_pos = if let Some(mouse_pos) = ui.input(|i| i.pointer.hover_pos()) {
                 mouse_pos
             } else {
@@ -218,106 +265,53 @@ impl<'c> NoteEditor<'c> {
         }
 
         let zoom_button = PointerButton::Secondary;
-        // box_zooming(&response, &mut state, ui, note_height, scale_factor);
-
-        // test if pointer is inside of the response area
-        // and is able to grab hover position
         if let (true, Some(hover_pos)) = (
             response.contains_pointer,
             ui.input(|i| i.pointer.hover_pos()),
         ) {
-            // test if dragging with right mouse button
             if response.dragged_by(zoom_button) {
-                // store delta of the drag
                 let zoom_delta = ui.input(|input| input.pointer.delta());
-                tracing::info!("hover {:?}", hover_pos);
                 let zoom_factor = zoom_delta.x;
-                // zoom the transform
-                state.transform.zoom(zoom_factor, hover_pos);
 
-                // debug of transform bounds
-                // let zoom_rect = state.transform.bounds.to_rect();
-                // ui.painter().add(epaint::RectShape::new(
-                //     zoom_rect,
-                //     Rounding::ZERO,
-                //     Color32::from_rgb(255, 0, 0),
-                //     Stroke::new(1.0, Color32::from_rgb(255, 0, 0)),
-                // ));
-                // state.auto_bounds = state.auto_bounds.and
+                state.transform.zoom(zoom_factor, hover_pos, ui);
             }
         }
 
-        let step_size = note_height;
-        let step_size = step_size / state.transform.scale;
-
-        self.draw_lanes(ui, step_size, editor_rect, state.transform, 10);
+        self.draw_lanes(ui, state.step_size, editor_rect, state.transform);
 
         state.store(ui, id);
         response
     }
 
-    fn draw_lanes(
-        &self,
-        ui: &mut Ui,
-        step_size: f32,
-        rect: Rect,
-        transform: Transform,
-        step_count: i32,
-    ) {
-        let mut current_step = 0;
-        while current_step < step_count {
-            let step_pos = current_step as f32 * step_size;
+    fn draw_lanes(&self, ui: &mut Ui, step_size: f32, rect: Rect, transform: Transform) {
+        let mut lines = Vec::new();
+        let scaled_step_size = step_size * transform.scale;
+
+        // let visible_min = transform.inverse_apply(rect.min);
+        // let visible_max = transform.inverse_apply(rect.max);
+
+        // let start_step = (visible_min.y / step_size).floor() as i32;
+        let start_step = 0;
+        // let end_step = (visible_max.y / step_size).ceil() as i32;
+        let end_step = 127;
+
+        for current_step in start_step..=end_step {
+            let step_pos = current_step as f32 * scaled_step_size;
             let screen_pos = transform.apply(Pos2::new(step_pos, step_pos));
 
             if rect.contains(screen_pos) {
-                ui.painter().line_segment(
-                    [
-                        pos2(screen_pos.x, rect.min.y),
-                        pos2(screen_pos.x, rect.max.y),
-                    ],
-                    Stroke::new(1.0, Color32::RED),
-                );
-                ui.painter().line_segment(
-                    [
-                        pos2(rect.min.x, screen_pos.y),
-                        pos2(rect.max.y, screen_pos.y),
-                    ],
-                    Stroke::new(1.0, Color32::RED),
-                );
+                let origin = pos2(rect.min.x, screen_pos.y);
+                let target = pos2(rect.max.y, screen_pos.y);
+                let line =
+                    epaint::Shape::line_segment([origin, target], Stroke::new(1.0, Color32::RED));
+                lines.push(line);
             }
-            current_step += 1;
         }
-
-        // let mut shapes = Vec::new();
-
-        // let first = 0;
-        // let last = {
-        //     let available_space = rect.height();
-        //     let count = available_space / step_size;
-        //     let count = count.clamp(2.0, 50.0) + 1.0;
-        //     count as u32
-        // };
-
-        // let mut steps = Vec::new();
-        // for i in first..last {
-        //     let value = (i as f64) * step_size as f64;
-        //     steps.push(GridUnit { offset: value });
-        // }
-
-        // for step in steps {
-        //     let line = Shape::line_segment(
-        //         [
-        //             Pos2::new(rect.min.x, rect.min.y + step.offset as f32),
-        //             Pos2::new(rect.min.x + rect.width(), rect.min.y + step.offset as f32),
-        //         ],
-        //         Stroke::new(1.0, EDGE_COLOR),
-        //     );
-        //     shapes.push(line);
-        // }
-        // ui.painter().extend(shapes);
+        ui.painter().extend(lines);
     }
 }
 
+// this is box zooming, draw a rectangle around the area you want to zoom into to focus in on it
 fn box_zooming(
     response: &Response,
     state: &mut State,
@@ -325,7 +319,6 @@ fn box_zooming(
     note_height: f32,
     scale_factor: f32,
 ) {
-    // this is box zooming
     let mut zoom_box_shape = None;
     if response.drag_started_by(egui::PointerButton::Secondary) {
         state.last_click_pos_for_zoom = response.hover_pos();
@@ -347,7 +340,7 @@ fn box_zooming(
                 scaled_value += input.pointer.delta().x * scale_factor;
                 scaled_value = scaled_value.clamp(10.0, 40.0);
                 tracing::info!("scaling note editor to {}", scaled_value);
-                state.note_height = scaled_value;
+                state.step_size = scaled_value;
             })
         }
     }
