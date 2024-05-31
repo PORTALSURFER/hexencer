@@ -1,17 +1,23 @@
 [package]
 name = "hexencer-gui"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+license = "MIT"
+documentation = "https://github.com/PORTALSURFER/hexencer"
+repository = "https://github.com/PORTALSURFER/hexencer"
+homepage = "https://github.com/PORTALSURFER/hexencer"
 
 [dependencies]
 egui= {version="0.27.2", features=["callstack"]}
 eframe = {version="0.27.2", features=["wgpu"]}
+image = "0.25.1"
+winit = "0.30.0"
 
 ## workspace
 tokio = {workspace=true}
 tracing = {workspace=true}
 tracing-subscriber = {workspace=true}
 
-## internal
+## internal libs
 hexencer-core={path="../core"}
 hexencer-engine={path="../engine"}

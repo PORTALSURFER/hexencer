@@ -1,16 +1,19 @@
-use super::midi_message::MidiMessage;
+// use super::midi_message::MidiMessage;
 
-#[derive(Debug)]
-pub struct MidiRequest {
-    message: MidiMessage,
-    port: u8,
-}
+// /// midi message request, to be sent to a specific midi output port
+// #[derive(Debug)]
+// pub struct MidiRequest {
+//     message: MidiMessage,
+//     port: u8,
+// }
 
-impl MidiRequest {
-    pub fn get_message(&self) -> &MidiMessage {
-        &self.message
-    }
-    pub fn get_port(&self) -> u8 {
-        self.port
-    }
-}
+// impl MidiRequest {
+//     /// get the midi message of this request
+//     pub fn get_message(&self) -> &MidiMessage {
+//         &self.message
+//     }
+//     /// midi port this request is meant for
+//     pub fn get_port(&self) -> u8 {
+//         self.port
+//     }
+// }
