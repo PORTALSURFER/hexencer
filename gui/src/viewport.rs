@@ -108,6 +108,8 @@ impl eframe::App for MainViewport {
             style.spacing.indent = 0.0
         });
 
+        // ctx.input(|i| i.key_pressed(egui::Key::C))
+
         // let gui_state = GuiState::default();
         // ctx.memory_mut(|memory| memory.data.insert_temp(Id::NULL, gui_state));
 

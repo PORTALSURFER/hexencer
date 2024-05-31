@@ -94,8 +94,14 @@ impl Track {
         // test events
         let mut event_list = EventList::new();
         for i in 0..8 {
-            let event_block = EventSegment::new_midi(Tick::from(i * 480_u32), 120, 38, 64);
-            event_list.add_event_block(event_block);
+            let event_block = EventSegment::new2(
+                Tick::from(i * 480_u32),
+                Tick::from(i * 480_u32),
+                38,
+                64,
+                true,
+            );
+            event_list.add_event_segment(event_block);
         }
 
         // test clips

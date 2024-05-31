@@ -1,4 +1,8 @@
-use super::{common::DataId, event_list::EventList, MidiMessage};
+use super::{
+    common::DataId,
+    event_list::{EventList, EventSegment},
+    MidiMessage,
+};
 use crate::{
     event::{Event, EventType},
     Tick,
@@ -21,26 +25,35 @@ impl Clip {
     pub fn new(name: &str) -> Self {
         let mut test_events = EventList::new();
 
-        let event1 = Event::new(
+        let event1 = EventSegment::new(
             DataId::new(),
+            64,
+            Tick::from(0),
+            Tick::from(480),
             EventType::Midi(MidiMessage::NoteOn {
-                key: 48,
+                key: 46,
                 velocity: 64,
             }),
             true,
         );
-        let event2 = Event::new(
+        let event2 = EventSegment::new(
             DataId::new(),
+            64,
+            Tick::from(240),
+            Tick::from(700),
             EventType::Midi(MidiMessage::NoteOn {
-                key: 59,
+                key: 47,
                 velocity: 64,
             }),
             true,
         );
-        let event3 = Event::new(
+        let event3 = EventSegment::new(
             DataId::new(),
+            64,
+            Tick::from(960),
+            Tick::from(1440),
             EventType::Midi(MidiMessage::NoteOn {
-                key: 66,
+                key: 50,
                 velocity: 64,
             }),
             true,
