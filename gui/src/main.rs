@@ -1,121 +1,91 @@
-pub mod track;
-pub mod ui;
+#![deny(missing_docs)]
+#![allow(dead_code)]
 
+//! the main entry point for the application
+
+mod arranger;
+mod memory;
+mod ui;
+mod viewport;
+
+use egui::{Color32, IconData};
 use hexencer_core::data::DataLayer;
-use hexencer_engine::midi::MidiEngine;
-use hexencer_engine::{Sequencer, SequencerCommand};
+use hexencer_engine::midi::{MidiEngine, MidiEngineSender};
+use hexencer_engine::{Sequencer, SequencerSender};
 use std::sync::{Arc, Mutex};
 use tokio::task;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
-use track::track_ui;
+use viewport::MainViewport;
 
-type SequencerSender = tokio::sync::mpsc::UnboundedSender<SequencerCommand>;
-type SequencerReceiver = tokio::sync::mpsc::UnboundedReceiver<SequencerCommand>;
+pub use hexencer_core::DataId;
 
-#[tokio::main]
-async fn main() {
+/// color used for all regular edges in the ui
+pub const EDGE_COLOR: Color32 = Color32::from_rgb(20, 20, 20);
+
+fn init_logger() {
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::INFO)
         .finish();
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
     tracing::info!("hexencer started");
+}
+
+fn start_midi_engine() -> MidiEngineSender {
+    let (midi_sender, midi_receiver) = tokio::sync::mpsc::unbounded_channel();
+    let midi_engine = MidiEngine::new();
+    task::spawn(midi_engine.listen(midi_receiver));
+    midi_sender
+}
+
+fn start_sequencer_engine(
+    midi_sender: MidiEngineSender,
+    data_layer: Arc<Mutex<DataLayer>>,
+) -> SequencerSender {
+    let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();
+    let sequencer = Sequencer::new(Arc::clone(&data_layer), midi_sender);
+    task::spawn(sequencer.listen(sequencer_receiver));
+    sequencer_sender
+}
+
+#[tokio::main]
+async fn main() {
+    init_logger();
 
     let data_layer = Arc::new(Mutex::new(DataLayer::default()));
+    let midi_engine_sender = start_midi_engine();
+    let sequencer_sender = start_sequencer_engine(midi_engine_sender, Arc::clone(&data_layer));
 
-    let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();
-    let (midi_sender, midi_receiver) = tokio::sync::mpsc::unbounded_channel();
-
-    let midi_engine = MidiEngine::new();
-    task::spawn(midi_engine.process(midi_receiver));
-
-    let sequencer = Sequencer::new(Arc::clone(&data_layer), midi_sender);
-    task::spawn(sequencer.process(sequencer_receiver));
+    // let icon = load_icon("assets/logo.png");
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([1024.0, 768.0]),
+        viewport: egui::ViewportBuilder::default()
+            // .with_icon(icon)
+            .with_inner_size(egui::vec2(1920.0, 1080.0)),
+
         ..Default::default()
     };
 
     eframe::run_native(
         "Hexencer",
         options,
-        Box::new(|cc| Box::new(Gui::new(cc, data_layer, sequencer_sender))),
+        Box::new(|_cc| Box::new(MainViewport::new(data_layer, sequencer_sender))),
     )
     .expect("failed to start eframe app");
 }
 
-#[derive(Default)]
-struct Gui {
-    data_layer: Arc<Mutex<DataLayer>>,
-    sequencer_sender: Option<SequencerSender>,
-}
-
-impl Gui {
-    fn new(
-        cc: &eframe::CreationContext<'_>,
-        data_layer: Arc<Mutex<DataLayer>>,
-        sender: SequencerSender,
-    ) -> Self {
-        Self {
-            data_layer,
-            sequencer_sender: Some(sender),
-        }
-    }
-}
-
-impl eframe::App for Gui {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
-            ui.label("some toolbar");
-        });
-        egui::SidePanel::left("info").show(ctx, |ui| {
-            ui.label("info");
-            if ui.button("add track").clicked() {
-                self.data_layer.lock().unwrap().project_manager.add_track();
-            }
-            if ui.button("remove track").clicked() {
-                self.data_layer
-                    .lock()
-                    .unwrap()
-                    .project_manager
-                    .remove_track();
-            }
-            if ui.button("play").clicked() {
-                self.sequencer_sender.as_mut().map(|sender| {
-                    let _ = sender.send(SequencerCommand::Play);
-                });
-            }
-            if ui.button("stop").clicked() {
-                self.sequencer_sender.as_mut().map(|sender| {
-                    let _ = sender.send(SequencerCommand::Stop);
-                });
-            }
-            if ui.button("reset").clicked() {
-                self.sequencer_sender.as_mut().map(|sender| {
-                    let _ = sender.send(SequencerCommand::Reset);
-                });
-            }
-        });
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.vertical(|ui| {
-                let track_ids: Vec<usize> = self
-                    .data_layer
-                    .lock()
-                    .unwrap()
-                    .project_manager
-                    .track_manager
-                    .tracks
-                    .iter()
-                    .map(|track| track.id)
-                    .collect();
-
-                for id in track_ids {
-                    let clone = Arc::clone(&self.data_layer);
-                    track_ui(clone, ctx, id, ui);
-                }
-            });
-        });
+fn load_icon(path: &str) -> IconData {
+    let image = image::open(path).expect("failed to open icon image");
+    if let Some(image) = image.as_rgba8() {
+        let (width, height) = image.dimensions();
+        let rgba = image.clone().into_vec();
+        return IconData {
+            rgba,
+            width,
+            height,
+        };
+    } else {
+        IconData::default()
     }
 }
