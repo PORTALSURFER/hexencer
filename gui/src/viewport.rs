@@ -3,14 +3,15 @@ use std::sync::{Arc, Mutex};
 use egui::{
     epaint, vec2, Color32, FontId, Frame, Id, LayerId, Margin, Order, Pos2, Stroke, Ui, Vec2,
 };
-use hexencer_core::{data::DataLayer, DataId};
+use hexencer_core::data::DataLayer;
 use hexencer_engine::{SequencerCommand, SequencerSender};
 
 use crate::{
-    arranger::{track, SELECTED_CLIP},
+    arranger::track,
+    memory::GuiState,
     ui::{
         common::{TRACK_HEADER_COLOR, TRACK_HEIGHT},
-        NoteEditor, Timeline, BEAT_WIDTH,
+        NoteEditorWidget, TimelineWidget, BEAT_WIDTH,
     },
 };
 
@@ -78,9 +79,8 @@ impl MainViewport {
     }
 
     fn editor_ui(&mut self, ui: &mut Ui) {
-        if let Some(selected_clip_id) =
-            ui.memory(|mem| mem.data.get_temp::<DataId>(SELECTED_CLIP.into()))
-        {
+        let state = GuiState::load(ui);
+        if let Some(selected_clip_id) = state.selected_clip {
             if let Some(selected_clip) = self
                 .data_layer
                 .lock()
@@ -88,7 +88,7 @@ impl MainViewport {
                 .project_manager
                 .find_clip(selected_clip_id)
             {
-                NoteEditor::new(selected_clip).show(ui);
+                NoteEditorWidget::new(selected_clip).show(ui);
             }
         };
     }
@@ -207,7 +207,7 @@ impl eframe::App for MainViewport {
                     angle: 0.0,
                 });
             }
-            Timeline::new(10.0).show(ui);
+            TimelineWidget::new(10.0).show(ui);
             ui.vertical(|ui| {
                 let track_ids: Vec<usize> = self
                     .data_layer

@@ -6,14 +6,14 @@ use std::collections::BTreeMap;
 
 use super::{midi_message::MidiMessage, DataId};
 
-type EventListType = BTreeMap<Tick, Event>;
+type EventListType = BTreeMap<Tick, Vec<Event>>;
 
 /// a list of events, keyed by their `Tick`
 #[derive(Default, Debug)]
 pub struct EventList(EventListType);
 
-impl FromIterator<(Tick, Event)> for EventList {
-    fn from_iter<T: IntoIterator<Item = (Tick, Event)>>(iter: T) -> Self {
+impl FromIterator<(Tick, Vec<Event>)> for EventList {
+    fn from_iter<T: IntoIterator<Item = (Tick, Vec<Event>)>>(iter: T) -> Self {
         let mut map = BTreeMap::new();
         for (tick, trig) in iter {
             map.insert(tick, trig);
@@ -30,7 +30,12 @@ impl EventList {
 
     /// adds a new event to the 'EventList'
     pub fn add_event(&mut self, tick: Tick, event_entry: Event) {
-        self.0.insert(tick, event_entry);
+        self.0
+            .get_mut(&tick)
+            .map(move |events| events.push(event_entry))
+            .unwrap_or_else(|| {
+                self.0.insert(tick, vec![event_entry]);
+            });
     }
 
     /// adds an 'EventBlock' to the 'EventList'
@@ -38,22 +43,22 @@ impl EventList {
         let note_on_entry = Event::new(event_block.id.clone(), event_block.start.1, true);
         let note_off_entry = Event::new(event_block.id.clone(), event_block.end.1, true);
 
-        self.0.insert(event_block.start.0, note_on_entry);
-        self.0.insert(event_block.end.0, note_off_entry);
+        self.add_event(event_block.start.0, note_on_entry);
+        self.add_event(event_block.end.0, note_off_entry);
     }
 
     /// removes an ['Event'] from the 'EventList'
-    pub fn get(&self, tick: &Tick) -> Option<&Event> {
+    pub fn get(&self, tick: &Tick) -> Option<&Vec<Event>> {
         self.0.get(tick)
     }
 
     /// gets a mutable iterator over the 'EventList', sorted by 'Tick'
-    pub fn iter(&self) -> impl Iterator<Item = (&Tick, &Event)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&Tick, &Vec<Event>)> {
         self.0.iter()
     }
 
     /// gets a mutable iterator over the 'EventList', sorted by 'Tick'
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Tick, &mut Event)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Tick, &mut Vec<Event>)> {
         self.0.iter_mut()
     }
 }

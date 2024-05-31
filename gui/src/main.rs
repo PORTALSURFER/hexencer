@@ -11,7 +11,7 @@ mod viewport;
 use egui::Color32;
 use hexencer_core::data::DataLayer;
 use hexencer_engine::midi::{MidiEngine, MidiEngineSender};
-use hexencer_engine::{Sequencer, SequencerCommand, SequencerSender};
+use hexencer_engine::{Sequencer, SequencerSender};
 use std::sync::{Arc, Mutex};
 use tokio::task;
 use tracing::Level;

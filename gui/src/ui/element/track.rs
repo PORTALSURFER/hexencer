@@ -8,12 +8,12 @@ use crate::ui::common::TRACK_HEIGHT;
 /// Track bar onto which clip elements can be placed and moved
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[must_use = "You should call .show()"]
-pub struct Track {
+pub struct TrackWidget {
     height: f32,
     fill: Color32,
 }
 
-impl Track {
+impl TrackWidget {
     /// creates a new 'Track' element
     pub fn new() -> Self {
         Self::default()
@@ -81,7 +81,7 @@ impl Track {
 }
 
 pub struct Prepared {
-    pub track: Track,
+    pub track: TrackWidget,
     where_to_put_background: ShapeIdx,
     pub content_ui: Ui,
     rect: Rect,

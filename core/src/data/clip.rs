@@ -7,7 +7,7 @@ use super::{common::DataId, event_list::EventList, MidiMessage};
 
 /// A clip is a collection of events
 /// They house things like notes and automation data
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Clip {
     id: DataId,
     /// visual name of the clip

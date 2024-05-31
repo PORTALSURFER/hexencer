@@ -3,11 +3,11 @@ use egui::{epaint, pos2, vec2, Color32, Rect, Response, Rounding, Sense, Shape, 
 use crate::ui::BEAT_WIDTH;
 
 /// visually shows the tick/time
-pub struct Timeline {
+pub struct TimelineWidget {
     height: f32,
 }
 
-impl Timeline {
+impl TimelineWidget {
     /// create a new timeline with the given height
     pub fn new(height: f32) -> Self {
         Self { height }

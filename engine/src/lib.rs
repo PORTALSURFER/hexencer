@@ -114,15 +114,17 @@ impl Sequencer {
 
         for track in tracks.iter() {
             if let Some(event_entry) = track.event_list.get(&self.current_tick) {
-                let event = event_entry.inner.clone();
-                tracing::info!("{} - {}", track, event);
+                for event in event_entry.iter() {
+                    let event_type = event.inner.clone();
+                    tracing::info!("{} - {}", track, event_type);
 
-                if event_entry.active {
-                    let message = event.get_message();
-                    let instrument = &track.instrument;
-                    self.midi_engine_sender
-                        .as_mut()
-                        .map(|sender| sender.send((message, instrument.port, instrument.channel)));
+                    if event.active {
+                        let message = event_type.get_message();
+                        let instrument = &track.instrument;
+                        self.midi_engine_sender.as_mut().map(|sender| {
+                            sender.send((message, instrument.port, instrument.channel))
+                        });
+                    }
                 }
             }
         }

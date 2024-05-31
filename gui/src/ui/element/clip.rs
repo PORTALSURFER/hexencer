@@ -1,9 +1,8 @@
+use crate::memory::GuiState;
 use egui::layers::ShapeIdx;
 use egui::{emath::*, epaint, Color32, Order, Response, Rounding, Sense, Shape, Stroke};
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
 use hexencer_core::{DataId, Tick};
-
-use crate::arranger::SELECTED_CLIP;
 
 pub const DEFAULT_CLIP_WIDTH: f32 = 96.0;
 pub const BEAT_WIDTH: f32 = 24.0;
@@ -11,7 +10,7 @@ pub const BEAT_WIDTH: f32 = 24.0;
 /// create a new 'clip' and returns it's 'Response'
 pub fn clip(ctx: &Context, ui: &mut Ui, id: crate::DataId, tick: Tick) -> Response {
     let egui_id = egui::Id::new(id.as_bytes());
-    let clip = Clip::new(id, egui_id, tick);
+    let clip = ClipWidget::new(id, egui_id, tick);
     clip.show(ctx, ui)
 }
 
@@ -23,7 +22,7 @@ struct State {
 /// widget used to represent 'Clips' on a 'Track'
 #[must_use = "You should call .show()"]
 #[derive(Clone, Copy, Debug)]
-pub struct Clip {
+pub struct ClipWidget {
     data_id: DataId,
     id: Id,
     active: bool,
@@ -36,7 +35,7 @@ fn quantize(x: f32, initial: f32, step_size: u32) -> f32 {
     initial + ((x - initial) / step_size as f32).floor() * step_size as f32
 }
 
-impl Clip {
+impl ClipWidget {
     /// creates a new 'Clip'
     /// 'tick' will set the position of the 'Clip' on the 'Track'
     pub fn new(data_id: DataId, id: Id, tick: Tick) -> Self {
@@ -55,7 +54,7 @@ impl Clip {
     /// renders this element and returns the 'Response'
     pub fn show(self, ctx: &Context, ui: &mut Ui) -> Response {
         let prepared = self.begin(ctx, ui);
-        let response = prepared.end(ctx, ui);
+        let response = prepared.end(ui);
         response
     }
 
@@ -119,7 +118,6 @@ impl Clip {
             paint_rect,
             Rounding::ZERO,
             fill_color,
-            // egui::Color32::from_rgb(120, 140, 50),
             Stroke::new(1.0, egui::Color32::BLACK),
         ));
         shape
@@ -127,7 +125,7 @@ impl Clip {
 }
 
 pub struct Prepared {
-    pub clip: Clip,
+    pub clip: ClipWidget,
     active: bool,
     temporarily_invisible: bool,
     constrain_rect: Rect,
@@ -137,22 +135,17 @@ pub struct Prepared {
     state: State,
     where_to_put_background: ShapeIdx,
 }
+
 impl Prepared {
-    fn end(self, ctx: &Context, ui: &mut Ui) -> egui::Response {
+    fn end(self, ui: &mut Ui) -> egui::Response {
         const SELECTED_COLOR: egui::Color32 = egui::Color32::from_rgb(255, 0, 0);
         const DEFAULT_COLOR: egui::Color32 = egui::Color32::from_rgb(0, 255, 0);
 
-        //NOTE To store a state common for all your widgets (a singleton), use Id::NULL as the key.
-        // then store a global state object in there to save things like selected clips or anything else interesting
-        // for the entire gui to see
-        let selected_color =
-            match ui.memory(|mem| mem.data.get_temp::<DataId>(SELECTED_CLIP.into())) {
-                Some(s) if s == self.clip.data_id => SELECTED_COLOR,
-                _ => DEFAULT_COLOR,
-            };
-
-        ctx.memory_mut(|memory| memory.data.insert_temp(self.clip.id, self.state));
-        self.paint(ui, selected_color);
+        let clip_color = match GuiState::load(ui).selected_clip {
+            Some(s) if s == self.clip.data_id => SELECTED_COLOR,
+            _ => DEFAULT_COLOR,
+        };
+        self.paint(ui, clip_color);
         self.move_response
     }
 
