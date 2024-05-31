@@ -10,6 +10,8 @@ homepage = "https://github.com/PORTALSURFER/hexencer"
 [dependencies]
 egui= {version="0.27.2", features=["callstack"]}
 eframe = {version="0.27.2", features=["wgpu"]}
+image = "0.25.1"
+winit = "0.30.0"
 
 ## workspace
 tokio = {workspace=true}

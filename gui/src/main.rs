@@ -8,7 +8,7 @@ mod memory;
 mod ui;
 mod viewport;
 
-use egui::Color32;
+use egui::{Color32, IconData};
 use hexencer_core::data::DataLayer;
 use hexencer_engine::midi::{MidiEngine, MidiEngineSender};
 use hexencer_engine::{Sequencer, SequencerSender};
@@ -57,8 +57,12 @@ async fn main() {
     let midi_engine_sender = start_midi_engine();
     let sequencer_sender = start_sequencer_engine(midi_engine_sender, Arc::clone(&data_layer));
 
+    // let icon = load_icon("assets/logo.png");
+
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size(egui::vec2(1920.0, 1080.0)),
+        viewport: egui::ViewportBuilder::default()
+            // .with_icon(icon)
+            .with_inner_size(egui::vec2(1920.0, 1080.0)),
 
         ..Default::default()
     };
@@ -69,4 +73,19 @@ async fn main() {
         Box::new(|_cc| Box::new(MainViewport::new(data_layer, sequencer_sender))),
     )
     .expect("failed to start eframe app");
+}
+
+fn load_icon(path: &str) -> IconData {
+    let image = image::open(path).expect("failed to open icon image");
+    if let Some(image) = image.as_rgba8() {
+        let (width, height) = image.dimensions();
+        let rgba = image.clone().into_vec();
+        return IconData {
+            rgba,
+            width,
+            height,
+        };
+    } else {
+        IconData::default()
+    }
 }

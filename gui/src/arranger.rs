@@ -1,12 +1,10 @@
-use std::sync::{Arc, Mutex};
-
-use egui::{layers::ShapeIdx, Color32, Ui};
-use hexencer_core::{data::DataLayer, Tick};
-
 use crate::{
     memory::GuiState,
     ui::{self, common::TRACK_COLOR},
 };
+use egui::{layers::ShapeIdx, Color32, Ui};
+use hexencer_core::{data::DataLayer, Tick};
+use std::sync::{Arc, Mutex};
 pub const SELECTED_CLIP: &'static str = "selected_clip";
 
 /// creates a new track ui element
