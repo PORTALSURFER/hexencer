@@ -9,7 +9,9 @@ use crate::ui::common::TRACK_HEIGHT;
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[must_use = "You should call .show()"]
 pub struct TrackWidget {
+    /// height of this track
     height: f32,
+    /// color used to fill te background of the track
     fill: Color32,
 }
 
@@ -19,6 +21,7 @@ impl TrackWidget {
         Self::default()
     }
 
+    /// begin building the widget
     fn begin(self, ui: &mut Ui) -> Prepared {
         let where_to_put_background = ui.painter().add(Shape::Noop);
         let outer_rect_bounds = ui.available_rect_before_wrap();
@@ -41,6 +44,7 @@ impl TrackWidget {
         }
     }
 
+    /// allocate response space for track element
     fn allocate_space(&self, ui: &mut Ui, rect: Rect) -> Response {
         ui.allocate_rect(rect, Sense::click_and_drag())
     }
@@ -56,6 +60,7 @@ impl TrackWidget {
         self.show_dyn(ui, Box::new(add_contents))
     }
 
+    /// setup and rendering of track
     fn show_dyn<'c, R>(
         self,
         ui: &mut Ui,
@@ -67,34 +72,42 @@ impl TrackWidget {
         InnerResponse::new(inner, response)
     }
 
+    /// paints the track elements
     fn paint(&self, paint_rect: Rect) -> Shape {
         let Self { fill, .. } = *self;
 
-        let track_shape = Shape::Rect(epaint::RectShape::new(
+        Shape::Rect(epaint::RectShape::new(
             paint_rect,
             Rounding::ZERO,
             fill,
             Stroke::new(0.0, Color32::from_rgb(10, 10, 10)),
-        ));
-        track_shape
+        ))
     }
 }
 
+/// intermediate struct to prepare a track element
 pub struct Prepared {
+    /// reference to the track widget being prepared
     pub track: TrackWidget,
+    /// placeholder where to put the background shape
     where_to_put_background: ShapeIdx,
+    /// inner ui
     pub content_ui: Ui,
+    /// rect of the entire track
     rect: Rect,
+    /// track ui response
     track_response: Response,
 }
 
 impl Prepared {
+    /// finish building the track element
     pub fn end(self, ui: &mut Ui) -> Response {
         self.paint(ui);
 
         self.track_response
     }
 
+    /// paint the track widget
     pub fn paint(&self, ui: &Ui) {
         let paint_rect = self.rect;
         if ui.is_rect_visible(paint_rect) {

@@ -69,6 +69,6 @@ impl Clip {
 
     /// get a clone of this clips id
     pub fn get_id(&self) -> DataId {
-        self.id.clone()
+        self.id
     }
 }

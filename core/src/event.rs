@@ -42,7 +42,7 @@ impl EventType {
     /// get copy of the midi message in this event
     pub fn get_message(&self) -> MidiMessage {
         match self {
-            EventType::Midi(message) => message.clone(),
+            EventType::Midi(message) => *message,
         }
     }
     // pub fn get_key(&self) -> u8 {

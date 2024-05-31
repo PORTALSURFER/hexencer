@@ -40,8 +40,8 @@ impl EventList {
 
     /// adds an 'EventBlock' to the 'EventList'
     pub fn add_event_block(&mut self, event_block: EventSegment) {
-        let note_on_entry = Event::new(event_block.id.clone(), event_block.start.1, true);
-        let note_off_entry = Event::new(event_block.id.clone(), event_block.end.1, true);
+        let note_on_entry = Event::new(event_block.id, event_block.start.1, true);
+        let note_off_entry = Event::new(event_block.id, event_block.end.1, true);
 
         self.add_event(event_block.start.0, note_on_entry);
         self.add_event(event_block.end.0, note_off_entry);
