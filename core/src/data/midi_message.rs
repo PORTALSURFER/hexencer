@@ -33,6 +33,7 @@ impl MidiMessage {
         }
     }
 
+    /// get the key/note of this message
     pub(crate) fn get_key(&self) -> u8 {
         match self {
             MidiMessage::NoteOn { key, .. } => *key,
