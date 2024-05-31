@@ -3,8 +3,8 @@ use std::ops::RangeInclusive;
 use egui::{
     emath::Real,
     epaint::{self, CircleShape},
-    lerp, pos2, vec2, Color32, FontId, Id, LayerId, Order, PointerButton, Pos2, Rect, Response,
-    Rounding, Sense, Shape, Stroke, Ui, Vec2,
+    lerp, pos2, Color32, FontId, Id, LayerId, Order, PointerButton, Pos2, Rect, Response, Rounding,
+    Sense, Stroke, Ui, Vec2,
 };
 
 use crate::EDGE_COLOR;
@@ -108,7 +108,27 @@ impl Transform {
         } else if new_translation.y + (total_height * self.scale) < max_height {
             new_translation.y = max_height - (total_height * self.scale);
         }
+        self.translation = new_translation;
 
+        if cfg!(feature = "debug") {
+            self.debug_lines(
+                pointer_in_editor_space,
+                new_translation,
+                ui,
+                screen_hover_pos,
+                total_height,
+            );
+        }
+    }
+
+    fn debug_lines(
+        &mut self,
+        pointer_in_editor_space: Pos2,
+        new_translation: Vec2,
+        ui: &mut Ui,
+        screen_hover_pos: Pos2,
+        total_height: f32,
+    ) {
         let pointer_origin_scaled = pos2(125.0, 0.0);
         let pointer_translation_scaled =
             pos2(125.0, new_translation.y + (total_height * self.scale));
@@ -118,49 +138,43 @@ impl Transform {
             pointer_translation_scaled,
             Color32::LIGHT_YELLOW,
         );
-
-        self.translation = new_translation;
-        // debug lines
-        // {
-        //     let pointer_in_editor_space_clamped = pos2(1.0, pointer_in_editor_space.y);
-        //     let scaled = pointer_in_editor_space * self.scale;
-        //     let scaled_clamped = pos2(1.0, scaled.y);
-        //     let new_center_clamped = pos2(10.0, new_translation.y);
-        //     debug_dot(ui, pointer_in_editor_space_clamped, Color32::RED);
-        //     debug_dot(ui, scaled_clamped, Color32::LIGHT_BLUE);
-        //     debug_dot(ui, new_center_clamped, Color32::GREEN);
-
-        //     let editor_origin = pos2(150.0, 0.0);
-        //     let editor_translation = pos2(150.0, self.translation.y);
-        //     debug_line(ui, editor_origin, editor_translation, Color32::RED);
-        //     let pointer_origin_before_scaling = pos2(200.0, 0.0);
-        //     let pointer_translation_before_scaling = pos2(200.0, pointer_in_editor_space.y);
-        //     debug_line(
-        //         ui,
-        //         pointer_origin_before_scaling,
-        //         pointer_translation_before_scaling,
-        //         Color32::GREEN,
-        //     );
-        //     let pointer_origin_scaled = pos2(125.0, 0.0);
-        //     let pointer_translation_scaled = pos2(125.0, pointer_in_editor_space.y * self.scale);
-        //     debug_line(
-        //         ui,
-        //         pointer_origin_scaled,
-        //         pointer_translation_scaled,
-        //         Color32::LIGHT_YELLOW,
-        //     );
-        //     let transform_offset_origin = pos2(175.0, self.translation.y);
-        //     let transform_offset = pos2(
-        //         175.0,
-        //         screen_hover_pos.y + (pointer_in_editor_space.y * self.scale),
-        //     );
-        //     debug_line(
-        //         ui,
-        //         transform_offset_origin,
-        //         transform_offset,
-        //         Color32::from_rgb(255, 0, 255),
-        //     );
-        // }
+        let pointer_in_editor_space_clamped = pos2(1.0, pointer_in_editor_space.y);
+        let scaled = pointer_in_editor_space * self.scale;
+        let scaled_clamped = pos2(1.0, scaled.y);
+        let new_center_clamped = pos2(10.0, new_translation.y);
+        debug_dot(ui, pointer_in_editor_space_clamped, Color32::RED);
+        debug_dot(ui, scaled_clamped, Color32::LIGHT_BLUE);
+        debug_dot(ui, new_center_clamped, Color32::GREEN);
+        let editor_origin = pos2(150.0, 0.0);
+        let editor_translation = pos2(150.0, self.translation.y);
+        debug_line(ui, editor_origin, editor_translation, Color32::RED);
+        let pointer_origin_before_scaling = pos2(200.0, 0.0);
+        let pointer_translation_before_scaling = pos2(200.0, pointer_in_editor_space.y);
+        debug_line(
+            ui,
+            pointer_origin_before_scaling,
+            pointer_translation_before_scaling,
+            Color32::GREEN,
+        );
+        let pointer_origin_scaled = pos2(125.0, 0.0);
+        let pointer_translation_scaled = pos2(125.0, pointer_in_editor_space.y * self.scale);
+        debug_line(
+            ui,
+            pointer_origin_scaled,
+            pointer_translation_scaled,
+            Color32::LIGHT_YELLOW,
+        );
+        let transform_offset_origin = pos2(175.0, self.translation.y);
+        let transform_offset = pos2(
+            175.0,
+            screen_hover_pos.y + (pointer_in_editor_space.y * self.scale),
+        );
+        debug_line(
+            ui,
+            transform_offset_origin,
+            transform_offset,
+            Color32::from_rgb(255, 0, 255),
+        );
     }
 
     /// Convert a position in the frame to a value in the bounds.
@@ -297,14 +311,9 @@ impl<'c> NoteEditor<'c> {
         }
 
         let zoom_button = PointerButton::Secondary;
-        if let Some(hover_pos) =
-            // response.contains_pointer,
-            ui.input(|i| i.pointer.hover_pos())
-        {
+        if let Some(hover_pos) = ui.input(|i| i.pointer.hover_pos()) {
             if response.dragged_by(zoom_button) {
                 let zoom_delta = ui.input(|input| input.pointer.delta());
-                let zoom_factor = zoom_delta.x;
-
                 state
                     .transform
                     .zoom(zoom_delta, hover_pos, ui, editor_rect, state.step_size);
@@ -320,12 +329,6 @@ impl<'c> NoteEditor<'c> {
     fn draw_lanes(&self, ui: &mut Ui, step_size: f32, rect: Rect, transform: Transform) {
         let mut lines = Vec::new();
         let scaled_step_size = step_size * transform.scale;
-
-        // let visible_min = transform.inverse_apply(rect.min);
-        // let visible_max = transform.inverse_apply(rect.max);
-
-        // let start_step = (visible_min.y / step_size).floor() as i32;
-        // let end_step = (visible_max.y / step_size).ceil() as i32;
 
         let start_step = 0;
         let end_step = 127;
