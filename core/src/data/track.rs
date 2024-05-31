@@ -76,7 +76,7 @@ impl Track {
         // test events
         let mut event_list = EventList::new();
         for i in 0..8 {
-            let event_block = EventSegment::new_midi(Tick::from(i * 480 as u32), 120, 38, 64);
+            let event_block = EventSegment::new_midi(Tick::from(i * 480_u32), 120, 38, 64);
             event_list.add_event_block(event_block);
         }
 

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 /// bits for midi note on message
 pub const NOTE_ON_MSG: u8 = 0x90;
 
@@ -16,14 +18,15 @@ impl DataId {
         DataId(uuid::Uuid::new_v4())
     }
 
-    /// convert into a string
-    pub fn to_string(&self) -> String {
-        self.0.to_string()
-    }
-
     /// get as a slice of bytes
     pub fn as_bytes(&self) -> &[u8; 16] {
         self.0.as_bytes()
+    }
+}
+
+impl Display for DataId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0.to_string())
     }
 }
 

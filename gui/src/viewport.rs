@@ -13,13 +13,17 @@ use hexencer_core::data::DataLayer;
 use hexencer_engine::{SequencerCommand, SequencerSender};
 use std::sync::{Arc, Mutex};
 
+/// main hexencer viewport/ui
 #[derive(Default)]
 pub struct MainViewport {
+    /// a reference to the data layer, this the the main way to interact with the data
     data_layer: Arc<std::sync::Mutex<DataLayer>>,
+    /// use this to send commands to the sequencer
     sequencer_sender: Option<SequencerSender>,
 }
 
 impl MainViewport {
+    /// create a new instance of the main viewport
     pub fn new(data_layer: Arc<Mutex<DataLayer>>, sender: SequencerSender) -> Self {
         Self {
             data_layer,
@@ -27,6 +31,7 @@ impl MainViewport {
         }
     }
 
+    /// builds the track headers list
     fn track_header_list(&mut self, ui: &mut Ui) {
         ui.vertical(|ui| {
             let track_ids: Vec<usize> = self
@@ -45,6 +50,7 @@ impl MainViewport {
         });
     }
 
+    /// builds the track manager control ui
     fn track_manager_controls(&mut self, ui: &mut Ui) {
         if ui.button("add track").clicked() {
             self.data_layer.lock().unwrap().project_manager.add_track();
@@ -58,24 +64,26 @@ impl MainViewport {
         }
     }
 
+    /// builds the sequencer control ui
     fn sequencer_controls(&mut self, ui: &mut Ui) {
         if ui.button("play").clicked() {
-            self.sequencer_sender.as_mut().map(|sender| {
+            if let Some(sender) = self.sequencer_sender.as_mut() {
                 let _ = sender.send(SequencerCommand::Play);
-            });
+            }
         }
         if ui.button("stop").clicked() {
-            self.sequencer_sender.as_mut().map(|sender| {
+            if let Some(sender) = self.sequencer_sender.as_mut() {
                 let _ = sender.send(SequencerCommand::Stop);
-            });
+            }
         }
         if ui.button("reset").clicked() {
-            self.sequencer_sender.as_mut().map(|sender| {
+            if let Some(sender) = self.sequencer_sender.as_mut() {
                 let _ = sender.send(SequencerCommand::Reset);
-            });
+            }
         }
     }
 
+    /// builds the note editor ui
     fn editor_ui(&mut self, ui: &mut Ui) {
         let state = GuiState::load(ui);
         if let Some(selected_clip_id) = state.selected_clip {
@@ -108,7 +116,7 @@ impl eframe::App for MainViewport {
         });
         egui::TopBottomPanel::bottom("statusbar").show(ctx, |ui| {
             let current_tick = self.data_layer.lock().unwrap().get_tick();
-            ui.label(&format!("{}", &current_tick.as_time()));
+            ui.label(&current_tick.as_time().to_string());
         });
 
         egui::SidePanel::left("tracks")
@@ -164,19 +172,15 @@ impl eframe::App for MainViewport {
                 let text_color = Color32::RED;
                 let galley = ctx.fonts(|f| {
                     f.layout(
-                        String::from({
+                        {
                             let available_width = ui.available_width();
                             let size_of_beat = available_width / BEAT_WIDTH;
-
                             let ui_position = ui.max_rect().min;
                             let ui_size = ui.max_rect().size();
-
                             let ui_mouse_pos =
                                 (ctx_pos.x - ui_position.x, ctx_pos.y - ui_position.y);
-
                             let test = available_width / size_of_beat;
-
-                            let output_text = if ui_mouse_pos.0 >= 0.0
+                            if ui_mouse_pos.0 >= 0.0
                                 && ui_mouse_pos.0 <= ui_size.x
                                 && ui_mouse_pos.1 >= 0.0
                                 && ui_mouse_pos.1 <= ui_size.y
@@ -184,10 +188,8 @@ impl eframe::App for MainViewport {
                                 format!("{:?} - {:?}", ui_mouse_pos.0, ui_mouse_pos.0 / test)
                             } else {
                                 String::from("out of bounds")
-                            };
-
-                            output_text
-                        }),
+                            }
+                        },
                         font_id,
                         text_color,
                         10000.0,
@@ -229,6 +231,7 @@ impl eframe::App for MainViewport {
     }
 }
 
+/// builds gui for the track header
 fn track_header(ui: &mut Ui, id: usize) {
     let mut frame = egui::Frame::none().fill(TRACK_HEADER_COLOR);
     frame.inner_margin = Margin::ZERO;
@@ -253,6 +256,7 @@ fn track_header(ui: &mut Ui, id: usize) {
     });
 }
 
+/// builds the port selector ui widget
 fn port_selector(
     ui: &mut Ui,
     text_input_rect: Vec2,
@@ -278,6 +282,7 @@ fn port_selector(
     }
 }
 
+/// builds the channel selector ui widget
 fn channel_selector(
     data_layer: Arc<Mutex<DataLayer>>,
     index: usize,

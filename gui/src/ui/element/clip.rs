@@ -1,10 +1,12 @@
 use crate::memory::GuiState;
 use egui::layers::ShapeIdx;
-use egui::{emath::*, epaint, Color32, Order, Response, Rounding, Sense, Shape, Stroke};
+use egui::{emath::*, epaint, Color32, Response, Rounding, Sense, Shape, Stroke};
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
 use hexencer_core::{DataId, Tick};
 
+/// default clip length for painting
 pub const DEFAULT_CLIP_WIDTH: f32 = 96.0;
+/// beat width in the viewport, used for creating the lines in the arranger
 pub const BEAT_WIDTH: f32 = 24.0;
 
 /// create a new 'clip' and returns it's 'Response'
@@ -14,8 +16,10 @@ pub fn clip(ctx: &Context, ui: &mut Ui, id: crate::DataId, tick: Tick) -> Respon
     clip.show(ctx, ui)
 }
 
+/// state of the 'ClipWidget'
 #[derive(Clone, Copy, Debug)]
 struct State {
+    /// current position of the clip, used for movement interaction
     pub pivot_pos: Pos2,
 }
 
@@ -23,14 +27,17 @@ struct State {
 #[must_use = "You should call .show()"]
 #[derive(Clone, Copy, Debug)]
 pub struct ClipWidget {
+    /// data id of the clip, used as id by datalayer
     data_id: DataId,
+    /// egui id of this clip widget
     id: Id,
+    /// if this clip is active
     active: bool,
-    _pos: Option<Pos2>,
-    _order: Order,
+    /// current clip offset on the track
     offset: f32,
 }
 
+/// quantize a value to a step size
 fn quantize(x: f32, initial: f32, step_size: u32) -> f32 {
     initial + ((x - initial) / step_size as f32).floor() * step_size as f32
 }
@@ -45,8 +52,6 @@ impl ClipWidget {
             data_id,
             id,
             active: true,
-            _pos: None,
-            _order: Order::Middle,
             offset,
         }
     }
@@ -54,10 +59,10 @@ impl ClipWidget {
     /// renders this element and returns the 'Response'
     pub fn show(self, ctx: &Context, ui: &mut Ui) -> Response {
         let prepared = self.begin(ctx, ui);
-        let response = prepared.end(ui);
-        response
+        prepared.end(ui)
     }
 
+    /// begin building the clip widget
     fn begin(self, ctx: &Context, ui: &mut Ui) -> Prepared {
         let where_to_put_background = ui.painter().add(Shape::Noop);
 
@@ -113,32 +118,45 @@ impl ClipWidget {
         }
     }
 
+    /// paint this clip widget
     fn paint(&self, paint_rect: Rect, fill_color: Color32) -> Shape {
-        let shape = Shape::Rect(epaint::RectShape::new(
+        Shape::Rect(epaint::RectShape::new(
             paint_rect,
             Rounding::ZERO,
             fill_color,
             Stroke::new(1.0, egui::Color32::BLACK),
-        ));
-        shape
+        ))
     }
 }
 
+/// intermediate struct used to build the 'ClipWidget'
 pub struct Prepared {
+    /// clip widget to be built
     pub clip: ClipWidget,
+    /// whether the clip is active or not
     active: bool,
+    /// used to prevent a glicht in egui causing the first frame to flicker, not actively used atm i think
     temporarily_invisible: bool,
+    /// used to constraint movement
     constrain_rect: Rect,
+    /// response from the clip widget
     move_response: Response,
+    /// rect of this clip
     rect: Rect,
+    /// inner ui
     content_ui: Ui,
+    /// state of this clip
     state: State,
+    /// placeholder for painting in the background color
     where_to_put_background: ShapeIdx,
 }
 
 impl Prepared {
+    /// ends building the widget
     fn end(self, ui: &mut Ui) -> egui::Response {
+        /// color for selected clips
         const SELECTED_COLOR: egui::Color32 = egui::Color32::from_rgb(255, 0, 0);
+        /// default clip color
         const DEFAULT_COLOR: egui::Color32 = egui::Color32::from_rgb(0, 255, 0);
 
         let clip_color = match GuiState::load(ui).selected_clip {
@@ -149,6 +167,7 @@ impl Prepared {
         self.move_response
     }
 
+    /// paints this clip widget
     fn paint(&self, ui: &Ui, fill_color: Color32) {
         let paint_rect = self.rect;
         if ui.is_rect_visible(paint_rect) {

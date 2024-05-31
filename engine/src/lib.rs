@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![deny(clippy::missing_docs_in_private_items)]
 #![allow(dead_code)]
 
 //! houses the midi engine
@@ -32,11 +33,17 @@ pub enum SequencerCommand {
 /// the 'Sequencer' keep track of the tick and processes events ensuring they are sent to the right engine
 #[derive(Default)]
 pub struct Sequencer {
+    /// the data layer, used to store and retreive projects, etc
     data_layer: Arc<Mutex<DataLayer>>,
+    /// use this to send commands to the midi engine, like playing a note
     midi_engine_sender: Option<MidiEngineSender>,
+    /// current bpm of the sequencer
     bpm: f64,
+    /// parts per quarter note, how many ticks per beat
     ppqn: u32,
+    /// true if the sequencer is running
     running: Arc<Mutex<bool>>,
+    /// current tick, position of the playhead
     current_tick: Tick,
 }
 
@@ -53,11 +60,11 @@ impl Sequencer {
         }
     }
 
+    /// calculate the duration of a tick
     fn tick_duration(&self) -> u64 {
         let beat_duration = 60.0 / self.bpm;
         let tick_duration = (beat_duration / self.ppqn as f64) * 1000.0;
-        let duration = (tick_duration * 1000.0) as u64;
-        duration
+        (tick_duration * 1000.0) as u64
     }
 
     /// starts listening for and processing commands
@@ -94,28 +101,31 @@ impl Sequencer {
         }
     }
 
+    /// sends stop signals to both midi ports
     fn stop(&mut self) {
         *self.running.lock().unwrap() = false;
 
-        self.midi_engine_sender
-            .as_mut()
-            .map(|sender| sender.send((MidiMessage::AllNoteOff, 0, 0)).unwrap());
-        self.midi_engine_sender
-            .as_mut()
-            .map(|sender| sender.send((MidiMessage::AllNoteOff, 0, 0)).unwrap());
+        if let Some(sender) = self.midi_engine_sender.as_mut() {
+            sender.send((MidiMessage::AllNoteOff, 0, 0)).unwrap()
+        }
+        if let Some(sender) = self.midi_engine_sender.as_mut() {
+            sender.send((MidiMessage::AllNoteOff, 0, 0)).unwrap()
+        }
     }
 
+    /// start playing the sequencer
     fn play(&mut self) {
         *self.running.lock().unwrap() = true;
     }
 
+    /// process events at the current tick, sending them to the midi engine
     fn process_events(&mut self) {
         let tracks = &self.data_layer.lock().unwrap().project_manager.tracks;
 
         for track in tracks.iter() {
             if let Some(event_entry) = track.event_list.get(&self.current_tick) {
                 for event in event_entry.iter() {
-                    let event_type = event.inner.clone();
+                    let event_type = event.inner;
                     tracing::info!("{} - {}", track, event_type);
 
                     if event.active {

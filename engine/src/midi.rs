@@ -9,9 +9,10 @@ pub type MidiEngineReceiver = tokio::sync::mpsc::UnboundedReceiver<(MidiMessage,
 /// reponsible for setting up midi connections, and sending, receiving, midi requests from them
 #[derive(Default)]
 pub struct MidiEngine {
+    /// midi output connection 1
     conn_out: Option<midir::MidiOutputConnection>,
+    /// midi output connection 2
     conn_out2: Option<midir::MidiOutputConnection>,
-    _running: bool,
 }
 
 impl MidiEngine {
@@ -49,10 +50,10 @@ impl MidiEngine {
         Self {
             conn_out: con1,
             conn_out2: con2,
-            _running: false,
         }
     }
 
+    /// sends a midi message to the midi port
     async fn play(&mut self, message: &MidiMessage, port: u8, channel: u8) {
         match port {
             0 => {
