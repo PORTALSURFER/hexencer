@@ -150,15 +150,15 @@ impl<'c> NoteEditorWidget<'c> {
         for (tick, events) in self.clip.events.iter() {
             for event in events {
                 let note_lane = event.get_key();
-                let note_length = event.get_note_end();
+                let note_end_tick = event.get_end();
                 clip_note(
                     note_lane,
                     ui,
                     scaled_step_size,
                     transform,
-                    tick,
+                    *tick,
+                    note_end_tick,
                     editor_rect,
-                    note_length,
                 );
             }
         }
@@ -254,15 +254,18 @@ fn clip_note(
     ui: &mut Ui,
     height: f32,
     transform: Transform,
-    tick: &Tick,
+    tick: Tick,
+    tick_end_tick: Tick,
     editor_rect: Rect,
-    note_length: f32,
 ) {
     let step_pos = note_lane as f32 * height;
     let lane_offset = transform.apply(Pos2::new(step_pos, step_pos));
     let note_offset = editor_rect.min.x + ((tick.as_f32() / 480.0) * BEAT_WIDTH);
     let origin = pos2(note_offset, lane_offset.y);
-    let target = pos2(note_offset + note_length, lane_offset.y + height);
+    let target = pos2(
+        note_offset + ((tick_end_tick.as_f32() / 480.0) * BEAT_WIDTH),
+        lane_offset.y + height,
+    );
     let rect = Rect::from_two_pos(origin, target);
 
     let fill_color = Color32::from_rgb(97, 255, 219);

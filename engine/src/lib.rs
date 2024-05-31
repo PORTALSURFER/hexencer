@@ -125,10 +125,10 @@ impl Sequencer {
         for track in tracks.iter() {
             if let Some(event_entry) = track.event_list.get(&self.current_tick) {
                 for event in event_entry.iter() {
-                    let event_type = event.inner;
+                    let event_type = event.event_type;
                     tracing::info!("{} - {}", track, event_type);
 
-                    if event.active {
+                    if event.is_active {
                         let message = event_type.get_message();
                         let instrument = &track.instrument;
                         self.midi_engine_sender.as_mut().map(|sender| {
