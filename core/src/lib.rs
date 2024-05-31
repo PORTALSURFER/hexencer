@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![deny(clippy::missing_docs_in_private_items)]
 #![allow(dead_code)]
 
 //! represents elements without clear goal
@@ -36,10 +37,7 @@ impl Tick {
         let seconds = duration.as_secs() % 60;
         let milliseconds = duration.subsec_millis();
 
-        String::from(format!(
-            "{}:{}:{}",
-            minutes as u32, seconds as u32, milliseconds as u32,
-        ))
+        format!("{}:{}:{}", minutes as u32, seconds as u32, milliseconds,)
     }
 
     /// turns this 'Tick' into a more human readable beat
@@ -49,7 +47,7 @@ impl Tick {
 
     /// move the tick one step forward in time
     pub fn tick(&mut self) {
-        self.0 = self.0 + 1;
+        self.0 += 1;
     }
 
     /// created a zero tick
@@ -64,7 +62,7 @@ impl Tick {
 
     /// adds an offset to this 'Tick'
     fn offset(mut self, length: u32) -> Self {
-        self.0 = self.0 + length as u64;
+        self.0 += length as u64;
         self
     }
 

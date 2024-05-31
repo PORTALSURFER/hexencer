@@ -1,6 +1,10 @@
+/// clip widget
 mod clip;
+/// note editor widget
 mod note_editor;
+/// timeline widget
 mod timeline;
+/// track widget
 mod track;
 
 pub use clip::*;

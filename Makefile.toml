@@ -7,7 +7,7 @@ args = ["clean", "--doc"]
 
 [tasks.doc_gen]
 command = "cargo"
-args = ["doc", "--no-deps", "--open"]
+args = ["doc", "--no-deps", "--document-private-items", "--open"]
 
 [tasks.doc]
 dependencies = [

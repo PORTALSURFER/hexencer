@@ -5,7 +5,6 @@ use crate::{
 use egui::{layers::ShapeIdx, Color32, Ui};
 use hexencer_core::{data::DataLayer, Tick};
 use std::sync::{Arc, Mutex};
-pub const SELECTED_CLIP: &'static str = "selected_clip";
 
 /// creates a new track ui element
 pub fn track(
@@ -45,12 +44,14 @@ pub fn track(
 /// gui representation of track
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[must_use = "You should call .show()"]
-pub struct Track {
+pub struct TrackWidget {
+    /// draw height out the track
     height: f32,
+    /// color used to paint the track
     fill: Color32,
 }
 
-impl Track {
+impl TrackWidget {
     /// creates a new track widget
     pub fn new() -> Self {
         Self::default()
@@ -63,8 +64,12 @@ impl Track {
     }
 }
 
+/// intermediate type housing the prepared trackwidget before painting
 struct Prepared {
-    track: Track,
+    /// reference to the track widget this object represents
+    track: TrackWidget,
+    /// placeholder for the background shape
     where_to_put_background: ShapeIdx,
+    /// inner ui
     content_ui: Ui,
 }

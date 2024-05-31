@@ -33,6 +33,7 @@ impl MidiMessage {
         }
     }
 
+    /// get the key/note of this message
     pub(crate) fn get_key(&self) -> u8 {
         match self {
             MidiMessage::NoteOn { key, .. } => *key,
@@ -60,7 +61,7 @@ impl Display for MidiMessage {
             MidiMessage::NoteOff { key, velocity } => {
                 f.write_str(&format!("[note_off]key:{}, velocity:{}", key, velocity))
             }
-            MidiMessage::AllNoteOff => f.write_str(&format!("[global_note_off]")),
+            MidiMessage::AllNoteOff => f.write_str("[global_note_off]"),
         }
     }
 }
