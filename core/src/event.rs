@@ -30,6 +30,11 @@ impl Event {
             EventType::Midi(midi_message) => midi_message.get_key(),
         }
     }
+
+    /// get the end of this note event, TODO conflic with EventSegment which also has note end
+    pub fn get_note_end(&self) -> f32 {
+        96.0
+    }
 }
 
 /// event type
