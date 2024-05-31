@@ -5,6 +5,7 @@ use egui::{
     lerp, pos2, Color32, FontId, Id, LayerId, Order, PointerButton, Pos2, Rect, Response, Rounding,
     Sense, Shape, Stroke, Ui,
 };
+use tracing::instrument::WithSubscriber;
 
 use self::transform::Transform;
 use hexencer_core::{data::Clip, Tick};
@@ -103,27 +104,6 @@ impl<'c> NoteEditorWidget<'c> {
         ui.painter().add(shape);
         let response = ui.allocate_rect(editor_rect, Sense::drag());
 
-        // let note_height = state.step_size;
-        // for (tick, events) in self.clip.events.iter() {
-        //     for event in events.iter() {
-        //         let key = event.get_key();
-        //         let editor_rect = ui.available_rect_before_wrap();
-        //         let pos = Pos2::new(
-        //             editor_rect.min.x + tick,
-        //             editor_rect.min.y - (key as f32 * EDITOR_NOTE_HEIGHT),
-        //         );
-        //         // clip_note(, ui, note_height, state.transform, tick);
-        //     }
-        // }
-
-        // if response.drag_started_by(egui::PointerButton::Primary) {
-        //     let mouse_pos = if let Some(mouse_pos) = ui.input(|i| i.pointer.hover_pos()) {
-        //         mouse_pos
-        //     } else {
-        //         Pos2::new(0.0, 0.0)
-        //     };
-        // }
-
         let zoom_button = PointerButton::Secondary;
         if let Some(hover_pos) = ui.input(|i| i.pointer.hover_pos()) {
             if response.dragged_by(zoom_button) {
@@ -169,13 +149,8 @@ impl<'c> NoteEditorWidget<'c> {
 
         for (tick, events) in self.clip.events.iter() {
             for event in events {
-                // tracing::info!("{} | {:?}", tick, event);
                 let note_lane = event.get_key();
-                // tracing::info!(
-                //     "note lane {} - step_size {}",
-                //     note_lane,
-                //     note_lane * scaled_step_size as u8
-                // );
+                let note_length = event.get_note_end();
                 clip_note(
                     note_lane,
                     ui,
@@ -183,6 +158,7 @@ impl<'c> NoteEditorWidget<'c> {
                     transform,
                     tick,
                     editor_rect,
+                    note_length,
                 );
             }
         }
@@ -280,12 +256,13 @@ fn clip_note(
     transform: Transform,
     tick: &Tick,
     editor_rect: Rect,
+    note_length: f32,
 ) {
     let step_pos = note_lane as f32 * height;
     let lane_offset = transform.apply(Pos2::new(step_pos, step_pos));
     let note_offset = editor_rect.min.x + ((tick.as_f32() / 480.0) * BEAT_WIDTH);
     let origin = pos2(note_offset, lane_offset.y);
-    let target = pos2(note_offset + 96.0, lane_offset.y + height);
+    let target = pos2(note_offset + note_length, lane_offset.y + height);
     let rect = Rect::from_two_pos(origin, target);
 
     let fill_color = Color32::from_rgb(97, 255, 219);
