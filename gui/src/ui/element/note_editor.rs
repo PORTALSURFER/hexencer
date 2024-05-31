@@ -3,8 +3,8 @@ use std::ops::RangeInclusive;
 use egui::{
     emath::Real,
     epaint::{self, CircleShape},
-    lerp, pos2, vec2, Color32, Id, LayerId, Order, PointerButton, Pos2, Rect, Response, Rounding,
-    Sense, Shape, Stroke, Ui, Vec2,
+    lerp, pos2, vec2, Color32, FontId, Id, LayerId, Order, PointerButton, Pos2, Rect, Response,
+    Rounding, Sense, Shape, Stroke, Ui, Vec2,
 };
 
 use crate::EDGE_COLOR;
@@ -30,7 +30,7 @@ impl EditorBounds {
         max: [f64::INFINITY; 2],
     };
 
-    fn zoom(&mut self, zoom_factor: Vec2, center: EditorPoint) {
+    fn box_zoom(&mut self, zoom_factor: Vec2, center: EditorPoint) {
         self.min[0] = center.x + (self.min[0] - center.x) / (zoom_factor.x as f64);
         self.max[0] = center.x + (self.max[0] - center.x) / (zoom_factor.x as f64);
         self.min[1] = center.y + (self.min[1] - center.y) / (zoom_factor.y as f64);
@@ -81,55 +81,69 @@ impl EditorPoint {
 }
 
 impl Transform {
-    fn zoom(&mut self, zoom_delta: f32, screen_hover_pos: Pos2, ui: &mut Ui) {
-        let zoom_rate = 0.001;
-        let zoom_delta = zoom_delta * zoom_rate;
-        let clamped_scale = (self.scale + zoom_delta).clamp(1.0, 1.5);
+    fn zoom(&mut self, zoom_delta: Vec2, screen_hover_pos: Pos2, ui: &mut Ui, rect: Rect) {
+        let min_height = rect.min.y;
+        let max_height = rect.max.y;
+
+        let zoom_rate = 0.002;
+        let zoom_delta_scaled_by_rate = zoom_delta * zoom_rate;
+        let clamped_scale = (self.scale + zoom_delta_scaled_by_rate.x).clamp(0.8, 4.0);
 
         let pointer_in_editor_space = (screen_hover_pos - self.translation) / self.scale;
         self.scale = clamped_scale;
 
-        let new_translation = screen_hover_pos - (pointer_in_editor_space * self.scale);
-        self.translation = vec2(self.translation.x, new_translation.y);
+        let mut new_translation = screen_hover_pos - (pointer_in_editor_space * self.scale);
+        new_translation.y += zoom_delta.y * self.scale;
 
-        let pointer_in_editor_space_clamped = pos2(1.0, pointer_in_editor_space.y);
-        let scaled = pointer_in_editor_space * self.scale;
-        let scaled_clamped = pos2(1.0, scaled.y);
-        let new_center_clamped = pos2(10.0, new_translation.y);
-        debug_dot(ui, pointer_in_editor_space_clamped, Color32::RED);
-        debug_dot(ui, scaled_clamped, Color32::LIGHT_BLUE);
-        debug_dot(ui, new_center_clamped, Color32::GREEN);
+        if new_translation.y >= min_height {
+            new_translation.y = min_height;
+        }
+        // } else if new_translation.y + (rect.height() * self.scale) > max_height {
+        //     new_translation.y = max_height - rect.height() * self.scale;
+        // }
 
-        let editor_origin = pos2(150.0, 0.0);
-        let editor_translation = pos2(150.0, self.translation.y);
-        debug_line(ui, editor_origin, editor_translation, Color32::RED);
-        let pointer_origin_before_scaling = pos2(200.0, 0.0);
-        let pointer_translation_before_scaling = pos2(200.0, pointer_in_editor_space.y);
-        debug_line(
-            ui,
-            pointer_origin_before_scaling,
-            pointer_translation_before_scaling,
-            Color32::GREEN,
-        );
-        let pointer_origin_scaled = pos2(125.0, 0.0);
-        let pointer_translation_scaled = pos2(125.0, pointer_in_editor_space.y * self.scale);
-        debug_line(
-            ui,
-            pointer_origin_scaled,
-            pointer_translation_scaled,
-            Color32::LIGHT_YELLOW,
-        );
-        let transform_offset_origin = pos2(175.0, self.translation.y);
-        let transform_offset = pos2(
-            175.0,
-            screen_hover_pos.y + (pointer_in_editor_space.y * self.scale),
-        );
-        debug_line(
-            ui,
-            transform_offset_origin,
-            transform_offset,
-            Color32::from_rgb(255, 0, 255),
-        );
+        self.translation = new_translation;
+        // debug lines
+        {
+            let pointer_in_editor_space_clamped = pos2(1.0, pointer_in_editor_space.y);
+            let scaled = pointer_in_editor_space * self.scale;
+            let scaled_clamped = pos2(1.0, scaled.y);
+            let new_center_clamped = pos2(10.0, new_translation.y);
+            debug_dot(ui, pointer_in_editor_space_clamped, Color32::RED);
+            debug_dot(ui, scaled_clamped, Color32::LIGHT_BLUE);
+            debug_dot(ui, new_center_clamped, Color32::GREEN);
+
+            let editor_origin = pos2(150.0, 0.0);
+            let editor_translation = pos2(150.0, self.translation.y);
+            debug_line(ui, editor_origin, editor_translation, Color32::RED);
+            let pointer_origin_before_scaling = pos2(200.0, 0.0);
+            let pointer_translation_before_scaling = pos2(200.0, pointer_in_editor_space.y);
+            debug_line(
+                ui,
+                pointer_origin_before_scaling,
+                pointer_translation_before_scaling,
+                Color32::GREEN,
+            );
+            let pointer_origin_scaled = pos2(125.0, 0.0);
+            let pointer_translation_scaled = pos2(125.0, pointer_in_editor_space.y * self.scale);
+            debug_line(
+                ui,
+                pointer_origin_scaled,
+                pointer_translation_scaled,
+                Color32::LIGHT_YELLOW,
+            );
+            let transform_offset_origin = pos2(175.0, self.translation.y);
+            let transform_offset = pos2(
+                175.0,
+                screen_hover_pos.y + (pointer_in_editor_space.y * self.scale),
+            );
+            debug_line(
+                ui,
+                transform_offset_origin,
+                transform_offset,
+                Color32::from_rgb(255, 0, 255),
+            );
+        }
     }
 
     /// Convert a position in the frame to a value in the bounds.
@@ -265,15 +279,15 @@ impl<'c> NoteEditor<'c> {
         }
 
         let zoom_button = PointerButton::Secondary;
-        if let (true, Some(hover_pos)) = (
-            response.contains_pointer,
-            ui.input(|i| i.pointer.hover_pos()),
-        ) {
+        if let Some(hover_pos) =
+            // response.contains_pointer,
+            ui.input(|i| i.pointer.hover_pos())
+        {
             if response.dragged_by(zoom_button) {
                 let zoom_delta = ui.input(|input| input.pointer.delta());
                 let zoom_factor = zoom_delta.x;
 
-                state.transform.zoom(zoom_factor, hover_pos, ui);
+                state.transform.zoom(zoom_delta, hover_pos, ui, editor_rect);
             }
         }
 
@@ -291,24 +305,51 @@ impl<'c> NoteEditor<'c> {
         // let visible_max = transform.inverse_apply(rect.max);
 
         // let start_step = (visible_min.y / step_size).floor() as i32;
-        let start_step = 0;
         // let end_step = (visible_max.y / step_size).ceil() as i32;
+
+        let start_step = 0;
         let end_step = 127;
 
         for current_step in start_step..=end_step {
             let step_pos = current_step as f32 * scaled_step_size;
             let screen_pos = transform.apply(Pos2::new(step_pos, step_pos));
 
-            if rect.contains(screen_pos) {
-                let origin = pos2(rect.min.x, screen_pos.y);
-                let target = pos2(rect.max.y, screen_pos.y);
-                let line =
-                    epaint::Shape::line_segment([origin, target], Stroke::new(1.0, Color32::RED));
-                lines.push(line);
-            }
+            let origin = pos2(rect.min.x, screen_pos.y);
+            let target = pos2(rect.max.y, screen_pos.y);
+            let line =
+                epaint::Shape::line_segment([origin, target], Stroke::new(1.0, Color32::RED));
+            lines.push(line);
+            line_number(ui, origin, current_step);
         }
         ui.painter().extend(lines);
     }
+}
+
+fn line_number(ui: &mut Ui, pos: Pos2, num: i32) {
+    let font_id = FontId::monospace(12.0);
+    let text_color = Color32::RED;
+    let galley = ui.fonts(|f| {
+        f.layout(
+            String::from({
+                let output_text = format!("note {}", num);
+                output_text
+            }),
+            font_id,
+            text_color,
+            10000.0,
+        )
+    });
+    let underline = Stroke::NONE;
+    let fallback_color = Color32::BLUE;
+    ui.painter().add(epaint::TextShape {
+        pos,
+        galley,
+        underline,
+        fallback_color,
+        override_text_color: None,
+        opacity_factor: 1.0,
+        angle: 0.0,
+    });
 }
 
 // this is box zooming, draw a rectangle around the area you want to zoom into to focus in on it
