@@ -1,8 +1,14 @@
+/// clip data object
 mod clip;
+/// common objects
 mod common;
+/// the midi event objects
 mod midi_event;
+/// the midi message object
 mod midi_message;
+/// the project data object
 mod project;
+/// the track data object
 mod track;
 
 pub use clip::Clip;
@@ -12,12 +18,13 @@ pub use midi_message::MidiMessage;
 /// event list
 pub mod event_list;
 
-use self::project::ProjectManager;
+use self::project::Project;
 use crate::{instrument::Instrument, Tick};
 
 /// holds state of the editor, like note editor or automation editor modes.
 #[derive(Default, Debug)]
 pub struct EditorState {
+    /// data id of the selected clip, so it can be found later
     selected_clip: DataId,
 }
 
@@ -25,9 +32,11 @@ pub struct EditorState {
 #[derive(Default, Debug)]
 pub struct DataLayer {
     /// interface for loading and storing projects
-    pub project_manager: ProjectManager,
+    pub project_manager: Project,
     /// represents the current state of the editor, like note editor or automation editor modes.
     pub editor_state: EditorState,
+    /// current tick passed to data layer to give the gui access to it, originally in the sequencer
+    /// TODO needs cleanup
     tick: Tick,
 }
 
@@ -55,5 +64,6 @@ impl DataLayer {
 /// keeps track and manages all instruments
 #[derive(Default, Debug)]
 pub struct InstrumentManager {
+    /// inner list of instruments managed
     inner: Vec<Instrument>,
 }

@@ -8,6 +8,7 @@ use crate::{
 /// They house things like notes and automation data
 #[derive(Default, Debug)]
 pub struct Clip {
+    /// id used to identify data objects
     id: DataId,
     /// visual name of the clip
     pub name: String,

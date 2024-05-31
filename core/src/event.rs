@@ -6,6 +6,7 @@ use std::fmt::Display;
 /// wraps events
 #[derive(Debug, Clone, Copy)]
 pub struct Event {
+    /// id of this event
     id: DataId,
     /// type of this event
     pub inner: EventType,

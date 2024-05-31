@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 use super::{midi_message::MidiMessage, DataId};
 
+/// type used by the eventlist, stores events based on tick
 type EventListType = BTreeMap<Tick, Vec<Event>>;
 
 /// a list of events, keyed by their `Tick`
@@ -65,8 +66,11 @@ impl EventList {
 
 /// represents a block defined by a starting and ending 'Event'
 pub struct EventSegment {
+    /// id used by the data layer
     id: DataId,
+    /// start event of this segment, note on
     start: (Tick, EventType),
+    /// end event of this segment, note off
     end: (Tick, EventType),
 }
 
