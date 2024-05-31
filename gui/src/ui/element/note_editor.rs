@@ -1,14 +1,14 @@
-use std::ops::RangeInclusive;
-
+use crate::EDGE_COLOR;
 use egui::{
     emath::Real,
     epaint::{self, CircleShape},
-    lerp, pos2, Color32, FontId, Id, LayerId, Order, PointerButton, Pos2, Rect, Response, Rounding,
-    Sense, Stroke, Ui, Vec2,
+    lerp, pos2, vec2, Color32, FontId, Id, LayerId, Order, PointerButton, Pos2, Rect, Response,
+    Rounding, Sense, Shape, Stroke, Ui, Vec2,
 };
+use hexencer_core::{data::Clip, Tick};
+use std::ops::RangeInclusive;
 
-use crate::EDGE_COLOR;
-use hexencer_core::data::Clip;
+use super::BEAT_WIDTH;
 
 const EDITOR_NOTE_HEIGHT: f32 = 8.0;
 
@@ -288,29 +288,26 @@ impl<'c> NoteEditorWidget<'c> {
         ui.painter().add(shape);
         let response = ui.allocate_rect(editor_rect, Sense::drag());
 
-        let note_height = state.step_size;
-        for (tick, events) in self.clip.events.iter() {
-            for event in events.iter() {
-                let tick = tick.as_f32();
-                let key = event.get_key();
-                let editor_rect = ui.available_rect_before_wrap();
-                let pos = Pos2::new(
-                    editor_rect.min.x + tick,
-                    editor_rect.min.y - (key as f32 * EDITOR_NOTE_HEIGHT),
-                );
+        // let note_height = state.step_size;
+        // for (tick, events) in self.clip.events.iter() {
+        //     for event in events.iter() {
+        //         let key = event.get_key();
+        //         let editor_rect = ui.available_rect_before_wrap();
+        //         let pos = Pos2::new(
+        //             editor_rect.min.x + tick,
+        //             editor_rect.min.y - (key as f32 * EDITOR_NOTE_HEIGHT),
+        //         );
+        //         // clip_note(, ui, note_height, state.transform, tick);
+        //     }
+        // }
 
-                clip_note(pos, ui, note_height);
-            }
-        }
-
-        if response.drag_started_by(egui::PointerButton::Primary) {
-            let mouse_pos = if let Some(mouse_pos) = ui.input(|i| i.pointer.hover_pos()) {
-                mouse_pos
-            } else {
-                Pos2::new(0.0, 0.0)
-            };
-            clip_note(mouse_pos, ui, note_height);
-        }
+        // if response.drag_started_by(egui::PointerButton::Primary) {
+        //     let mouse_pos = if let Some(mouse_pos) = ui.input(|i| i.pointer.hover_pos()) {
+        //         mouse_pos
+        //     } else {
+        //         Pos2::new(0.0, 0.0)
+        //     };
+        // }
 
         let zoom_button = PointerButton::Secondary;
         if let Some(hover_pos) = ui.input(|i| i.pointer.hover_pos()) {
@@ -322,13 +319,20 @@ impl<'c> NoteEditorWidget<'c> {
             }
         }
 
-        self.draw_lanes(ui, state.step_size, editor_rect, state.transform);
+        self.draw_note_lanes(ui, state.step_size, editor_rect, state.transform);
+        self.draw_beat_columns(ui, editor_rect);
 
         state.store(ui, id);
         response
     }
 
-    fn draw_lanes(&self, ui: &mut Ui, step_size: f32, rect: Rect, transform: Transform) {
+    fn draw_note_lanes(
+        &self,
+        ui: &mut Ui,
+        step_size: f32,
+        editor_rect: Rect,
+        transform: Transform,
+    ) {
         let mut lines = Vec::new();
         let scaled_step_size = step_size * transform.scale;
 
@@ -337,16 +341,50 @@ impl<'c> NoteEditorWidget<'c> {
 
         for current_step in start_step..=end_step {
             let step_pos = current_step as f32 * scaled_step_size;
-            let screen_pos = transform.apply(Pos2::new(step_pos, step_pos));
+            let lane_offset = transform.apply(Pos2::new(step_pos, step_pos));
 
-            let origin = pos2(rect.min.x, screen_pos.y);
-            let target = pos2(rect.max.x, screen_pos.y);
+            let origin = pos2(editor_rect.min.x, lane_offset.y);
+            let target = pos2(editor_rect.max.x, lane_offset.y);
             let line =
                 epaint::Shape::line_segment([origin, target], Stroke::new(1.0, Color32::RED));
             lines.push(line);
             line_number(ui, origin, current_step);
         }
+
+        for (tick, events) in self.clip.events.iter() {
+            for event in events {
+                // tracing::info!("{} | {:?}", tick, event);
+                let note_lane = event.get_key();
+                // tracing::info!(
+                //     "note lane {} - step_size {}",
+                //     note_lane,
+                //     note_lane * scaled_step_size as u8
+                // );
+                clip_note(
+                    note_lane,
+                    ui,
+                    scaled_step_size,
+                    transform,
+                    &tick,
+                    editor_rect,
+                );
+            }
+        }
+
         ui.painter().extend(lines);
+    }
+
+    fn draw_beat_columns(&self, ui: &mut Ui, rect: Rect) {
+        let mut shapes = Vec::new();
+        for i in 0..100 {
+            let offset = rect.min.x + i as f32 * BEAT_WIDTH;
+            let line = Shape::line_segment(
+                [pos2(offset, rect.min.y), pos2(offset, rect.min.y + 1000.0)],
+                Stroke::new(1.0, Color32::from_rgb(100, 100, 100)),
+            );
+            shapes.push(line);
+        }
+        ui.painter().extend(shapes);
     }
 }
 
@@ -420,8 +458,22 @@ fn box_zooming(
 struct GridUnit {
     pub offset: f64,
 }
-fn clip_note(mouse_pos: Pos2, ui: &mut Ui, height: f32) {
-    let rect = Rect::from_min_size(mouse_pos, Vec2::new(100.0, height));
+
+fn clip_note(
+    note_lane: u8,
+    ui: &mut Ui,
+    height: f32,
+    transform: Transform,
+    tick: &Tick,
+    editor_rect: Rect,
+) {
+    let step_pos = note_lane as f32 * height;
+    let lane_offset = transform.apply(Pos2::new(step_pos, step_pos));
+    let note_offset = editor_rect.min.x + ((tick.as_f32() / 480.0) * BEAT_WIDTH);
+    let origin = pos2(note_offset, lane_offset.y);
+    let target = pos2(note_offset + 96.0, lane_offset.y + height);
+    let rect = Rect::from_two_pos(origin, target);
+
     let fill_color = Color32::from_rgb(97, 255, 219);
     let new_note_shape = epaint::RectShape::new(rect, Rounding::ZERO, fill_color, Stroke::NONE);
     ui.painter().add(new_note_shape);

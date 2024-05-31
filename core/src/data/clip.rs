@@ -1,9 +1,8 @@
+use super::{common::DataId, event_list::EventList, MidiMessage};
 use crate::{
     event::{Event, EventType},
     Tick,
 };
-
-use super::{common::DataId, event_list::EventList, MidiMessage};
 
 /// A clip is a collection of events
 /// They house things like notes and automation data
@@ -32,13 +31,22 @@ impl Clip {
         let event2 = Event::new(
             DataId::new(),
             EventType::Midi(MidiMessage::NoteOn {
-                key: 47,
+                key: 59,
                 velocity: 64,
             }),
             true,
         );
-        test_events.add_event(Tick::from(20), event1);
-        test_events.add_event(Tick::from(28), event2);
+        let event3 = Event::new(
+            DataId::new(),
+            EventType::Midi(MidiMessage::NoteOn {
+                key: 66,
+                velocity: 64,
+            }),
+            true,
+        );
+        test_events.add_event(Tick::from(0), event1);
+        test_events.add_event(Tick::from(480), event2);
+        test_events.add_event(Tick::from(960), event3);
 
         let test_clip = Self {
             id: DataId::new(),

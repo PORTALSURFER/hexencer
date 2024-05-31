@@ -1,11 +1,3 @@
-use std::sync::{Arc, Mutex};
-
-use egui::{
-    epaint, vec2, Color32, FontId, Frame, Id, LayerId, Margin, Order, Pos2, Stroke, Ui, Vec2,
-};
-use hexencer_core::data::DataLayer;
-use hexencer_engine::{SequencerCommand, SequencerSender};
-
 use crate::{
     arranger::track,
     memory::GuiState,
@@ -14,6 +6,12 @@ use crate::{
         NoteEditorWidget, TimelineWidget, BEAT_WIDTH,
     },
 };
+use egui::{
+    epaint, vec2, Color32, FontId, Frame, Id, LayerId, Margin, Order, Pos2, Stroke, Ui, Vec2,
+};
+use hexencer_core::data::DataLayer;
+use hexencer_engine::{SequencerCommand, SequencerSender};
+use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
 pub struct MainViewport {
