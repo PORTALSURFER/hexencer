@@ -1,7 +1,4 @@
-use crate::{
-    event::{Event, EventType},
-    Tick,
-};
+use crate::{event::EventType, Tick};
 use std::collections::BTreeMap;
 
 use super::{midi_message::MidiMessage, DataId};
@@ -37,16 +34,6 @@ impl EventList {
             .unwrap_or_else(|| {
                 self.0.insert(tick, vec![event_entry]);
             });
-    }
-
-    #[deprecated(note = "use `add_event` instead")]
-    /// adds an 'EventBlock' to the 'EventList'
-    pub fn add_event_segment(&mut self, event_block: EventSegment) {
-        // let note_on_entry = Event::new(event_block.id, event_block.start.1, true);
-        // let note_off_entry = Event::new(event_block.id, event_block.end.1, true);
-
-        // self.add_event(event_block.start.0, note_on_entry);
-        // self.add_event(event_block.end.0, note_off_entry);
     }
 
     /// removes an ['Event'] from the 'EventList'
@@ -96,7 +83,6 @@ impl EventSegment {
     /// create a new event segment
     pub(crate) fn new(
         id: DataId,
-        velocity: u8,
         start: Tick,
         end: Tick,
         event_type: EventType,

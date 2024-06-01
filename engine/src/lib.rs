@@ -120,23 +120,25 @@ impl Sequencer {
 
     /// process events at the current tick, sending them to the midi engine
     fn process_events(&mut self) {
-        let tracks = &self.data_layer.lock().unwrap().project_manager.tracks;
+        // let tracks = &self.data_layer.lock().unwrap().project_manager.tracks;
 
-        for track in tracks.iter() {
-            if let Some(event_entry) = track.event_list.get(&self.current_tick) {
-                for event in event_entry.iter() {
-                    let event_type = event.event_type;
-                    tracing::info!("{} - {}", track, event_type);
+        // TODO fix this to load from clips instead
 
-                    if event.is_active {
-                        let message = event_type.get_message();
-                        let instrument = &track.instrument;
-                        self.midi_engine_sender.as_mut().map(|sender| {
-                            sender.send((message, instrument.port, instrument.channel))
-                        });
-                    }
-                }
-            }
-        }
+        // for track in tracks.iter() {
+        //     if let Some(event_entry) = track.event_list.get(&self.current_tick) {
+        //         for event in event_entry.iter() {
+        //             let event_type = event.event_type;
+        //             tracing::info!("{} - {}", track, event_type);
+
+        //             if event.is_active {
+        //                 let message = event_type.get_message();
+        //                 let instrument = &track.instrument;
+        //                 self.midi_engine_sender.as_mut().map(|sender| {
+        //                     sender.send((message, instrument.port, instrument.channel))
+        //                 });
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
