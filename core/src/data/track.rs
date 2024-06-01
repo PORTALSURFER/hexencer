@@ -1,8 +1,5 @@
 #![deny(missing_docs)]
-use super::{
-    clip::Clip,
-    event_list::{EventList, EventSegment},
-};
+use super::clip::Clip;
 use crate::{instrument::Instrument, Tick};
 use std::{collections::BTreeMap, fmt::Display};
 
@@ -74,9 +71,6 @@ pub struct Track {
     pub name: String,
     /// instrument assigned to this track
     pub instrument: Instrument,
-    /// events on this track
-    #[deprecated(note = "clips now house events")]
-    pub event_list: EventList,
     /// clips in this track
     pub clips: BTreeMap<Tick, Clip>,
 }
@@ -91,19 +85,6 @@ impl Display for Track {
 impl Track {
     /// create a new track object
     pub fn new(id: usize, name: &str) -> Track {
-        // test events
-        let mut event_list = EventList::new();
-        for i in 0..8 {
-            let event_block = EventSegment::new2(
-                Tick::from(i * 480_u32),
-                Tick::from(i * 480_u32),
-                38,
-                64,
-                true,
-            );
-            event_list.add_event_segment(event_block);
-        }
-
         // test clips
         let mut clips = BTreeMap::new();
         for i in 0..4 {
@@ -114,7 +95,6 @@ impl Track {
         Self {
             id,
             name: String::from(name),
-            event_list,
             instrument: Instrument::new("port0", 0, 0),
             clips,
         }

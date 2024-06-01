@@ -3,10 +3,7 @@ use super::{
     event_list::{EventList, EventSegment},
     MidiMessage,
 };
-use crate::{
-    event::{Event, EventType},
-    Tick,
-};
+use crate::{event::EventType, Tick};
 
 /// A clip is a collection of events
 /// They house things like notes and automation data
@@ -27,7 +24,6 @@ impl Clip {
 
         let event1 = EventSegment::new(
             DataId::new(),
-            64,
             Tick::from(0),
             Tick::from(480),
             EventType::Midi(MidiMessage::NoteOn {
@@ -38,7 +34,6 @@ impl Clip {
         );
         let event2 = EventSegment::new(
             DataId::new(),
-            64,
             Tick::from(240),
             Tick::from(700),
             EventType::Midi(MidiMessage::NoteOn {
@@ -49,7 +44,6 @@ impl Clip {
         );
         let event3 = EventSegment::new(
             DataId::new(),
-            64,
             Tick::from(960),
             Tick::from(1440),
             EventType::Midi(MidiMessage::NoteOn {
