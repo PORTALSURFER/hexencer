@@ -17,6 +17,7 @@ pub fn clip(ctx: &Context, ui: &mut Ui, id: crate::DataId, tick: Tick) -> Respon
 }
 
 /// state of the 'ClipWidget'
+// TODO merge these state types into a generic type
 #[derive(Clone, Copy, Debug, Default)]
 struct State {
     /// current position of the clip, used for movement interaction
