@@ -17,10 +17,27 @@ pub fn clip(ctx: &Context, ui: &mut Ui, id: crate::DataId, tick: Tick) -> Respon
 }
 
 /// state of the 'ClipWidget'
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 struct State {
     /// current position of the clip, used for movement interaction
     pub pivot_pos: Pos2,
+}
+
+impl State {
+    /// load this state from memory, or create a default one
+    pub fn load_or_default(id: Id, ui: &Ui) -> Self {
+        ui.memory(|mem| mem.data.get_temp(id).unwrap_or_default())
+    }
+
+    /// load this state from memory, or create a default one
+    pub fn load(id: Id, ui: &Ui) -> Option<Self> {
+        ui.memory(|mem| mem.data.get_temp(id))
+    }
+
+    /// store this state to memory
+    pub fn store(self, id: Id, ui: &mut Ui) {
+        ui.memory_mut(|mem| mem.data.insert_temp(id, self))
+    }
 }
 
 /// widget used to represent 'Clips' on a 'Track'
@@ -72,12 +89,12 @@ impl ClipWidget {
 
         let mut start_pos = ui.max_rect().min;
         start_pos.x += self.offset;
-        let mut state = ctx.memory(|mem| {
-            mem.data.get_temp::<State>(self.id).unwrap_or(State {
+        let mut state = match State::load(self.id, ui) {
+            Some(state) => state,
+            _ => State {
                 pivot_pos: start_pos,
-            })
-        });
-
+            },
+        };
         let quantized = quantize(state.pivot_pos.x, start_pos.x, 24);
         let new_pos = pos2(quantized, state.pivot_pos.y);
 
@@ -88,6 +105,7 @@ impl ClipWidget {
             if move_response.dragged() {
                 let delta = move_response.drag_delta();
                 state.pivot_pos.x += delta.x;
+                tracing::info!("Clip pos {:?}", state.pivot_pos.x);
             }
 
             if move_response.dragged() || move_response.clicked() {
@@ -104,6 +122,8 @@ impl ClipWidget {
         move_response.interact_rect = rect;
 
         let content_ui = ui.child_ui(rect, *ui.layout());
+
+        state.store(self.id, ui);
 
         Prepared {
             state,
