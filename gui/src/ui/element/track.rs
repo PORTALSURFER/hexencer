@@ -21,7 +21,7 @@ impl TrackWidget {
         Self::default()
     }
 
-    /// begin building the widget
+    /// prepares the layout and allocate space for interaction
     fn begin(self, ui: &mut Ui) -> Prepared {
         let where_to_put_background = ui.painter().add(Shape::Noop);
         let outer_rect_bounds = ui.available_rect_before_wrap();
@@ -100,7 +100,7 @@ pub struct Prepared {
 }
 
 impl Prepared {
-    /// finish building the track element
+    /// process interaction and paint the element
     pub fn end(self, ui: &mut Ui) -> Response {
         self.paint(ui);
 
