@@ -42,12 +42,12 @@ pub struct DataLayer {
 
 impl DataLayer {
     /// add a new clip to the track specified by 'track_id'
-    pub fn add_clip(&mut self, track_id: usize, tick: Tick, name: &str) {
+    pub fn add_clip(&mut self, track_id: usize, tick: Tick, name: &str, end: u64) {
         self.project_manager
             .tracks
             .get_mut(track_id)
             .unwrap()
-            .add_clip(tick, name);
+            .add_clip(tick, name, end);
     }
 
     /// set the playhead tick

@@ -3,8 +3,8 @@ use crate::{
     ui::{common::TRACK_HEIGHT, quantize},
 };
 use egui::{
-    epaint, layers::ShapeIdx, pos2, Color32, Context, Id, InnerResponse, LayerId, Order, Rect,
-    Response, Rounding, Sense, Shape, Stroke, Ui, Vec2,
+    epaint, layers::ShapeIdx, pos2, Color32, Context, Id, LayerId, Order, Rect, Response, Rounding,
+    Sense, Shape, Stroke, Ui, Vec2,
 };
 use hexencer_core::{data::DataLayer, Tick};
 use std::sync::{Arc, Mutex};
@@ -111,7 +111,7 @@ impl TrackWidget {
             let track = data.project_manager.tracks.get(index);
             if let Some(track) = track {
                 for (tick, clip) in &track.clips {
-                    if crate::ui::clip(ctx, ui, clip.get_id(), *tick).drag_started() {
+                    if crate::ui::clip(ctx, ui, clip.get_id(), *tick, clip.end).drag_started() {
                         tracing::info!("clicked {}", clip.get_id().to_string());
 
                         let mut gui_state = GuiState::load(ui);
@@ -171,6 +171,7 @@ impl Prepared {
                 self.track.index,
                 Tick::from(tick),
                 "new clip",
+                state.drag_end_position as u64 + self.rect.min.x as u64,
             );
         }
         state.store(ui, ui.id());
@@ -205,7 +206,6 @@ impl Prepared {
             ui.with_layer_id(top_layer, |ui| {
                 ui.painter().add(shape);
             });
-            state.drag_end_position = current_mouse_position.x;
         }
     }
 
@@ -219,16 +219,18 @@ impl Prepared {
     }
 
     /// gets the clip rect when painting a new clip
-    fn get_clip_rect_right(&self, state: &State, drag_pos: f32) -> Rect {
+    fn get_clip_rect_right(&self, state: &mut State, drag_pos: f32) -> Rect {
         let min = pos2(state.drag_start_position, self.rect.min.y);
         let max = pos2(drag_pos + 24.0, self.rect.max.y);
+        state.drag_end_position = max.x;
         Rect::from_two_pos(min, max)
     }
 
     /// gets the clip rect when painting a new clip
-    fn get_clip_rect_left(&self, state: &State, drag_pos: f32) -> Rect {
+    fn get_clip_rect_left(&self, state: &mut State, drag_pos: f32) -> Rect {
         let max = pos2(state.drag_start_position + 24.0, self.rect.min.y);
         let min = pos2(drag_pos, self.rect.max.y);
+        state.drag_end_position = max.x;
         Rect::from_two_pos(min, max)
     }
 }
