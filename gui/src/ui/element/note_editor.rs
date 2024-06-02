@@ -7,10 +7,9 @@ use egui::{
 };
 
 use self::transform::Transform;
+use super::BEAT_WIDTH;
 use hexencer_core::{data::Clip, Tick};
 use std::ops::RangeInclusive;
-
-use super::BEAT_WIDTH;
 
 /// trainsform used for panning and zooming
 mod transform;

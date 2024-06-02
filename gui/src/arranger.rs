@@ -1,7 +1,4 @@
-use crate::{
-    memory::GuiState,
-    ui::{self, common::TRACK_COLOR},
-};
+use crate::ui::{self, common::TRACK_COLOR};
 use egui::{layers::ShapeIdx, Color32, Ui};
 use hexencer_core::{data::DataLayer, Tick};
 use std::sync::{Arc, Mutex};
@@ -13,26 +10,9 @@ pub fn track(
     index: usize,
     ui: &mut egui::Ui,
 ) {
-    let track = ui::TrackWidget::new().fill(TRACK_COLOR);
-    let response = track.show(ui, |ui| {
-        ui.horizontal(|ui| {
-            let data = data_layer.lock().unwrap();
-            let track = data.project_manager.tracks.get(index);
-            if let Some(track) = track {
-                for (tick, clip) in &track.clips {
-                    if ui::clip(ctx, ui, clip.get_id(), *tick).drag_started() {
-                        tracing::info!("clicked {}", clip.get_id().to_string());
-
-                        let mut gui_state = GuiState::load(ui);
-                        gui_state.selected_clip = Some(clip.get_id());
-                        gui_state.store(ui);
-                    };
-                }
-            }
-        });
-    });
-
-    if response.response.clicked() {
+    let track = ui::TrackWidget::new(Arc::clone(&data_layer), index).fill(TRACK_COLOR);
+    let response = track.show(ui, ctx);
+    if response.clicked() {
         tracing::info!("Track clicked!");
         data_layer
             .lock()

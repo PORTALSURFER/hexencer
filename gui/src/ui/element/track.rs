@@ -1,27 +1,38 @@
+use crate::{
+    memory::GuiState,
+    ui::{common::TRACK_HEIGHT, quantize},
+};
 use egui::{
-    epaint, layers::ShapeIdx, pos2, Color32, Id, InnerResponse, LayerId, Order, Pos2, Rect,
+    epaint, layers::ShapeIdx, pos2, Color32, Context, Id, InnerResponse, LayerId, Order, Rect,
     Response, Rounding, Sense, Shape, Stroke, Ui, Vec2,
 };
-
-use crate::ui::{common::TRACK_HEIGHT, quantize};
+use hexencer_core::{data::DataLayer, Tick};
+use std::sync::{Arc, Mutex};
 
 /// Track bar onto which clip elements can be placed and moved
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default)]
 #[must_use = "You should call .show()"]
 pub struct TrackWidget {
     /// height of this track
     height: f32,
     /// color used to fill te background of the track
     fill: Color32,
+    /// identifier of the track
+    // TODO replace with DataId
+    index: usize,
+    /// referene to the data_layer
+    data_layer: Arc<Mutex<DataLayer>>,
 }
 
 /// ui state of the track
 #[derive(Clone, Default)]
 pub struct State {
     /// last known mouse position, used for painting in clips
-    last_mouse_position: Pos2,
+    drag_start_position: f32,
     /// true if currently drag painting
     started_drag_paint: bool,
+    /// last known mouse position when drag ended
+    drag_end_position: f32,
 }
 
 impl State {
@@ -38,28 +49,27 @@ impl State {
 
 impl TrackWidget {
     /// creates a new 'Track' element
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(data_layer: Arc<Mutex<DataLayer>>, index: usize) -> Self {
+        Self {
+            data_layer,
+            index,
+            ..Default::default()
+        }
     }
 
     /// prepares the layout and allocate space for interaction
-    fn begin(self, ui: &mut Ui) -> Prepared {
+    fn begin(self, ui: &mut Ui, ctx: &Context) -> Prepared {
         let where_to_put_background = ui.painter().add(Shape::Noop);
         let outer_rect_bounds = ui.available_rect_before_wrap();
-
         let available_width = ui.available_width();
         let height = TRACK_HEIGHT;
-
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
-
-        let content_ui = ui.child_ui(rect, *ui.layout());
-
+        self.layout_clips(ui, self.index, ctx);
         let track_response = self.allocate_space(ui, rect);
 
         Prepared {
             track: self,
             where_to_put_background,
-            content_ui,
             rect,
             track_response,
         }
@@ -77,20 +87,9 @@ impl TrackWidget {
     }
 
     /// use this to process the element so it is painted and returns a response
-    pub fn show<R>(self, ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-        self.show_dyn(ui, Box::new(add_contents))
-    }
-
-    /// setup and rendering of track
-    fn show_dyn<'c, R>(
-        self,
-        ui: &mut Ui,
-        add_contents: Box<dyn FnOnce(&mut Ui) -> R + 'c>,
-    ) -> InnerResponse<R> {
-        let mut prepared = self.begin(ui);
-        let inner = add_contents(&mut prepared.content_ui);
-        let response = prepared.end(ui);
-        InnerResponse::new(inner, response)
+    pub fn show(self, ui: &mut Ui, ctx: &Context) -> Response {
+        let prepared = self.begin(ui, ctx);
+        prepared.end(ui)
     }
 
     /// paints the track elements
@@ -104,6 +103,25 @@ impl TrackWidget {
             Stroke::new(0.0, Color32::from_rgb(10, 10, 10)),
         ))
     }
+
+    /// layout clips on the track
+    fn layout_clips(&self, ui: &mut Ui, index: usize, ctx: &Context) {
+        ui.horizontal(|ui| {
+            let data = self.data_layer.lock().unwrap();
+            let track = data.project_manager.tracks.get(index);
+            if let Some(track) = track {
+                for (tick, clip) in &track.clips {
+                    if crate::ui::clip(ctx, ui, clip.get_id(), *tick).drag_started() {
+                        tracing::info!("clicked {}", clip.get_id().to_string());
+
+                        let mut gui_state = GuiState::load(ui);
+                        gui_state.selected_clip = Some(clip.get_id());
+                        gui_state.store(ui);
+                    };
+                }
+            }
+        });
+    }
 }
 
 /// intermediate struct to prepare a track element
@@ -112,8 +130,6 @@ pub struct Prepared {
     pub track: TrackWidget,
     /// placeholder where to put the background shape
     where_to_put_background: ShapeIdx,
-    /// inner ui
-    pub content_ui: Ui,
     /// rect of the entire track
     rect: Rect,
     /// track ui response
@@ -139,36 +155,46 @@ impl Prepared {
             }
         }
 
+        if self.track_response.drag_started() {
+            self.register_drag_start_position(ui, &mut state);
+        }
+
         if self.track_response.dragged() {
-            self.store_mouse_position(ui, &mut state);
-            self.paint_new_clip(ui, &state);
+            self.paint_new_clip(ui, &mut state);
         }
         if self.track_response.drag_stopped() {
-            tracing::info!("store clip");
+            let pos = state.drag_start_position - self.rect.min.x;
+            let tick = (pos / 24.0) * 120.0;
+            tracing::info!("store clip at {}", pos);
             state.started_drag_paint = false;
+            self.track.data_layer.lock().unwrap().add_clip(
+                self.track.index,
+                Tick::from(tick),
+                "new clip",
+            );
         }
         state.store(ui, ui.id());
         self.track_response
     }
 
     /// sets the current mouse position to given state
-    fn store_mouse_position(&self, ui: &mut Ui, state: &mut State) {
+    fn register_drag_start_position(&self, ui: &mut Ui, state: &mut State) {
         if !state.started_drag_paint {
             if let Some(position) = ui.input(|i| i.pointer.hover_pos()) {
                 let quantized_mous_pos_x = quantize(position.x, 24.0, self.rect.min.x);
-                state.last_mouse_position = pos2(quantized_mous_pos_x, position.y);
+                state.drag_start_position = quantized_mous_pos_x;
                 state.started_drag_paint = true;
             }
         }
     }
 
     /// paints a new clip based on mouse position
-    fn paint_new_clip(&self, ui: &mut Ui, state: &State) {
+    fn paint_new_clip(&self, ui: &mut Ui, state: &mut State) {
         let fill_color = Color32::YELLOW;
         if let Some(current_mouse_position) = ui.input(|i| i.pointer.hover_pos()) {
             let quantized_current_mouse_pos_x =
                 quantize(current_mouse_position.x, 24.0, self.rect.min.x);
-            let rect = if current_mouse_position.x > state.last_mouse_position.x {
+            let rect = if current_mouse_position.x > state.drag_start_position {
                 self.get_clip_rect_right(state, quantized_current_mouse_pos_x)
             } else {
                 self.get_clip_rect_left(state, quantized_current_mouse_pos_x)
@@ -179,6 +205,7 @@ impl Prepared {
             ui.with_layer_id(top_layer, |ui| {
                 ui.painter().add(shape);
             });
+            state.drag_end_position = current_mouse_position.x;
         }
     }
 
@@ -193,14 +220,14 @@ impl Prepared {
 
     /// gets the clip rect when painting a new clip
     fn get_clip_rect_right(&self, state: &State, drag_pos: f32) -> Rect {
-        let min = pos2(state.last_mouse_position.x, self.rect.min.y);
+        let min = pos2(state.drag_start_position, self.rect.min.y);
         let max = pos2(drag_pos + 24.0, self.rect.max.y);
         Rect::from_two_pos(min, max)
     }
 
     /// gets the clip rect when painting a new clip
     fn get_clip_rect_left(&self, state: &State, drag_pos: f32) -> Rect {
-        let max = pos2(state.last_mouse_position.x + 24.0, self.rect.min.y);
+        let max = pos2(state.drag_start_position + 24.0, self.rect.min.y);
         let min = pos2(drag_pos, self.rect.max.y);
         Rect::from_two_pos(min, max)
     }
