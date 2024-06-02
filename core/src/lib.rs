@@ -84,6 +84,12 @@ impl From<i32> for Tick {
     }
 }
 
+impl From<f32> for Tick {
+    fn from(tick: f32) -> Self {
+        Self(tick as u64)
+    }
+}
+
 impl From<usize> for Tick {
     fn from(tick: usize) -> Self {
         Self(tick as u64)
