@@ -1,6 +1,6 @@
 use egui::{
-    epaint, layers::ShapeIdx, Color32, InnerResponse, Rect, Response, Rounding, Sense, Shape,
-    Stroke, Ui, Vec2,
+    epaint, layers::ShapeIdx, pos2, Color32, Id, InnerResponse, Pos2, Rect, Response, Rounding,
+    Sense, Shape, Stroke, Ui, Vec2,
 };
 
 use crate::ui::common::TRACK_HEIGHT;
@@ -13,6 +13,21 @@ pub struct TrackWidget {
     height: f32,
     /// color used to fill te background of the track
     fill: Color32,
+}
+
+#[derive(Clone, Default)]
+pub struct State {
+    last_mouse_position: Pos2,
+}
+
+impl State {
+    pub fn load(ui: &Ui, id: Id) -> Self {
+        ui.memory(|mem| mem.data.get_temp(id)).unwrap_or_default()
+    }
+
+    pub fn store(self, ui: &mut Ui, id: Id) {
+        ui.memory_mut(|mem| mem.data.insert_temp(id, self));
+    }
 }
 
 impl TrackWidget {
@@ -103,7 +118,33 @@ impl Prepared {
     /// process interaction and paint the element
     pub fn end(self, ui: &mut Ui) -> Response {
         self.paint(ui);
+        let mut state = State::load(ui, ui.id());
+        if self.track_response.drag_started() {
+            tracing::info!("drag started");
+            if let Some(position) = ui.input(|i| i.pointer.hover_pos()) {
+                state.last_mouse_position = position;
+            }
+        }
+        tracing::info!("mouse position {:?}", state.last_mouse_position);
 
+        if self.track_response.dragged() {
+            let fill_color = Color32::YELLOW;
+            if let Some(current_mouse_position) = ui.input(|i| i.pointer.hover_pos()) {
+                tracing::info!("painting clip");
+                let min = pos2(state.last_mouse_position.x, self.rect.min.y);
+                let max = pos2(current_mouse_position.x, self.rect.max.y);
+                let rect = Rect::from_two_pos(min, max);
+                let shape = epaint::RectShape::new(rect, Rounding::ZERO, fill_color, Stroke::NONE);
+                ui.painter().add(shape);
+            }
+        } else {
+            tracing::info!("no mouse pose");
+        }
+
+        if self.track_response.drag_stopped() {
+            tracing::info!("store clip")
+        }
+        state.store(ui, ui.id());
         self.track_response
     }
 
