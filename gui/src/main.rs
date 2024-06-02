@@ -70,7 +70,7 @@ async fn main() {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             // .with_icon(icon)
-            .with_inner_size(egui::vec2(1920.0, 1080.0)),
+            .with_inner_size(egui::vec2(800.0, 600.0)),
 
         ..Default::default()
     };
