@@ -17,7 +17,7 @@ pub fn track(
         data_layer
             .lock()
             .unwrap()
-            .add_clip(index, Tick::from(6 * 480), "new clip");
+            .add_clip(index, Tick::from(6 * 480), "new clip", 1920);
     }
 }
 

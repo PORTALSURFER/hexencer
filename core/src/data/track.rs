@@ -1,7 +1,7 @@
 #![deny(missing_docs)]
-use super::clip::Clip;
+use super::clip::{Clip, ClipCollection};
 use crate::{instrument::Instrument, Tick};
-use std::{collections::BTreeMap, fmt::Display};
+use std::fmt::Display;
 
 /// collection of tracks
 #[derive(Default, Debug)]
@@ -72,7 +72,7 @@ pub struct Track {
     /// instrument assigned to this track
     pub instrument: Instrument,
     /// clips in this track
-    pub clips: BTreeMap<Tick, Clip>,
+    pub clips: ClipCollection,
 }
 
 impl Display for Track {
@@ -86,9 +86,9 @@ impl Track {
     /// create a new track object
     pub fn new(id: usize, name: &str) -> Track {
         // test clips
-        let mut clips = BTreeMap::new();
+        let mut clips = ClipCollection::default();
         for i in 0..4 {
-            let clip = Clip::new(&format!("clip_{}", i));
+            let clip = Clip::new(&format!("clip_{}", i), 1920);
             clips.insert(Tick::from(480 * i), clip);
         }
 
@@ -111,7 +111,7 @@ impl Track {
     }
 
     /// add a new clip to the track
-    pub(crate) fn add_clip(&mut self, tick: Tick, name: &str) {
-        self.clips.insert(tick, Clip::new(name));
+    pub(crate) fn add_clip(&mut self, tick: Tick, name: &str, end: u64) {
+        self.clips.insert(tick, Clip::new(name, end));
     }
 }
