@@ -56,8 +56,8 @@ pub struct ClipWidget {
 }
 
 /// quantize a value to a step size
-fn quantize(x: f32, initial: f32, step_size: u32) -> f32 {
-    initial + ((x - initial) / step_size as f32).floor() * step_size as f32
+pub fn quantize(value: f32, step_size: f32, offset: f32) -> f32 {
+    offset + ((value - offset) / step_size).floor() * step_size
 }
 
 impl ClipWidget {
@@ -96,7 +96,7 @@ impl ClipWidget {
                 pivot_pos: start_pos,
             },
         };
-        let quantized = quantize(state.pivot_pos.x, start_pos.x, 24);
+        let quantized = quantize(state.pivot_pos.x, 24.0, start_pos.x);
         let new_pos = pos2(quantized, state.pivot_pos.y);
 
         let rect = Rect::from_min_size(new_pos, size);
