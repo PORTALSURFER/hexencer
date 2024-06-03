@@ -77,6 +77,15 @@ impl TrackCollection {
     pub fn iter_mut(&mut self) -> std::slice::IterMut<Track> {
         self.inner.iter_mut()
     }
+
+    /// take the clip out of any track if found, removing it from the track
+    pub fn take_clip(&mut self, id: crate::DataId) -> Option<Clip> {
+        let mut clip = None;
+        for track in self.inner.iter_mut() {
+            // clip = track.clips.entry(&id);
+        }
+        clip
+    }
 }
 
 /// track object

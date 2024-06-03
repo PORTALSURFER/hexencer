@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::memory::GuiState;
 use crate::ui::common::TRACK_HEIGHT;
 use egui::layers::ShapeIdx;
-use egui::{emath::*, epaint, Color32, Response, Rounding, Sense, Shape, Stroke};
+use egui::{emath::*, epaint, Color32, DragAndDrop, Response, Rounding, Sense, Shape, Stroke};
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
 use hexencer_core::data::DataLayer;
 use hexencer_core::{DataId, Tick};
@@ -138,6 +138,7 @@ impl ClipWidget {
             let move_response = ui.interact(rect, self.id, Sense::drag());
 
             if move_response.dragged() {
+                DragAndDrop::set_payload(ctx, self.data_id);
                 let delta = move_response.drag_delta();
                 state.pivot_pos.x += delta.x;
                 state.pivot_pos.y += delta.y;

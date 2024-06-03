@@ -3,12 +3,12 @@ use crate::{
     ui::{common::TRACK_HEIGHT, quantize},
 };
 use egui::{
-    epaint, layers::ShapeIdx, pos2, Color32, Context, Id, LayerId, Layout, Order, Rect, Response,
-    Rounding, Sense, Shape, Stroke, Ui, Vec2,
+    epaint, layers::ShapeIdx, pos2, Color32, Context, DragAndDrop, Id, LayerId, Layout, Order,
+    Rect, Response, Rounding, Sense, Shape, Stroke, Ui, Vec2,
 };
 use hexencer_core::{
     data::{Clip, DataLayer},
-    Tick,
+    DataId, Tick,
 };
 use std::sync::{Arc, Mutex};
 
@@ -62,12 +62,31 @@ impl TrackWidget {
 
     /// prepares the layout and allocate space for interaction
     fn begin(self, ui: &mut Ui, ctx: &Context) -> Prepared {
+        let is_anything_being_dragged = DragAndDrop::has_any_payload(ctx);
+        let can_accept_what_is_being_dragged = DragAndDrop::has_payload_of_type::<DataId>(ctx);
+
         let where_to_put_background = ui.painter().add(Shape::Noop);
         let outer_rect_bounds = ui.available_rect_before_wrap();
         let available_width = ui.available_width();
         let height = TRACK_HEIGHT;
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
-        let track_response = self.allocate_space(ui, rect);
+        let response = self.allocate_space(ui, rect);
+        if let Some(payload) = response.dnd_release_payload::<DataId>() {
+            // find clip with dataid
+            // reassign clip to this track instead
+            let mut data = self.data_layer.lock().unwrap();
+            let clip_id = if let Some(clip) = data
+                .project_manager
+                .find_clip(Arc::into_inner(payload).unwrap())
+            {
+                Some(clip.get_id())
+            } else {
+                None
+            };
+            if let Some(id) = clip_id {
+                data.project_manager.move_clip(id, self.index);
+            }
+        }
 
         self.layout_clips(ui, self.index, ctx, rect);
 
@@ -75,7 +94,7 @@ impl TrackWidget {
             track: self,
             where_to_put_background,
             rect,
-            track_response,
+            response,
         }
     }
 
@@ -137,7 +156,7 @@ pub struct Prepared {
     /// rect of the entire track
     rect: Rect,
     /// track ui response
-    track_response: Response,
+    response: Response,
 }
 
 impl Prepared {
@@ -145,7 +164,7 @@ impl Prepared {
     pub fn end(self, ui: &mut Ui) -> Response {
         self.paint(ui);
         let mut state = State::load(ui, ui.id());
-        if self.track_response.hovered() {
+        if self.response.hovered() {
             if let Some(hover_pos) = ui.input(|i| i.pointer.hover_pos()) {
                 let mut clip_min = pos2(hover_pos.x, self.rect.min.y);
                 let quantized_clip_min_x = quantize(hover_pos.x, 24.0, self.rect.min.x);
@@ -161,20 +180,20 @@ impl Prepared {
 
         self.handle_clip_painting(ui, &mut state);
         state.store(ui, ui.id());
-        self.track_response
+        self.response
     }
 
     /// handles painting of clips into drags, adding them to the track
     fn handle_clip_painting(&self, ui: &mut Ui, state: &mut State) {
         if ui.input(|i| i.modifiers.ctrl) {
-            if self.track_response.drag_started() {
+            if self.response.drag_started() {
                 self.register_drag_start_position(ui, state);
             }
 
-            if self.track_response.dragged() {
+            if self.response.dragged() {
                 self.paint_new_clip(ui, state);
             }
-            if self.track_response.drag_stopped() {
+            if self.response.drag_stopped() {
                 let pos = state.drag_start_position - self.rect.min.x;
                 let tick = pos_to_clip_tick(pos);
                 let width = state.drag_end_position - state.drag_start_position;
