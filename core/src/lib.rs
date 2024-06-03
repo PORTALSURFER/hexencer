@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
 #![deny(clippy::missing_docs_in_private_items)]
 #![allow(dead_code)]
+#![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
 
 //! represents elements without clear goal
 

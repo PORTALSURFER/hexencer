@@ -3,10 +3,13 @@ use crate::{
     ui::{common::TRACK_HEIGHT, quantize},
 };
 use egui::{
-    epaint, layers::ShapeIdx, pos2, Color32, Context, Id, LayerId, Order, Rect, Response, Rounding,
-    Sense, Shape, Stroke, Ui, Vec2,
+    epaint, layers::ShapeIdx, pos2, Color32, Context, Id, LayerId, Layout, Order, Rect, Response,
+    Rounding, Sense, Shape, Stroke, Ui, Vec2,
 };
-use hexencer_core::{data::DataLayer, Tick};
+use hexencer_core::{
+    data::{Clip, DataLayer},
+    Tick,
+};
 use std::sync::{Arc, Mutex};
 
 /// Track bar onto which clip elements can be placed and moved
@@ -64,8 +67,9 @@ impl TrackWidget {
         let available_width = ui.available_width();
         let height = TRACK_HEIGHT;
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
-        self.layout_clips(ui, self.index, ctx);
         let track_response = self.allocate_space(ui, rect);
+
+        self.layout_clips(ui, self.index, ctx, rect);
 
         Prepared {
             track: self,
@@ -105,15 +109,15 @@ impl TrackWidget {
     }
 
     /// layout clips on the track
-    fn layout_clips(&self, ui: &mut Ui, index: usize, ctx: &Context) {
-        ui.horizontal(|ui| {
+    fn layout_clips(&self, ui: &mut Ui, index: usize, ctx: &Context, rect: Rect) {
+        let mut child_ui = ui.child_ui(rect, Layout::default());
+        child_ui.horizontal(|ui| {
             let data = self.data_layer.lock().unwrap();
             let track = data.project_manager.tracks.get(index);
             if let Some(track) = track {
                 for (tick, clip) in &track.clips {
                     if crate::ui::clip(ctx, ui, clip.get_id(), *tick, clip.end).drag_started() {
-                        tracing::info!("clicked {}", clip.get_id().to_string());
-
+                        tracing::info!("clip clicked");
                         let mut gui_state = GuiState::load(ui);
                         gui_state.selected_clip = Some(clip.get_id());
                         gui_state.store(ui);
@@ -155,27 +159,36 @@ impl Prepared {
             }
         }
 
-        if self.track_response.drag_started() {
-            self.register_drag_start_position(ui, &mut state);
-        }
-
-        if self.track_response.dragged() {
-            self.paint_new_clip(ui, &mut state);
-        }
-        if self.track_response.drag_stopped() {
-            let pos = state.drag_start_position - self.rect.min.x;
-            let tick = (pos / 24.0) * 120.0;
-            tracing::info!("store clip at {}", pos);
-            state.started_drag_paint = false;
-            self.track.data_layer.lock().unwrap().add_clip(
-                self.track.index,
-                Tick::from(tick),
-                "new clip",
-                state.drag_end_position as u64 + self.rect.min.x as u64,
-            );
-        }
+        self.handle_clip_painting(ui, &mut state);
         state.store(ui, ui.id());
         self.track_response
+    }
+
+    /// handles painting of clips into drags, adding them to the track
+    fn handle_clip_painting(&self, ui: &mut Ui, state: &mut State) {
+        if ui.input(|i| i.modifiers.ctrl) {
+            if self.track_response.drag_started() {
+                self.register_drag_start_position(ui, state);
+            }
+
+            if self.track_response.dragged() {
+                self.paint_new_clip(ui, state);
+            }
+            if self.track_response.drag_stopped() {
+                let pos = state.drag_start_position - self.rect.min.x;
+                let tick = pos_to_clip_tick(pos);
+                let width = state.drag_end_position - state.drag_start_position;
+                let end = pixel_width_to_tick(width);
+                tracing::info!("store clip at {} {}", pos, end);
+                state.started_drag_paint = false;
+                let clip = Clip::new("new clip", end as u64);
+                self.track.data_layer.lock().unwrap().add_clip(
+                    self.track.index,
+                    Tick::from(tick),
+                    clip,
+                );
+            }
+        }
     }
 
     /// sets the current mouse position to given state
@@ -233,4 +246,14 @@ impl Prepared {
         state.drag_end_position = max.x;
         Rect::from_two_pos(min, max)
     }
+}
+
+/// converts position to clip tick
+fn pos_to_clip_tick(pos: f32) -> f32 {
+    (pos / 24.0) * 120.0
+}
+
+/// converts pixel width to tick
+fn pixel_width_to_tick(width: f32) -> f32 {
+    (width / 24.0) * 480.0
 }

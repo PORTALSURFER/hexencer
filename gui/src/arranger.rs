@@ -11,14 +11,7 @@ pub fn track(
     ui: &mut egui::Ui,
 ) {
     let track = ui::TrackWidget::new(Arc::clone(&data_layer), index).fill(TRACK_COLOR);
-    let response = track.show(ui, ctx);
-    if response.clicked() {
-        tracing::info!("Track clicked!");
-        data_layer
-            .lock()
-            .unwrap()
-            .add_clip(index, Tick::from(6 * 480), "new clip", 1920);
-    }
+    track.show(ui, ctx);
 }
 
 /// gui representation of track
