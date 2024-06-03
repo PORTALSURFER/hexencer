@@ -76,7 +76,7 @@ mod tests {
 
         project.add_track(track);
 
-        for clip in project.find_clip(id) {
+        while let Some(clip) = project.find_clip(id) {
             assert!(clip.get_id() == id);
         }
     }
