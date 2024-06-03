@@ -12,3 +12,7 @@ homepage = "https://github.com/PORTALSURFER/hexencer"
 tracing = {workspace=true}
 tracing-subscriber = {workspace=true}
 uuid = {workspace=true}
+thiserror = {workspace=true}
+
+[dev-dependencies]
+coverage-helper = {workspace=true}

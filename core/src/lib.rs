@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
 #![deny(clippy::missing_docs_in_private_items)]
 #![allow(dead_code)]
+#![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
 
 //! represents elements without clear goal
 
@@ -80,6 +81,12 @@ impl Display for Tick {
 
 impl From<i32> for Tick {
     fn from(tick: i32) -> Self {
+        Self(tick as u64)
+    }
+}
+
+impl From<f32> for Tick {
+    fn from(tick: f32) -> Self {
         Self(tick as u64)
     }
 }

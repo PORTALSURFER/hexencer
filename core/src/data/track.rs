@@ -1,10 +1,16 @@
 #![deny(missing_docs)]
-use super::{
-    clip::Clip,
-    event_list::{EventList, EventSegment},
-};
+use super::clip::{Clip, ClipCollection};
 use crate::{instrument::Instrument, Tick};
-use std::{collections::BTreeMap, fmt::Display};
+use std::fmt::Display;
+use thiserror::Error;
+
+/// error type for track collection
+#[derive(Error, Debug)]
+pub enum TrackCollectionError {
+    /// track at index does not exist
+    #[error("Track at index {0} does not exist")]
+    NoTrack(usize),
+}
 
 /// collection of tracks
 #[derive(Default, Debug)]
@@ -14,6 +20,14 @@ pub struct TrackCollection {
 }
 
 impl TrackCollection {
+    /// gets slice of clips at a given track index
+    pub fn get_clips(&self, track_id: usize) -> Result<&ClipCollection, TrackCollectionError> {
+        match self.inner.get(track_id) {
+            Some(track) => Ok(&track.clips),
+            _ => Err(TrackCollectionError::NoTrack(track_id)),
+        }
+    }
+
     /// add a new track to the collection
     pub fn add(&mut self, new_track: Track) {
         self.inner.push(new_track);
@@ -74,11 +88,8 @@ pub struct Track {
     pub name: String,
     /// instrument assigned to this track
     pub instrument: Instrument,
-    /// events on this track
-    #[deprecated(note = "clips now house events")]
-    pub event_list: EventList,
     /// clips in this track
-    pub clips: BTreeMap<Tick, Clip>,
+    pub clips: ClipCollection,
 }
 
 impl Display for Track {
@@ -91,32 +102,11 @@ impl Display for Track {
 impl Track {
     /// create a new track object
     pub fn new(id: usize, name: &str) -> Track {
-        // test events
-        let mut event_list = EventList::new();
-        for i in 0..8 {
-            let event_block = EventSegment::new2(
-                Tick::from(i * 480_u32),
-                Tick::from(i * 480_u32),
-                38,
-                64,
-                true,
-            );
-            event_list.add_event_segment(event_block);
-        }
-
-        // test clips
-        let mut clips = BTreeMap::new();
-        for i in 0..4 {
-            let clip = Clip::new(&format!("clip_{}", i));
-            clips.insert(Tick::from(480 * i), clip);
-        }
-
         Self {
             id,
             name: String::from(name),
-            event_list,
             instrument: Instrument::new("port0", 0, 0),
-            clips,
+            clips: ClipCollection::new(),
         }
     }
 
@@ -131,7 +121,7 @@ impl Track {
     }
 
     /// add a new clip to the track
-    pub(crate) fn add_clip(&mut self, tick: Tick, name: &str) {
-        self.clips.insert(tick, Clip::new(name));
+    pub(crate) fn add_clip(&mut self, tick: Tick, clip: Clip) {
+        self.clips.insert(tick, clip);
     }
 }

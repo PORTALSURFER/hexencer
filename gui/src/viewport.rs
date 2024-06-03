@@ -53,7 +53,7 @@ impl MainViewport {
     /// builds the track manager control ui
     fn track_manager_controls(&mut self, ui: &mut Ui) {
         if ui.button("add track").clicked() {
-            self.data_layer.lock().unwrap().project_manager.add_track();
+            self.data_layer.lock().unwrap().project_manager.push_track();
         }
         if ui.button("remove track").clicked() {
             self.data_layer
@@ -107,11 +107,6 @@ impl eframe::App for MainViewport {
             style.spacing.window_margin = Margin::ZERO;
             style.spacing.indent = 0.0
         });
-
-        // ctx.input(|i| i.key_pressed(egui::Key::C))
-
-        // let gui_state = GuiState::default();
-        // ctx.memory_mut(|memory| memory.data.insert_temp(Id::NULL, gui_state));
 
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
             ui.centered_and_justified(|ui| ui.label("toolbar menu"));

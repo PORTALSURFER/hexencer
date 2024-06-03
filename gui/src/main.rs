@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
 #![deny(clippy::missing_docs_in_private_items)]
 #![allow(dead_code)]
+#![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
 
 //! the main entry point for the application
 
@@ -70,7 +71,7 @@ async fn main() {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             // .with_icon(icon)
-            .with_inner_size(egui::vec2(1920.0, 1080.0)),
+            .with_inner_size(egui::vec2(800.0, 600.0)),
 
         ..Default::default()
     };
