@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::memory::GuiState;
+use crate::ui::common::TRACK_HEIGHT;
 use egui::layers::ShapeIdx;
 use egui::{emath::*, epaint, Color32, Response, Rounding, Sense, Shape, Stroke};
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
@@ -55,7 +56,7 @@ pub struct ClipWidget {
     /// if this clip is active
     active: bool,
     /// current clip offset on the track
-    offset: f32,
+    clip_position: f32,
     /// data layer used to read and write data
     end: u64,
 }
@@ -75,7 +76,7 @@ impl ClipWidget {
             data_id,
             id,
             active: true,
-            offset,
+            clip_position: offset,
             end,
         }
     }
@@ -94,38 +95,7 @@ impl ClipWidget {
         let width = (self.end as f32 / 480.0) * 24.0;
         let size = Vec2::new(width, height);
 
-        let mut start_pos = ui.max_rect().min;
-        start_pos.x += self.offset;
-        let mut state = match State::load(self.id, ui) {
-            Some(state) => state,
-            _ => State {
-                pivot_pos: start_pos,
-            },
-        };
-        let quantized = quantize(state.pivot_pos.x, 24.0, start_pos.x);
-        let new_pos = pos2(quantized, state.pivot_pos.y);
-
-        let rect = Rect::from_min_size(new_pos, size);
-        let mut move_response = {
-            let move_response = ui.interact(rect, self.id, Sense::drag());
-
-            if move_response.dragged() {
-                let delta = move_response.drag_delta();
-                state.pivot_pos.x += delta.x;
-            }
-
-            if move_response.dragged() || move_response.clicked() {
-                ctx.memory_mut(|memory| memory.areas().visible_last_frame(&move_response.layer_id));
-                ctx.request_repaint();
-            }
-            move_response
-        };
-
-        let constrain_rect = ui.available_rect_before_wrap();
-
-        // update response with drag movement
-        move_response.rect = rect;
-        move_response.interact_rect = rect;
+        let (state, rect, move_response, constrain_rect) = self.handle_dragging(ui, size, ctx);
 
         let content_ui = ui.child_ui(rect, *ui.layout());
 
@@ -142,6 +112,51 @@ impl ClipWidget {
             where_to_put_background,
             content_ui,
         }
+    }
+
+    /// handle dragging around of clip on track
+    fn handle_dragging(
+        &self,
+        ui: &mut Ui,
+        size: Vec2,
+        ctx: &Context,
+    ) -> (State, Rect, Response, Rect) {
+        let mut start_pos = ui.max_rect().min;
+        start_pos.x += self.clip_position;
+        let mut state = match State::load(self.id, ui) {
+            Some(state) => state,
+            _ => State {
+                pivot_pos: start_pos,
+            },
+        };
+        let quantized = quantize(state.pivot_pos.x, 24.0, start_pos.x);
+        let quantized_y = quantize(state.pivot_pos.y, TRACK_HEIGHT, start_pos.y);
+        let new_pos = pos2(quantized, quantized_y);
+
+        let rect = Rect::from_min_size(new_pos, size);
+        let mut move_response = {
+            let move_response = ui.interact(rect, self.id, Sense::drag());
+
+            if move_response.dragged() {
+                let delta = move_response.drag_delta();
+                state.pivot_pos.x += delta.x;
+                state.pivot_pos.y += delta.y;
+            }
+
+            if move_response.dragged() || move_response.clicked() {
+                ctx.memory_mut(|memory| memory.areas().visible_last_frame(&move_response.layer_id));
+                ctx.request_repaint();
+            }
+
+            move_response
+        };
+
+        let constrain_rect = ui.available_rect_before_wrap();
+
+        // update response with drag movement
+        move_response.rect = rect;
+        move_response.interact_rect = rect;
+        (state, rect, move_response, constrain_rect)
     }
 
     /// paint this clip widget
