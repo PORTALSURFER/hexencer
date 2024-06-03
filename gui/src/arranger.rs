@@ -1,13 +1,13 @@
 use crate::ui::{self, common::TRACK_COLOR};
 use egui::{layers::ShapeIdx, Color32, Ui};
-use hexencer_core::{data::DataLayer, Tick};
+use hexencer_core::{data::DataLayer, Tick, TrackId};
 use std::sync::{Arc, Mutex};
 
 /// creates a new track ui element
 pub fn track(
     data_layer: Arc<Mutex<DataLayer>>,
     ctx: &egui::Context,
-    index: usize,
+    index: TrackId,
     ui: &mut egui::Ui,
 ) {
     let track = ui::TrackWidget::new(Arc::clone(&data_layer), index).fill(TRACK_COLOR);

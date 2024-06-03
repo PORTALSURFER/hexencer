@@ -9,7 +9,7 @@ use crate::{
 use egui::{
     epaint, vec2, Color32, FontId, Frame, Id, LayerId, Margin, Order, Pos2, Stroke, Ui, Vec2,
 };
-use hexencer_core::data::DataLayer;
+use hexencer_core::{data::DataLayer, TrackId};
 use hexencer_engine::{SequencerCommand, SequencerSender};
 use std::sync::{Arc, Mutex};
 
@@ -34,7 +34,7 @@ impl MainViewport {
     /// builds the track headers list
     fn track_header_list(&mut self, ui: &mut Ui) {
         ui.vertical(|ui| {
-            let track_ids: Vec<usize> = self
+            let track_ids: Vec<TrackId> = self
                 .data_layer
                 .lock()
                 .unwrap()
@@ -206,7 +206,7 @@ impl eframe::App for MainViewport {
             }
             TimelineWidget::new(10.0).show(ui);
             ui.vertical(|ui| {
-                let track_ids: Vec<usize> = self
+                let track_ids: Vec<TrackId> = self
                     .data_layer
                     .lock()
                     .unwrap()
@@ -229,12 +229,12 @@ impl eframe::App for MainViewport {
 }
 
 /// builds gui for the track header
-fn track_header(ui: &mut Ui, id: usize) {
+fn track_header(ui: &mut Ui, id: TrackId) {
     let mut frame = egui::Frame::none().fill(TRACK_HEADER_COLOR);
     frame.inner_margin = Margin::ZERO;
     frame.outer_margin = Margin::ZERO;
     frame.show(ui, |ui| {
-        let label = egui::Label::new(format!("Track {}", id));
+        let label = egui::Label::new(format!("Track {:?}", id));
         ui.add_sized(vec2(BEAT_WIDTH, TRACK_HEIGHT), label);
 
         // let port = self
@@ -259,7 +259,7 @@ fn port_selector(
     text_input_rect: Vec2,
     mut port: String,
     data_layer: &Arc<Mutex<DataLayer>>,
-    index: usize,
+    index: TrackId,
 ) {
     let port_selector = ui.add_sized(text_input_rect, egui::TextEdit::singleline(&mut port));
     if port_selector.lost_focus() || port_selector.changed() {
@@ -282,7 +282,7 @@ fn port_selector(
 /// builds the channel selector ui widget
 fn channel_selector(
     data_layer: Arc<Mutex<DataLayer>>,
-    index: usize,
+    index: TrackId,
     ui: &mut Ui,
     text_input_rect: Vec2,
 ) {

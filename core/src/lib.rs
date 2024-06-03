@@ -13,6 +13,7 @@ pub mod event;
 pub mod instrument;
 
 pub use data::DataId;
+pub use data::TrackId;
 
 use std::fmt::Display;
 use std::time::Duration;
