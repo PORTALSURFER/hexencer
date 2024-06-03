@@ -8,7 +8,7 @@ use egui::{
 };
 use hexencer_core::{
     data::{Clip, DataLayer},
-    DataId, Tick,
+    DataId, Tick, TrackId,
 };
 use std::sync::{Arc, Mutex};
 
@@ -21,8 +21,7 @@ pub struct TrackWidget {
     /// color used to fill te background of the track
     fill: Color32,
     /// identifier of the track
-    // TODO replace with DataId
-    index: usize,
+    index: TrackId,
     /// referene to the data_layer
     data_layer: Arc<Mutex<DataLayer>>,
 }
@@ -52,7 +51,7 @@ impl State {
 
 impl TrackWidget {
     /// creates a new 'Track' element
-    pub fn new(data_layer: Arc<Mutex<DataLayer>>, index: usize) -> Self {
+    pub fn new(data_layer: Arc<Mutex<DataLayer>>, index: TrackId) -> Self {
         Self {
             data_layer,
             index,
@@ -128,7 +127,7 @@ impl TrackWidget {
     }
 
     /// layout clips on the track
-    fn layout_clips(&self, ui: &mut Ui, index: usize, ctx: &Context, rect: Rect) {
+    fn layout_clips(&self, ui: &mut Ui, index: TrackId, ctx: &Context, rect: Rect) {
         let mut child_ui = ui.child_ui(rect, Layout::default());
         child_ui.horizontal(|ui| {
             let data = self.data_layer.lock().unwrap();

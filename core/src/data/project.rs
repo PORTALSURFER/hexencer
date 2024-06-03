@@ -2,7 +2,7 @@ use crate::DataId;
 
 use super::{
     clip::Clip,
-    track::{Track, TrackCollection},
+    track::{Track, TrackCollection, TrackId},
     InstrumentManager,
 };
 
@@ -58,13 +58,12 @@ impl Project {
 
     /// add a new track to the end of the collection
     pub fn push_track(&mut self) {
-        let index = self.tracks.len();
-        let track = Track::new(index, "test");
+        let track = Track::new(TrackId::new(), "test");
         self.add_track(track);
     }
 
     /// moved a clip from one track to another
-    pub fn move_clip(&mut self, id: DataId, index: usize) {
+    pub fn move_clip(&mut self, id: DataId, index: TrackId) {
         self.tracks.take_clip(id);
     }
 }
@@ -76,7 +75,7 @@ mod tests {
     #[test]
     fn can_find_clip_after_adding() {
         let mut project = Project::new();
-        let mut track = Track::new(0, "track 0");
+        let mut track = Track::new(TrackId::new(), "track 0");
         let clip = Clip::new("new_clip", 120);
         let id = clip.get_id();
         track.add_clip(100.into(), clip);

@@ -1,7 +1,7 @@
 #![deny(missing_docs)]
 use super::clip::{Clip, ClipCollection};
-use crate::{instrument::Instrument, Tick};
-use std::fmt::Display;
+use crate::{instrument::Instrument, DataId, Tick};
+use std::{fmt::Display, ops::Deref};
 use thiserror::Error;
 
 /// error type for track collection
@@ -44,8 +44,8 @@ impl TrackCollection {
     }
 
     /// get a reference to a track at a given index, or 'None' if it doesn't exist
-    pub fn get(&self, index: usize) -> Option<&Track> {
-        self.inner.get(index)
+    pub fn get(&self, index: TrackId) -> Option<&Track> {
+        self.inner.iter().find(|t| t.id == index)
     }
 
     /// get the number of tracks in the collection
@@ -63,9 +63,9 @@ impl TrackCollection {
         self.inner.pop()
     }
 
-    /// gets a mutable reference to the track at the given index
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut Track> {
-        self.inner.get_mut(index)
+    /// gets a mutable reference to the track with the given id
+    pub fn get_mut(&mut self, id: TrackId) -> Option<&mut Track> {
+        self.inner.iter_mut().find(|t| t.id == id)
     }
 
     /// get an iterator over references to the tracks
@@ -88,11 +88,35 @@ impl TrackCollection {
     }
 }
 
+/// data identifier of a track
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TrackId(DataId);
+
+impl Display for TrackId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+impl TrackId {
+    /// creates a new track id
+    pub(crate) fn new() -> Self {
+        Self(DataId::new())
+    }
+}
+
+impl Deref for TrackId {
+    type Target = DataId;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /// track object
 #[derive(Default, Debug)]
 pub struct Track {
     /// unique id of this track
-    pub id: usize,
+    pub id: TrackId,
     /// name of the track, used as label
     pub name: String,
     /// instrument assigned to this track
@@ -110,7 +134,7 @@ impl Display for Track {
 
 impl Track {
     /// create a new track object
-    pub fn new(id: usize, name: &str) -> Track {
+    pub fn new(id: TrackId, name: &str) -> Track {
         Self {
             id,
             name: String::from(name),

@@ -14,6 +14,7 @@ mod track;
 pub use clip::Clip;
 pub use common::DataId;
 pub use midi_message::MidiMessage;
+pub use track::TrackId;
 /// event list
 pub mod event_list;
 
@@ -33,7 +34,7 @@ pub struct EditorState {
 pub enum DataLayerError {
     /// when an action on a track is attempted, but no track with that id exists
     #[error("No track with id {0}")]
-    NoTrack(usize),
+    NoTrack(TrackId),
 }
 
 /// object which holds all the persistent data objects used by the application
@@ -52,7 +53,7 @@ impl DataLayer {
     /// add a new clip to the track specified by 'track_id'
     pub fn add_clip(
         &mut self,
-        track_id: usize,
+        track_id: TrackId,
         tick: Tick,
         clip: Clip,
     ) -> Result<(), DataLayerError> {
@@ -84,7 +85,7 @@ pub struct InstrumentManager {
 
 #[cfg(test)]
 mod tests {
-    use self::track::Track;
+    use self::track::{Track, TrackId};
 
     use super::*;
     use coverage_helper::test;
@@ -92,7 +93,7 @@ mod tests {
     #[test]
     fn test_add_clip() {
         let mut data = DataLayer::default();
-        let track = Track::new(0, "test");
+        let track = Track::new(TrackId::new(), "test");
         data.project_manager.add_track(track);
 
         {
@@ -100,7 +101,7 @@ mod tests {
             assert!(clips.len() == 0);
         }
         let clip = Clip::new("test", 120);
-        data.add_clip(0, Tick::from(0), clip);
+        data.add_clip(TrackId::new(), Tick::from(0), clip); //TODO this is flawed, adding to some unkown id
 
         {
             let clips = data.project_manager.tracks.get_clips(0).unwrap();
