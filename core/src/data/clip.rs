@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, ops::Deref};
 
 use super::{
     common::DataId,
@@ -28,6 +28,21 @@ impl ClipCollection {
     /// returns an iterator over the clips in this collection
     pub fn into_iter(self) -> std::collections::btree_map::IntoIter<Tick, Clip> {
         self.inner.into_iter()
+    }
+
+    /// creates a new, empty, 'ClipCollection'
+    pub fn new() -> ClipCollection {
+        ClipCollection {
+            inner: BTreeMap::new(),
+        }
+    }
+}
+
+impl Deref for ClipCollection {
+    type Target = BTreeMap<Tick, Clip>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 

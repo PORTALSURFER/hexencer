@@ -112,7 +112,6 @@ impl ClipWidget {
             if move_response.dragged() {
                 let delta = move_response.drag_delta();
                 state.pivot_pos.x += delta.x;
-                tracing::info!("Clip pos {:?}", state.pivot_pos.x);
             }
 
             if move_response.dragged() || move_response.clicked() {
