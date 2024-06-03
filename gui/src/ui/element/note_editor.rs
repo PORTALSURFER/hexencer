@@ -5,13 +5,11 @@ use egui::{
     lerp, pos2, Color32, FontId, Id, LayerId, Order, PointerButton, Pos2, Rect, Response, Rounding,
     Sense, Shape, Stroke, Ui,
 };
-use tracing::instrument::WithSubscriber;
 
 use self::transform::Transform;
+use super::BEAT_WIDTH;
 use hexencer_core::{data::Clip, Tick};
 use std::ops::RangeInclusive;
-
-use super::BEAT_WIDTH;
 
 /// trainsform used for panning and zooming
 mod transform;
