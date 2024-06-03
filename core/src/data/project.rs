@@ -1,3 +1,5 @@
+use crate::DataId;
+
 use super::{
     clip::Clip,
     track::{Track, TrackCollection},
@@ -59,6 +61,11 @@ impl Project {
         let index = self.tracks.len();
         let track = Track::new(index, "test");
         self.add_track(track);
+    }
+
+    /// moved a clip from one track to another
+    pub fn move_clip(&mut self, id: DataId, index: usize) {
+        self.tracks.take_clip(id);
     }
 }
 
