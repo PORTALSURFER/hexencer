@@ -1,11 +1,11 @@
 use egui::{Id, Ui};
-use hexencer_core::DataId;
+use hexencer_core::{data::ClipId, DataId};
 
 /// gui wide shared state, used for storing interaction states used throughout the gui
 #[derive(Clone, Default)]
 pub struct GuiState {
     /// id of the currently selected clip
-    pub selected_clip: Option<DataId>,
+    pub selected_clip: Option<ClipId>,
 }
 
 impl GuiState {

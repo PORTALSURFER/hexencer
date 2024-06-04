@@ -7,7 +7,7 @@ use egui::{
     Rect, Response, Rounding, Sense, Shape, Stroke, Ui, Vec2,
 };
 use hexencer_core::{
-    data::{Clip, DataLayer},
+    data::{Clip, ClipId, DataLayer},
     DataId, Tick, TrackId,
 };
 use std::sync::{Arc, Mutex};
@@ -70,7 +70,7 @@ impl TrackWidget {
         let height = TRACK_HEIGHT;
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
         let response = self.allocate_space(ui, rect);
-        if let Some(payload) = response.dnd_release_payload::<DataId>() {
+        if let Some(payload) = response.dnd_release_payload::<ClipId>() {
             // find clip with dataid
             // reassign clip to this track instead
             let mut data = self.data_layer.lock().unwrap();
