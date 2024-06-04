@@ -1,5 +1,3 @@
-use crate::DataId;
-
 use super::{
     clip::{Clip, ClipId},
     track::{Track, TrackCollection, TrackId},
@@ -44,7 +42,7 @@ impl Project {
     }
 
     /// returns reference to the clip if found, else 'None'
-    pub fn find_clip(&self, selected_clip_id: ClipId) -> Option<&Clip> {
+    pub fn find_clip(&self, selected_clip_id: &ClipId) -> Option<&Clip> {
         for track in self.tracks.iter() {
             for (_, clip) in track.clips.iter() {
                 if clip.get_id() == selected_clip_id {
@@ -63,8 +61,9 @@ impl Project {
     }
 
     /// moved a clip from one track to another
-    pub fn move_clip(&mut self, id: ClipId, index: TrackId) {
-        self.tracks.take_clip(id);
+    pub fn move_clip(&mut self, clip_id: &ClipId, track_id: &TrackId) -> Option<Clip> {
+        let _ = track_id;
+        self.tracks.take_clip(clip_id)
     }
 }
 
@@ -77,13 +76,13 @@ mod tests {
         let mut project = Project::new();
         let mut track = Track::new(TrackId::new(), "track 0");
         let clip = Clip::new("new_clip", 120);
-        let id = clip.get_id();
+        let clip_id = *clip.get_id();
         track.add_clip(100.into(), clip);
 
         project.add_track(track);
 
-        while let Some(clip) = project.find_clip(id) {
-            assert!(clip.get_id() == id);
+        while let Some(clip) = project.find_clip(&clip_id) {
+            assert!(clip.get_id() == clip_id);
         }
     }
 }

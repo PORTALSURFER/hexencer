@@ -21,7 +21,7 @@ pub struct TrackWidget {
     /// color used to fill te background of the track
     fill: Color32,
     /// identifier of the track
-    index: TrackId,
+    track_id: TrackId,
     /// referene to the data_layer
     data_layer: Arc<Mutex<DataLayer>>,
 }
@@ -54,7 +54,7 @@ impl TrackWidget {
     pub fn new(data_layer: Arc<Mutex<DataLayer>>, index: TrackId) -> Self {
         Self {
             data_layer,
-            index,
+            track_id: index,
             ..Default::default()
         }
     }
@@ -70,24 +70,27 @@ impl TrackWidget {
         let height = TRACK_HEIGHT;
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
         let response = self.allocate_space(ui, rect);
-        if let Some(payload) = response.dnd_release_payload::<ClipId>() {
+        if let Some(clip_id) = response.dnd_release_payload::<ClipId>() {
+            tracing::info!("clip with id:{} was released", clip_id.as_ref());
             // find clip with dataid
             // reassign clip to this track instead
             let mut data = self.data_layer.lock().unwrap();
-            let clip_id = if let Some(clip) = data
+            // let clip_id = data
+            //     .project_manager
+            //     .find_clip(payload.as_ref())
+            //     .map(|clip| clip.get_id());
+
+            let clip = data
                 .project_manager
-                .find_clip(Arc::into_inner(payload).unwrap())
-            {
-                Some(clip.get_id())
-            } else {
-                None
-            };
-            if let Some(id) = clip_id {
-                data.project_manager.move_clip(id, self.index);
+                .move_clip(clip_id.as_ref(), &self.track_id);
+            if let Some(clip) = clip {
+                if let Some(track) = data.project_manager.tracks.get_mut(self.track_id) {
+                    track.add_clip(Tick::from(480), clip);
+                }
             }
         }
 
-        self.layout_clips(ui, self.index, ctx, rect);
+        self.layout_clips(ui, self.track_id, ctx, rect);
 
         Prepared {
             track: self,
@@ -137,7 +140,7 @@ impl TrackWidget {
                     if crate::ui::clip(ctx, ui, clip.get_id(), *tick, clip.end).drag_started() {
                         tracing::info!("clip clicked");
                         let mut gui_state = GuiState::load(ui);
-                        gui_state.selected_clip = Some(clip.get_id());
+                        gui_state.selected_clip = Some(*clip.get_id());
                         gui_state.store(ui);
                     };
                 }
@@ -184,28 +187,26 @@ impl Prepared {
 
     /// handles painting of clips into drags, adding them to the track
     fn handle_clip_painting(&self, ui: &mut Ui, state: &mut State) {
-        if ui.input(|i| i.modifiers.ctrl) {
-            if self.response.drag_started() {
-                self.register_drag_start_position(ui, state);
-            }
+        if self.response.drag_started() {
+            self.register_drag_start_position(ui, state);
+        }
 
-            if self.response.dragged() {
-                self.paint_new_clip(ui, state);
-            }
-            if self.response.drag_stopped() {
-                let pos = state.drag_start_position - self.rect.min.x;
-                let tick = pos_to_clip_tick(pos);
-                let width = state.drag_end_position - state.drag_start_position;
-                let end = pixel_width_to_tick(width);
-                tracing::info!("store clip at {} {}", pos, end);
-                state.started_drag_paint = false;
-                let clip = Clip::new("new clip", end as u64);
-                self.track.data_layer.lock().unwrap().add_clip(
-                    self.track.index,
-                    Tick::from(tick),
-                    clip,
-                );
-            }
+        if self.response.dragged() {
+            self.paint_new_clip(ui, state);
+        }
+        if self.response.drag_stopped() {
+            let pos = state.drag_start_position - self.rect.min.x;
+            let tick = pos_to_clip_tick(pos);
+            let width = state.drag_end_position - state.drag_start_position;
+            let end = pixel_width_to_tick(width);
+            tracing::info!("store clip at {} {}", pos, end);
+            state.started_drag_paint = false;
+            let clip = Clip::new("new clip", end as u64);
+            self.track.data_layer.lock().unwrap().add_clip(
+                self.track.track_id,
+                Tick::from(tick),
+                clip,
+            );
         }
     }
 

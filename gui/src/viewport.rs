@@ -92,7 +92,7 @@ impl MainViewport {
                 .lock()
                 .unwrap()
                 .project_manager
-                .find_clip(selected_clip_id)
+                .find_clip(&selected_clip_id)
             {
                 NoteEditorWidget::new(selected_clip).show(ui);
             }

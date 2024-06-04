@@ -16,7 +16,7 @@ mod viewport;
 
 use egui::{Color32, IconData};
 use hexencer_core::data::DataLayer;
-use hexencer_engine::midi::{MidiEngine, MidiEngineSender};
+use hexencer_engine::midi_engine::{MidiEngine, MidiEngineSender};
 use hexencer_engine::{Sequencer, SequencerSender};
 use std::sync::{Arc, Mutex};
 use tokio::task;
