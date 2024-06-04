@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, fmt::Display, ops::Deref};
 
 use super::{
     common::DataId,
-    event_list::{EventList, EventSegment},
+    event_list::{EventCollection, EventSegment},
     MidiMessage,
 };
 use crate::{event::EventType, Tick};
@@ -35,6 +35,19 @@ impl ClipCollection {
         ClipCollection {
             inner: BTreeMap::new(),
         }
+    }
+
+    /// returns the clip at the given tick, if any
+    pub fn find_take(&mut self, clip_id: &ClipId) -> Option<Clip> {
+        let key_to_remove = self.inner.iter().find_map(|(key, clip)| {
+            if clip.get_id() == clip_id {
+                Some(*key)
+            } else {
+                None
+            }
+        });
+
+        key_to_remove.and_then(|key| self.inner.remove(&key))
     }
 }
 
@@ -74,7 +87,7 @@ pub struct Clip {
     /// visual name of the clip
     pub name: String,
     /// notes in this clip
-    pub events: EventList,
+    pub events: EventCollection,
     /// end of the clip
     pub end: u64,
 }
@@ -82,7 +95,7 @@ pub struct Clip {
 impl Clip {
     /// Create a new clip
     pub fn new(name: &str, end: u64) -> Self {
-        let mut test_events = EventList::new();
+        let mut test_events = EventCollection::new();
 
         let event1 = EventSegment::new(
             DataId::new(),
@@ -118,21 +131,19 @@ impl Clip {
         test_events.add_event(Tick::from(480), event2);
         test_events.add_event(Tick::from(960), event3);
 
-        let test_clip = Self {
+        Self {
             id: ClipId::new(),
             name: String::from(name),
             events: test_events,
             end,
-        };
-
-        return test_clip;
-
-        Self {
-            id: ClipId::new(),
-            name: String::from(name),
-            events: EventList::new(),
-            end: 1920,
         }
+
+        // Self {
+        //     id: ClipId::new(),
+        //     name: String::from(name),
+        //     events: EventList::new(),
+        //     end: 1920,
+        // }
     }
     /// get this clip's id as a string
     pub fn id_as_string(&self) -> String {
@@ -140,13 +151,13 @@ impl Clip {
     }
 
     /// get a clone of this clips id
-    pub fn get_id(&self) -> ClipId {
-        self.id
+    pub fn get_id(&self) -> &ClipId {
+        &self.id
     }
 }
 
 /// data identifier of a clip
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClipId(DataId);
 
 impl Deref for ClipId {
@@ -167,5 +178,11 @@ impl ClipId {
     /// creates a new clip id
     pub(crate) fn new() -> Self {
         Self(DataId::new())
+    }
+}
+
+impl PartialEq<ClipId> for &ClipId {
+    fn eq(&self, other: &ClipId) -> bool {
+        self.0 == other.0
     }
 }

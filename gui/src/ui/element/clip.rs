@@ -14,9 +14,9 @@ pub const DEFAULT_CLIP_WIDTH: f32 = 96.0;
 pub const BEAT_WIDTH: f32 = 24.0;
 
 /// create a new 'clip' and returns it's 'Response'
-pub fn clip(ctx: &Context, ui: &mut Ui, id: ClipId, tick: Tick, end: u64) -> Response {
+pub fn clip(ctx: &Context, ui: &mut Ui, id: &ClipId, tick: Tick, end: u64) -> Response {
     let egui_id = egui::Id::new(id.as_bytes());
-    let clip = ClipWidget::new(id, egui_id, tick, end);
+    let clip = ClipWidget::new(*id, egui_id, tick, end);
     clip.show(ctx, ui)
 }
 
@@ -69,11 +69,11 @@ pub fn quantize(value: f32, step_size: f32, offset: f32) -> f32 {
 impl ClipWidget {
     /// creates a new 'Clip'
     /// 'tick' will set the position of the 'Clip' on the 'Track'
-    pub fn new(data_id: ClipId, id: Id, tick: Tick, end: u64) -> Self {
+    pub fn new(clip_id: ClipId, id: Id, tick: Tick, end: u64) -> Self {
         let offset = tick.as_f32() / 480.0 * DEFAULT_CLIP_WIDTH;
 
         Self {
-            data_id,
+            data_id: clip_id,
             id,
             active: true,
             clip_position: offset,
@@ -95,18 +95,19 @@ impl ClipWidget {
         let width = (self.end as f32 / 480.0) * 24.0;
         let size = Vec2::new(width, height);
 
-        let (state, rect, move_response, constrain_rect) = self.handle_dragging(ui, size, ctx);
+        let mut start_pos = ui.max_rect().min;
+        start_pos.x += self.clip_position;
+
+        let (rect, move_response) = self.handle_dragging(ui, size, ctx, start_pos);
 
         let content_ui = ui.child_ui(rect, *ui.layout());
 
-        state.store(self.id, ui);
+        // state.store(self.id, ui);
 
         Prepared {
-            state,
             clip: self.clone(),
             active: self.active,
             temporarily_invisible: false,
-            constrain_rect,
             move_response,
             rect,
             where_to_put_background,
@@ -120,19 +121,17 @@ impl ClipWidget {
         ui: &mut Ui,
         size: Vec2,
         ctx: &Context,
-    ) -> (State, Rect, Response, Rect) {
-        let mut start_pos = ui.max_rect().min;
-        start_pos.x += self.clip_position;
-        let mut state = match State::load(self.id, ui) {
-            Some(state) => state,
-            _ => State {
-                pivot_pos: start_pos,
-            },
-        };
-        let quantized = quantize(state.pivot_pos.x, 24.0, start_pos.x);
-        let quantized_y = quantize(state.pivot_pos.y, TRACK_HEIGHT, start_pos.y);
-        let new_pos = pos2(quantized, quantized_y);
-
+        start_pos: Pos2,
+    ) -> (Rect, Response) {
+        // let mut state = match State::load(self.id, ui) {
+        //     Some(state) => state,
+        //     _ => State {
+        //         pivot_pos: start_pos,
+        //     },
+        // };
+        // let quantized = quantize(state.pivot_pos.x, 24.0, start_pos.x);
+        // let quantized_y = quantize(state.pivot_pos.y, TRACK_HEIGHT, start_pos.y);
+        let mut new_pos = start_pos;
         let rect = Rect::from_min_size(new_pos, size);
         let mut move_response = {
             let move_response = ui.interact(rect, self.id, Sense::drag());
@@ -140,8 +139,10 @@ impl ClipWidget {
             if move_response.dragged() {
                 DragAndDrop::set_payload(ctx, self.data_id);
                 let delta = move_response.drag_delta();
-                state.pivot_pos.x += delta.x;
-                state.pivot_pos.y += delta.y;
+                let quantized_x = quantize(delta.x, 24.0, start_pos.x);
+                let quantized_y = quantize(delta.y, TRACK_HEIGHT, start_pos.y);
+                new_pos.x += quantized_x;
+                new_pos.y += quantized_y;
             }
 
             if move_response.dragged() || move_response.clicked() {
@@ -152,12 +153,12 @@ impl ClipWidget {
             move_response
         };
 
-        let constrain_rect = ui.available_rect_before_wrap();
+        // let constrain_rect = ui.available_rect_before_wrap();
 
         // update response with drag movement
         move_response.rect = rect;
         move_response.interact_rect = rect;
-        (state, rect, move_response, constrain_rect)
+        (rect, move_response)
     }
 
     /// paint this clip widget
@@ -179,16 +180,12 @@ pub struct Prepared {
     active: bool,
     /// used to prevent a glicht in egui causing the first frame to flicker, not actively used atm i think
     temporarily_invisible: bool,
-    /// used to constraint movement
-    constrain_rect: Rect,
     /// response from the clip widget
     move_response: Response,
     /// rect of this clip
     rect: Rect,
     /// inner ui
     content_ui: Ui,
-    /// state of this clip
-    state: State,
     /// placeholder for painting in the background color
     where_to_put_background: ShapeIdx,
 }

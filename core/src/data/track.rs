@@ -79,17 +79,19 @@ impl TrackCollection {
     }
 
     /// take the clip out of any track if found, removing it from the track
-    pub fn take_clip(&mut self, id: ClipId) -> Option<Clip> {
-        let mut clip = None;
-        for track in self.inner.iter_mut() {
-            // clip = track.clips.entry(&id);
+    pub fn take_clip(&mut self, clip_id: &ClipId) -> Option<Clip> {
+        for track in &mut self.inner {
+            if let result @ Some(_) = track.clips.find_take(clip_id) {
+                tracing::info!("taking clip from {}", track.id);
+                return result;
+            }
         }
-        clip
+        None
     }
 }
 
 /// data identifier of a track
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TrackId(DataId);
 
 impl Display for TrackId {
@@ -154,7 +156,7 @@ impl Track {
     }
 
     /// add a new clip to the track
-    pub(crate) fn add_clip(&mut self, tick: Tick, clip: Clip) {
+    pub fn add_clip(&mut self, tick: Tick, clip: Clip) {
         self.clips.insert(tick, clip);
     }
 }

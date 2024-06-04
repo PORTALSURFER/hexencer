@@ -8,22 +8,22 @@ type EventListType = BTreeMap<Tick, Vec<EventSegment>>;
 
 /// a list of events, keyed by their `Tick`
 #[derive(Default, Debug)]
-pub struct EventList(EventListType);
+pub struct EventCollection(EventListType);
 
-impl FromIterator<(Tick, Vec<EventSegment>)> for EventList {
+impl FromIterator<(Tick, Vec<EventSegment>)> for EventCollection {
     fn from_iter<T: IntoIterator<Item = (Tick, Vec<EventSegment>)>>(iter: T) -> Self {
         let mut map = BTreeMap::new();
         for (tick, trig) in iter {
             map.insert(tick, trig);
         }
-        EventList(map)
+        EventCollection(map)
     }
 }
 
-impl EventList {
+impl EventCollection {
     /// creates an empty `EventList`
-    pub fn new() -> EventList {
-        EventList(BTreeMap::new())
+    pub fn new() -> EventCollection {
+        EventCollection(BTreeMap::new())
     }
 
     /// adds a new event to the 'EventList'
