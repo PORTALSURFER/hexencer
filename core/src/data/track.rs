@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-use super::clip::{Clip, ClipCollection};
+use super::clip::{Clip, ClipCollection, ClipId};
 use crate::{instrument::Instrument, DataId, Tick};
 use std::{fmt::Display, ops::Deref};
 use thiserror::Error;
@@ -79,7 +79,7 @@ impl TrackCollection {
     }
 
     /// take the clip out of any track if found, removing it from the track
-    pub fn take_clip(&mut self, id: crate::DataId) -> Option<Clip> {
+    pub fn take_clip(&mut self, id: ClipId) -> Option<Clip> {
         let mut clip = None;
         for track in self.inner.iter_mut() {
             // clip = track.clips.entry(&id);

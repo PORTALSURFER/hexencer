@@ -1,7 +1,7 @@
 use crate::DataId;
 
 use super::{
-    clip::Clip,
+    clip::{Clip, ClipId},
     track::{Track, TrackCollection, TrackId},
     InstrumentManager,
 };
@@ -44,7 +44,7 @@ impl Project {
     }
 
     /// returns reference to the clip if found, else 'None'
-    pub fn find_clip(&self, selected_clip_id: crate::DataId) -> Option<&Clip> {
+    pub fn find_clip(&self, selected_clip_id: ClipId) -> Option<&Clip> {
         for track in self.tracks.iter() {
             for (_, clip) in track.clips.iter() {
                 if clip.get_id() == selected_clip_id {
@@ -63,7 +63,7 @@ impl Project {
     }
 
     /// moved a clip from one track to another
-    pub fn move_clip(&mut self, id: DataId, index: TrackId) {
+    pub fn move_clip(&mut self, id: ClipId, index: TrackId) {
         self.tracks.take_clip(id);
     }
 }

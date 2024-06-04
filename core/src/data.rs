@@ -12,6 +12,7 @@ mod project;
 mod track;
 
 pub use clip::Clip;
+pub use clip::ClipId;
 pub use common::DataId;
 pub use midi_message::MidiMessage;
 pub use track::TrackId;

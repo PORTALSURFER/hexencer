@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, ops::Deref};
+use std::{collections::BTreeMap, fmt::Display, ops::Deref};
 
 use super::{
     common::DataId,
@@ -70,7 +70,7 @@ impl IntoIterator for ClipCollection {
 #[derive(Default, Debug)]
 pub struct Clip {
     /// id used to identify data objects
-    id: DataId,
+    id: ClipId,
     /// visual name of the clip
     pub name: String,
     /// notes in this clip
@@ -119,7 +119,7 @@ impl Clip {
         test_events.add_event(Tick::from(960), event3);
 
         let test_clip = Self {
-            id: DataId::new(),
+            id: ClipId::new(),
             name: String::from(name),
             events: test_events,
             end,
@@ -128,7 +128,7 @@ impl Clip {
         return test_clip;
 
         Self {
-            id: DataId::new(),
+            id: ClipId::new(),
             name: String::from(name),
             events: EventList::new(),
             end: 1920,
@@ -140,7 +140,32 @@ impl Clip {
     }
 
     /// get a clone of this clips id
-    pub fn get_id(&self) -> DataId {
+    pub fn get_id(&self) -> ClipId {
         self.id
+    }
+}
+
+/// data identifier of a clip
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClipId(DataId);
+
+impl Deref for ClipId {
+    type Target = DataId;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Display for ClipId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl ClipId {
+    /// creates a new clip id
+    pub(crate) fn new() -> Self {
+        Self(DataId::new())
     }
 }

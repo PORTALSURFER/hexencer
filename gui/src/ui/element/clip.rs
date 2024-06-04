@@ -5,7 +5,7 @@ use crate::ui::common::TRACK_HEIGHT;
 use egui::layers::ShapeIdx;
 use egui::{emath::*, epaint, Color32, DragAndDrop, Response, Rounding, Sense, Shape, Stroke};
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
-use hexencer_core::data::DataLayer;
+use hexencer_core::data::{ClipId, DataLayer};
 use hexencer_core::{DataId, Tick};
 
 /// default clip length for painting
@@ -14,7 +14,7 @@ pub const DEFAULT_CLIP_WIDTH: f32 = 96.0;
 pub const BEAT_WIDTH: f32 = 24.0;
 
 /// create a new 'clip' and returns it's 'Response'
-pub fn clip(ctx: &Context, ui: &mut Ui, id: crate::DataId, tick: Tick, end: u64) -> Response {
+pub fn clip(ctx: &Context, ui: &mut Ui, id: ClipId, tick: Tick, end: u64) -> Response {
     let egui_id = egui::Id::new(id.as_bytes());
     let clip = ClipWidget::new(id, egui_id, tick, end);
     clip.show(ctx, ui)
@@ -50,7 +50,7 @@ impl State {
 #[derive(Clone, Debug)]
 pub struct ClipWidget {
     /// data id of the clip, used as id by datalayer
-    data_id: DataId,
+    data_id: ClipId,
     /// egui id of this clip widget
     id: Id,
     /// if this clip is active
@@ -69,7 +69,7 @@ pub fn quantize(value: f32, step_size: f32, offset: f32) -> f32 {
 impl ClipWidget {
     /// creates a new 'Clip'
     /// 'tick' will set the position of the 'Clip' on the 'Track'
-    pub fn new(data_id: DataId, id: Id, tick: Tick, end: u64) -> Self {
+    pub fn new(data_id: ClipId, id: Id, tick: Tick, end: u64) -> Self {
         let offset = tick.as_f32() / 480.0 * DEFAULT_CLIP_WIDTH;
 
         Self {

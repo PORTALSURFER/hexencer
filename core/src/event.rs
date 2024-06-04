@@ -2,12 +2,13 @@ use crate::data::DataId;
 use crate::data::MidiMessage;
 
 use std::fmt::Display;
+use std::ops::Deref;
 
 /// wraps events
 #[derive(Debug, Clone, Copy)]
 pub struct Event {
     /// id of this event
-    id: DataId,
+    id: EventId,
     /// type of this event
     pub inner: EventType,
     /// true if this event is active and should be used
@@ -16,7 +17,7 @@ pub struct Event {
 
 impl Event {
     /// creates a new event entry
-    pub fn new(id: DataId, event: EventType, active: bool) -> Self {
+    pub fn new(id: EventId, event: EventType, active: bool) -> Self {
         Self {
             id,
             inner: event,
@@ -104,5 +105,30 @@ impl EventType {
     /// creates a new midi event
     pub fn new(event: MidiMessage) -> Self {
         Self::Midi(event)
+    }
+}
+
+/// data identifier of a clip
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EventId(DataId);
+
+impl Deref for EventId {
+    type Target = DataId;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Display for EventId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl EventId {
+    /// creates a new clip id
+    pub(crate) fn new() -> Self {
+        Self(DataId::new())
     }
 }
