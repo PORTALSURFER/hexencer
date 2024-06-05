@@ -1,4 +1,4 @@
-use egui::{Id, Ui};
+use egui::{Id, Pos2, Ui};
 use hexencer_core::{data::ClipId, DataId};
 
 /// gui wide shared state, used for storing interaction states used throughout the gui
@@ -6,6 +6,8 @@ use hexencer_core::{data::ClipId, DataId};
 pub struct GuiState {
     /// id of the currently selected clip
     pub selected_clip: Option<ClipId>,
+    /// stores the last known clip location when drag_dropped
+    pub last_dragged_clip_pos: Option<Pos2>,
 }
 
 impl GuiState {

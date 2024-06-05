@@ -1,6 +1,9 @@
 use crate::{
     memory::GuiState,
-    ui::{common::TRACK_HEIGHT, quantize},
+    ui::{
+        common::{TRACK_HEADER_WIDTH, TRACK_HEIGHT},
+        quantize,
+    },
 };
 use egui::{
     epaint, layers::ShapeIdx, pos2, Color32, Context, DragAndDrop, Id, LayerId, Layout, Order,
@@ -70,11 +73,14 @@ impl TrackWidget {
         let height = TRACK_HEIGHT;
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
         let response = self.allocate_space(ui, rect);
-        if let Some(clip_id) = response.dnd_release_payload::<ClipId>() {
-            let drop_location = ui.input(|i| i.pointer.hover_pos());
-            tracing::info!("item released at {}", drop_location.unwrap().x);
-            tracing::info!("clip with id:{} was released", clip_id.as_ref());
-            // find clip with dataid
+        if let Some(payload) = response.dnd_release_payload::<(Id, ClipId)>() {
+            let (id, clip_id) = payload.as_ref();
+            tracing::info!(
+                "clip with id:{:?} and clip_id:{:?} was released",
+                id,
+                clip_id
+            );
+
             // reassign clip to this track instead
             let mut data = self.data_layer.lock().unwrap();
             // let clip_id = data
@@ -82,12 +88,15 @@ impl TrackWidget {
             //     .find_clip(payload.as_ref())
             //     .map(|clip| clip.get_id());
 
-            let clip = data
-                .project_manager
-                .move_clip(clip_id.as_ref(), &self.track_id);
-            if let Some(clip) = clip {
-                if let Some(track) = data.project_manager.tracks.get_mut(self.track_id) {
-                    track.add_clip(Tick::from(480), clip);
+            let gui_state = GuiState::load(ui);
+            if let Some(pos) = gui_state.last_dragged_clip_pos {
+                let clip = data.project_manager.move_clip(clip_id, &self.track_id);
+                if let Some(clip) = clip {
+                    if let Some(track) = data.project_manager.tracks.get_mut(self.track_id) {
+                        let tick = (pos.x - rect.min.x) / 24.0 * 120.0;
+                        tracing::info!("pos {}", pos.x);
+                        track.add_clip(Tick::from(tick), clip);
+                    }
                 }
             }
         }
