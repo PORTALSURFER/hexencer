@@ -2,7 +2,7 @@ use crate::{
     arranger::track,
     memory::GuiState,
     ui::{
-        common::{TRACK_HEADER_COLOR, TRACK_HEIGHT},
+        common::{TRACK_HEADER_COLOR, TRACK_HEADER_WIDTH, TRACK_HEIGHT},
         NoteEditorWidget, TimelineWidget, BEAT_WIDTH,
     },
 };
@@ -117,7 +117,7 @@ impl eframe::App for MainViewport {
         });
 
         egui::SidePanel::left("tracks")
-            .exact_width(120.0)
+            .exact_width(TRACK_HEADER_WIDTH)
             .resizable(false)
             .show(ctx, |ui| {
                 self.track_header_list(ui);

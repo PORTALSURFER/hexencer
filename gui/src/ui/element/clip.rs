@@ -51,7 +51,7 @@ impl State {
 #[derive(Clone, Debug)]
 pub struct ClipWidget {
     /// data id of the clip, used as id by datalayer
-    data_id: ClipId,
+    clip_id: ClipId,
     /// egui id of this clip widget
     id: Id,
     /// if this clip is active
@@ -75,7 +75,7 @@ impl ClipWidget {
         let offset = tick.as_f32() / 480.0 * DEFAULT_CLIP_WIDTH;
 
         Self {
-            data_id: clip_id,
+            clip_id,
             id,
             active: true,
             clip_position: offset,
@@ -146,7 +146,7 @@ impl ClipWidget {
         };
 
         if move_response.dragged() {
-            DragAndDrop::set_payload(ctx, self.data_id);
+            DragAndDrop::set_payload(ctx, (self.id, self.clip_id));
             let delta = move_response.drag_delta();
 
             state.drag_position.x += delta.x;
@@ -157,7 +157,10 @@ impl ClipWidget {
             let new_pos = pos2(quantized, quantized_y);
             rect = Rect::from_min_size(new_pos, size);
 
-            tracing::info!("dragged to {}", state.drag_position.x);
+            let mut global_state = GuiState::load(ui);
+            global_state.last_dragged_clip_pos = Some(new_pos);
+            global_state.store(ui);
+
             state.store(self.id, ui);
         }
 
@@ -211,7 +214,7 @@ impl Prepared {
         const DEFAULT_COLOR: egui::Color32 = egui::Color32::from_rgb(0, 255, 0);
 
         let clip_color = match GuiState::load(ui).selected_clip {
-            Some(s) if s == self.clip.data_id => SELECTED_COLOR,
+            Some(s) if s == self.clip.clip_id => SELECTED_COLOR,
             _ => DEFAULT_COLOR,
         };
         self.paint(ui, clip_color);
