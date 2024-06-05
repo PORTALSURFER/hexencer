@@ -71,6 +71,8 @@ impl TrackWidget {
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
         let response = self.allocate_space(ui, rect);
         if let Some(clip_id) = response.dnd_release_payload::<ClipId>() {
+            let drop_location = ui.input(|i| i.pointer.hover_pos());
+            tracing::info!("item released at {}", drop_location.unwrap().x);
             tracing::info!("clip with id:{} was released", clip_id.as_ref());
             // find clip with dataid
             // reassign clip to this track instead

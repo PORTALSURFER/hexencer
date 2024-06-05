@@ -117,6 +117,7 @@ impl eframe::App for MainViewport {
         });
 
         egui::SidePanel::left("tracks")
+            .exact_width(120.0)
             .resizable(false)
             .show(ctx, |ui| {
                 self.track_header_list(ui);
