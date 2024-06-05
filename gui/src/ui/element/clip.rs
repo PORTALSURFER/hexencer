@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::memory::GuiState;
 use crate::ui::common::TRACK_HEIGHT;
+use eframe::glow::UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY;
 use egui::layers::ShapeIdx;
 use egui::{emath::*, epaint, Color32, DragAndDrop, Response, Rounding, Sense, Shape, Stroke};
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
@@ -25,7 +26,7 @@ pub fn clip(ctx: &Context, ui: &mut Ui, id: &ClipId, tick: Tick, end: u64) -> Re
 #[derive(Clone, Copy, Debug, Default)]
 struct State {
     /// current position of the clip, used for movement interaction
-    pub pivot_pos: Pos2,
+    pub drag_position: Pos2,
 }
 
 impl State {
@@ -63,7 +64,8 @@ pub struct ClipWidget {
 
 /// quantize a value to a step size
 pub fn quantize(value: f32, step_size: f32, offset: f32) -> f32 {
-    offset + ((value - offset) / step_size).floor() * step_size
+    // offset + ((value - offset) / step_size).floor() * step_size
+    offset + ((value - offset) / step_size).round() * step_size
 }
 
 impl ClipWidget {
@@ -131,29 +133,39 @@ impl ClipWidget {
         // };
         // let quantized = quantize(state.pivot_pos.x, 24.0, start_pos.x);
         // let quantized_y = quantize(state.pivot_pos.y, TRACK_HEIGHT, start_pos.y);
-        let mut new_pos = start_pos;
-        let rect = Rect::from_min_size(new_pos, size);
-        let mut move_response = {
-            let move_response = ui.interact(rect, self.id, Sense::drag());
 
-            if move_response.dragged() {
-                DragAndDrop::set_payload(ctx, self.data_id);
-                let delta = move_response.drag_delta();
-                let quantized_x = quantize(delta.x, 24.0, start_pos.x);
-                let quantized_y = quantize(delta.y, TRACK_HEIGHT, start_pos.y);
-                new_pos.x += quantized_x;
-                new_pos.y += quantized_y;
+        let mut rect = Rect::from_min_size(start_pos, size);
+        let mut move_response = ui.interact(rect, self.id, Sense::drag());
+
+        let mut state = if let Some(state) = State::load(self.id, ui) {
+            state
+        } else {
+            State {
+                drag_position: start_pos,
             }
-
-            if move_response.dragged() || move_response.clicked() {
-                ctx.memory_mut(|memory| memory.areas().visible_last_frame(&move_response.layer_id));
-                ctx.request_repaint();
-            }
-
-            move_response
         };
 
-        // let constrain_rect = ui.available_rect_before_wrap();
+        if move_response.dragged() {
+            DragAndDrop::set_payload(ctx, self.data_id);
+            let delta = move_response.drag_delta();
+
+            state.drag_position.x += delta.x;
+            state.drag_position.y += delta.y;
+
+            let quantized = quantize(state.drag_position.x, 24.0, start_pos.x);
+            let quantized_y = quantize(state.drag_position.y, TRACK_HEIGHT, start_pos.y);
+            let new_pos = pos2(quantized, quantized_y);
+            rect = Rect::from_min_size(new_pos, size);
+
+            tracing::info!("dragged to {}", state.drag_position.x);
+            state.store(self.id, ui);
+        }
+
+        if move_response.drag_stopped() {
+            tracing::info!("stopped dragging at {}", state.drag_position.x);
+            state.drag_position = start_pos;
+            state.store(self.id, ui);
+        }
 
         // update response with drag movement
         move_response.rect = rect;
