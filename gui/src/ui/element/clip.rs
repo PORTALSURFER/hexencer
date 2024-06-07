@@ -1,10 +1,14 @@
 use std::sync::{Arc, Mutex};
 
 use crate::memory::GuiState;
+use crate::ui;
 use crate::ui::common::TRACK_HEIGHT;
 use eframe::glow::UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY;
 use egui::layers::ShapeIdx;
-use egui::{emath::*, epaint, Color32, DragAndDrop, Response, Rounding, Sense, Shape, Stroke};
+use egui::{
+    emath::*, epaint, Color32, DragAndDrop, InnerResponse, LayerId, Order, Response, Rounding,
+    Sense, Shape, Stroke,
+};
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
 use hexencer_core::data::{ClipId, DataLayer};
 use hexencer_core::{DataId, Tick};
@@ -17,8 +21,8 @@ pub const BEAT_WIDTH: f32 = 24.0;
 /// create a new 'clip' and returns it's 'Response'
 pub fn clip(ctx: &Context, ui: &mut Ui, id: &ClipId, tick: Tick, end: u64) -> Response {
     let egui_id = egui::Id::new(id.as_bytes());
-    let clip = ClipWidget::new(*id, egui_id, tick, end);
-    clip.show(ctx, ui)
+    let clip = DragWidget::new(*id, egui_id, tick, end);
+    clip.show(ctx, ui, |ui| ui.label("TEST")).response
 }
 
 /// state of the 'ClipWidget'
@@ -49,7 +53,7 @@ impl State {
 /// widget used to represent 'Clips' on a 'Track'
 #[must_use = "You should call .show()"]
 #[derive(Clone, Debug)]
-pub struct ClipWidget {
+pub struct DragWidget {
     /// data id of the clip, used as id by datalayer
     clip_id: ClipId,
     /// egui id of this clip widget
@@ -58,8 +62,8 @@ pub struct ClipWidget {
     active: bool,
     /// current clip offset on the track
     clip_position: f32,
-    /// data layer used to read and write data
-    end: u64,
+    /// width of the clip in ticks?
+    width: u64,
 }
 
 /// quantize a value to a step size
@@ -68,7 +72,7 @@ pub fn quantize(value: f32, step_size: f32, offset: f32) -> f32 {
     offset + ((value - offset) / step_size).round() * step_size
 }
 
-impl ClipWidget {
+impl DragWidget {
     /// creates a new 'Clip'
     /// 'tick' will set the position of the 'Clip' on the 'Track'
     pub fn new(clip_id: ClipId, id: Id, tick: Tick, end: u64) -> Self {
@@ -79,14 +83,21 @@ impl ClipWidget {
             id,
             active: true,
             clip_position: offset,
-            end,
+            width: end,
         }
     }
 
     /// renders this element and returns the 'Response'
-    pub fn show(self, ctx: &Context, ui: &mut Ui) -> Response {
-        let prepared = self.begin(ctx, ui);
-        prepared.end(ui)
+    pub fn show<R>(
+        self,
+        ctx: &Context,
+        ui: &mut Ui,
+        add_contents: impl FnOnce(&mut Ui) -> R,
+    ) -> InnerResponse<R> {
+        let mut prepared = self.begin(ctx, ui);
+        let inner = add_contents(&mut prepared.content_ui);
+        let response = prepared.end(ui);
+        InnerResponse::new(inner, response)
     }
 
     /// begin building the clip widget
@@ -94,17 +105,25 @@ impl ClipWidget {
         let where_to_put_background = ui.painter().add(Shape::Noop);
 
         let height = ui.available_height();
-        let width = (self.end as f32 / 480.0) * 24.0;
+        let width = (self.width as f32 / 480.0) * 24.0;
         let size = Vec2::new(width, height);
 
         let mut start_pos = ui.max_rect().min;
         start_pos.x += self.clip_position;
 
-        let (rect, move_response) = self.handle_dragging(ui, size, ctx, start_pos);
+        let mut state = State::load(self.id, ui);
+
+        let is_new = state.is_none();
+        if is_new {
+            ctx.request_repaint(); // if we don't know the previous size we are likely drawing the area in the wrong place
+        }
+
+        let mut state = state.unwrap_or_else(|| State {
+            drag_position: start_pos,
+        });
+        let (rect, move_response) = self.handle_dragging(ui, size, ctx, start_pos, &mut state);
 
         let content_ui = ui.child_ui(rect, *ui.layout());
-
-        // state.store(self.id, ui);
 
         Prepared {
             clip: self.clone(),
@@ -114,6 +133,7 @@ impl ClipWidget {
             rect,
             where_to_put_background,
             content_ui,
+            sizing_pass: is_new,
         }
     }
 
@@ -124,6 +144,7 @@ impl ClipWidget {
         size: Vec2,
         ctx: &Context,
         start_pos: Pos2,
+        state: &mut State,
     ) -> (Rect, Response) {
         // let mut state = match State::load(self.id, ui) {
         //     Some(state) => state,
@@ -136,14 +157,6 @@ impl ClipWidget {
 
         let mut rect = Rect::from_min_size(start_pos, size);
         let mut move_response = ui.interact(rect, self.id, Sense::drag());
-
-        let mut state = if let Some(state) = State::load(self.id, ui) {
-            state
-        } else {
-            State {
-                drag_position: start_pos,
-            }
-        };
 
         if move_response.dragged() {
             DragAndDrop::set_payload(ctx, (self.id, self.clip_id));
@@ -190,7 +203,7 @@ impl ClipWidget {
 /// intermediate struct used to build the 'ClipWidget'
 pub struct Prepared {
     /// clip widget to be built
-    pub clip: ClipWidget,
+    pub clip: DragWidget,
     /// whether the clip is active or not
     active: bool,
     /// used to prevent a glicht in egui causing the first frame to flicker, not actively used atm i think
@@ -203,6 +216,8 @@ pub struct Prepared {
     content_ui: Ui,
     /// placeholder for painting in the background color
     where_to_put_background: ShapeIdx,
+    /// used to prevent flickering
+    sizing_pass: bool,
 }
 
 impl Prepared {
@@ -222,11 +237,14 @@ impl Prepared {
     }
 
     /// paints this clip widget
-    fn paint(&self, ui: &Ui, fill_color: Color32) {
+    fn paint(&self, ui: &mut Ui, fill_color: Color32) {
+        let layer_id = LayerId::new(Order::Foreground, Id::new("drag clip"));
+
         let paint_rect = self.rect;
+
         if ui.is_rect_visible(paint_rect) {
             let shape = self.clip.paint(paint_rect, fill_color);
-            ui.painter().set(self.where_to_put_background, shape);
+            ui.with_layer_id(layer_id, |ui| ui.painter().add(shape));
         }
     }
 }

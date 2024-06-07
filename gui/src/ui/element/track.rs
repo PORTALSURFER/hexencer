@@ -64,15 +64,16 @@ impl TrackWidget {
 
     /// prepares the layout and allocate space for interaction
     fn begin(self, ui: &mut Ui, ctx: &Context) -> Prepared {
-        let is_anything_being_dragged = DragAndDrop::has_any_payload(ctx);
-        let can_accept_what_is_being_dragged = DragAndDrop::has_payload_of_type::<DataId>(ctx);
-
         let where_to_put_background = ui.painter().add(Shape::Noop);
         let outer_rect_bounds = ui.available_rect_before_wrap();
         let available_width = ui.available_width();
         let height = TRACK_HEIGHT;
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
         let response = self.allocate_space(ui, rect);
+
+        let is_anything_being_dragged = DragAndDrop::has_any_payload(ctx);
+        let can_accept_what_is_being_dragged = DragAndDrop::has_payload_of_type::<DataId>(ctx);
+
         if let Some(payload) = response.dnd_release_payload::<(Id, ClipId)>() {
             let (id, clip_id) = payload.as_ref();
             tracing::info!(
