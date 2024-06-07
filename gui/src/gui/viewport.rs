@@ -9,58 +9,41 @@ use crate::{
 use egui::{
     epaint, vec2, Color32, FontId, Frame, Id, LayerId, Margin, Order, Pos2, Stroke, Ui, Vec2,
 };
-use hexencer_core::{data::DataLayer, TrackId};
+use hexencer_core::{
+    data::{DataInterface, DataLayer},
+    TrackId,
+};
 use hexencer_engine::{SequencerCommand, SequencerSender};
-use std::sync::{Arc, Mutex};
+use std::{
+    ops::Deref,
+    sync::{Arc, Mutex, MutexGuard},
+};
 
 /// main hexencer viewport/ui
 #[derive(Default)]
-pub struct MainViewport {
+pub struct HexencerGui {
     /// a reference to the data layer, this the the main way to interact with the data
-    data_layer: Arc<std::sync::Mutex<DataLayer>>,
+    data: DataInterface,
     /// use this to send commands to the sequencer
     sequencer_sender: Option<SequencerSender>,
 }
 
-impl MainViewport {
-    /// create a new instance of the main viewport
-    pub fn new(data_layer: Arc<Mutex<DataLayer>>, sender: SequencerSender) -> Self {
+impl HexencerGui {
+    /// create a new instance of the hexencer gui, the main gui
+    pub fn new(data_layer: DataInterface, sender: SequencerSender) -> Self {
         Self {
-            data_layer,
+            data: data_layer,
             sequencer_sender: Some(sender),
         }
-    }
-
-    /// builds the track headers list
-    fn track_header_list(&mut self, ui: &mut Ui) {
-        ui.vertical(|ui| {
-            let track_ids: Vec<TrackId> = self
-                .data_layer
-                .lock()
-                .unwrap()
-                .project_manager
-                .tracks
-                .iter()
-                .map(|track| track.id)
-                .collect();
-
-            for id in track_ids {
-                track_header(ui, id);
-            }
-        });
     }
 
     /// builds the track manager control ui
     fn track_manager_controls(&mut self, ui: &mut Ui) {
         if ui.button("add track").clicked() {
-            self.data_layer.lock().unwrap().project_manager.push_track();
+            self.data.get().project_manager.push_track();
         }
         if ui.button("remove track").clicked() {
-            self.data_layer
-                .lock()
-                .unwrap()
-                .project_manager
-                .remove_track();
+            self.data.get().project_manager.remove_track();
         }
     }
 
@@ -87,12 +70,8 @@ impl MainViewport {
     fn editor_ui(&mut self, ui: &mut Ui) {
         let state = GuiState::load(ui);
         if let Some(selected_clip_id) = state.selected_clip {
-            if let Some(selected_clip) = self
-                .data_layer
-                .lock()
-                .unwrap()
-                .project_manager
-                .find_clip(&selected_clip_id)
+            if let Some(selected_clip) =
+                self.data.get().project_manager.find_clip(&selected_clip_id)
             {
                 NoteEditorWidget::new(selected_clip).show(ui);
             }
@@ -100,7 +79,7 @@ impl MainViewport {
     }
 }
 
-impl eframe::App for MainViewport {
+impl eframe::App for HexencerGui {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.style_mut(|style| {
             style.spacing.item_spacing = vec2(0.0, 0.0);
@@ -112,7 +91,7 @@ impl eframe::App for MainViewport {
             ui.centered_and_justified(|ui| ui.label("toolbar menu"));
         });
         egui::TopBottomPanel::bottom("statusbar").show(ctx, |ui| {
-            let current_tick = self.data_layer.lock().unwrap().get_tick();
+            let current_tick = self.data.get().get_tick();
             ui.label(&current_tick.as_time().to_string());
         });
 
@@ -120,7 +99,16 @@ impl eframe::App for MainViewport {
             .exact_width(TRACK_HEADER_WIDTH)
             .resizable(false)
             .show(ctx, |ui| {
-                self.track_header_list(ui);
+                let track_ids: Vec<TrackId> = self
+                    .data
+                    .get()
+                    .project_manager
+                    .tracks
+                    .iter()
+                    .map(|track| track.id)
+                    .collect();
+
+                track_header_list(ui, track_ids);
             });
 
         egui::SidePanel::right("info")
@@ -208,9 +196,8 @@ impl eframe::App for MainViewport {
             TimelineWidget::new(10.0).show(ui);
             ui.vertical(|ui| {
                 let track_ids: Vec<TrackId> = self
-                    .data_layer
-                    .lock()
-                    .unwrap()
+                    .data
+                    .get()
                     .project_manager
                     .tracks
                     .iter()
@@ -218,8 +205,7 @@ impl eframe::App for MainViewport {
                     .collect();
 
                 for id in track_ids {
-                    let clone = Arc::clone(&self.data_layer);
-                    track(clone, ctx, id, ui);
+                    track(self.data.clone(), ctx, id, ui);
                 }
             });
         });
@@ -315,4 +301,13 @@ fn channel_selector(
             Err(_) => tracing::warn!("port must be a number"),
         }
     }
+}
+
+/// builds the track headers list
+fn track_header_list(ui: &mut Ui, track_ids: Vec<TrackId>) {
+    ui.vertical(|ui| {
+        for id in track_ids {
+            track_header(ui, id);
+        }
+    });
 }

@@ -1,19 +1,15 @@
 use crate::{
     memory::GuiState,
-    ui::{
-        common::{TRACK_HEADER_WIDTH, TRACK_HEIGHT},
-        quantize,
-    },
+    ui::{common::TRACK_HEIGHT, quantize},
 };
 use egui::{
     epaint, layers::ShapeIdx, pos2, Color32, Context, DragAndDrop, Id, LayerId, Layout, Order,
     Rect, Response, Rounding, Sense, Shape, Stroke, Ui, Vec2,
 };
 use hexencer_core::{
-    data::{Clip, ClipId, DataLayer},
+    data::{Clip, ClipId, DataInterface},
     DataId, Tick, TrackId,
 };
-use std::sync::{Arc, Mutex};
 
 /// Track bar onto which clip elements can be placed and moved
 #[derive(Clone, Debug, Default)]
@@ -26,7 +22,7 @@ pub struct TrackWidget {
     /// identifier of the track
     track_id: TrackId,
     /// referene to the data_layer
-    data_layer: Arc<Mutex<DataLayer>>,
+    data_layer: DataInterface,
 }
 
 /// ui state of the track
@@ -54,7 +50,7 @@ impl State {
 
 impl TrackWidget {
     /// creates a new 'Track' element
-    pub fn new(data_layer: Arc<Mutex<DataLayer>>, index: TrackId) -> Self {
+    pub fn new(data_layer: DataInterface, index: TrackId) -> Self {
         Self {
             data_layer,
             track_id: index,
@@ -83,7 +79,7 @@ impl TrackWidget {
             );
 
             // reassign clip to this track instead
-            let mut data = self.data_layer.lock().unwrap();
+            let mut data = self.data_layer.get();
             // let clip_id = data
             //     .project_manager
             //     .find_clip(payload.as_ref())
@@ -145,7 +141,7 @@ impl TrackWidget {
     fn layout_clips(&self, ui: &mut Ui, index: TrackId, ctx: &Context, rect: Rect) {
         let mut child_ui = ui.child_ui(rect, Layout::default());
         child_ui.horizontal(|ui| {
-            let data = self.data_layer.lock().unwrap();
+            let data = self.data_layer.get();
             let track = data.project_manager.tracks.get(index);
             if let Some(track) = track {
                 for (tick, clip) in &track.clips {
@@ -214,11 +210,10 @@ impl Prepared {
             tracing::info!("store clip at {} {}", pos, end);
             state.started_drag_paint = false;
             let clip = Clip::new("new clip", end as u64);
-            self.track.data_layer.lock().unwrap().add_clip(
-                self.track.track_id,
-                Tick::from(tick),
-                clip,
-            );
+            self.track
+                .data_layer
+                .get()
+                .add_clip(self.track.track_id, Tick::from(tick), clip);
         }
     }
 

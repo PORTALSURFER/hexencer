@@ -7,107 +7,30 @@
 
 /// arranger part of the gui
 mod arranger;
+/// gui code
+mod gui;
 /// utilities for loading and storing data to egui memory
 mod memory;
 /// ui elements
 mod ui;
-/// the main viewport
-mod viewport;
+/// utility code
+mod utility;
 
-use eframe::NativeOptions;
-use egui::{Color32, IconData};
-use hexencer_core::data::DataLayer;
-use hexencer_engine::midi_engine::{MidiEngine, MidiEngineSender};
-use hexencer_engine::{Sequencer, SequencerSender};
-use std::sync::{Arc, Mutex};
-use tokio::task;
-use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
-use viewport::MainViewport;
+pub use gui::{options, run};
+use hexencer_core::data::DataInterface;
+use hexencer_engine::{midi_engine::start_midi_engine, start_sequencer_engine};
+use utility::init_logger;
 
 pub use hexencer_core::DataId;
-
-/// color used for all regular edges in the ui
-pub const EDGE_COLOR: Color32 = Color32::from_rgb(20, 20, 20);
-
-/// initialize the logging system
-fn init_logger() {
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
-        .finish();
-
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
-    tracing::info!("hexencer started");
-}
-
-/// starts up the midi engine and listens for commands, return the sender to send commands to the midi engine
-fn start_midi_engine() -> MidiEngineSender {
-    let (midi_sender, midi_receiver) = tokio::sync::mpsc::unbounded_channel();
-    let midi_engine = MidiEngine::new();
-    task::spawn(midi_engine.listen(midi_receiver));
-    midi_sender
-}
-
-/// starts up the sequencer engine and listens for commands, returns the sender to send commands to the sequencer
-fn start_sequencer_engine(
-    midi_sender: MidiEngineSender,
-    data_layer: Arc<Mutex<DataLayer>>,
-) -> SequencerSender {
-    let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();
-    let sequencer = Sequencer::new(Arc::clone(&data_layer), midi_sender);
-    task::spawn(sequencer.listen(sequencer_receiver));
-    sequencer_sender
-}
 
 #[tokio::main]
 async fn main() {
     init_logger();
 
-    let data_layer = Arc::new(Mutex::new(DataLayer::default()));
+    let data_layer = DataInterface::new();
     let midi_engine_sender = start_midi_engine();
-    let sequencer_sender = start_sequencer_engine(midi_engine_sender, Arc::clone(&data_layer));
+    let sequencer_sender = start_sequencer_engine(midi_engine_sender, data_layer.clone());
 
     let options = options();
     run(options, data_layer, sequencer_sender);
-}
-
-/// load icon from png image
-fn load_icon(path: &str) -> IconData {
-    let image = image::open(path).expect("failed to open icon image");
-    if let Some(image) = image.as_rgba8() {
-        let (width, height) = image.dimensions();
-        let rgba = image.clone().into_vec();
-        IconData {
-            rgba,
-            width,
-            height,
-        }
-    } else {
-        IconData::default()
-    }
-}
-
-/// run the gui
-fn run(
-    options: NativeOptions,
-    data_layer: Arc<Mutex<DataLayer>>,
-    sequencer_sender: SequencerSender,
-) {
-    eframe::run_native(
-        "Hexencer",
-        options,
-        Box::new(|_cc| Box::new(MainViewport::new(data_layer, sequencer_sender))),
-    )
-    .expect("failed to start eframe app");
-}
-
-/// creates options for the application
-fn options() -> NativeOptions {
-    NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            // .with_icon(icon)
-            .with_inner_size(egui::vec2(800.0, 600.0)),
-
-        ..Default::default()
-    }
 }

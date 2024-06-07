@@ -10,6 +10,6 @@ pub mod midi_engine;
 /// sequencer engine
 mod sequencer;
 
-pub use sequencer::Sequencer;
 pub use sequencer::SequencerCommand;
 pub use sequencer::SequencerSender;
+pub use sequencer::{start_sequencer_engine, Sequencer};
