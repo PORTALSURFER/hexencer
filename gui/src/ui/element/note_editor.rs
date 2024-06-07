@@ -1,10 +1,11 @@
-use crate::EDGE_COLOR;
 use egui::{
     emath::Real,
     epaint::{self, CircleShape},
     lerp, pos2, Color32, FontId, Id, LayerId, Order, PointerButton, Pos2, Rect, Response, Rounding,
     Sense, Shape, Stroke, Ui,
 };
+
+use crate::gui::EDGE_COLOR;
 
 use self::transform::Transform;
 use super::BEAT_WIDTH;

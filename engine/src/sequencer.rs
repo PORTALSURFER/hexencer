@@ -4,10 +4,10 @@ use std::{
 };
 
 use hexencer_core::{
-    data::{DataLayer, MidiMessage},
+    data::{DataInterface, MidiMessage},
     Tick,
 };
-use tokio::time;
+use tokio::{task, time};
 
 use crate::midi_engine::MidiEngineSender;
 
@@ -30,7 +30,7 @@ pub enum SequencerCommand {
 #[derive(Default)]
 pub struct Sequencer {
     /// the data layer, used to store and retreive projects, etc
-    data_layer: Arc<Mutex<DataLayer>>,
+    data_layer: DataInterface,
     /// use this to send commands to the midi engine, like playing a note
     midi_engine_sender: Option<MidiEngineSender>,
     /// current bpm of the sequencer
@@ -45,7 +45,7 @@ pub struct Sequencer {
 
 impl Sequencer {
     /// creates a new 'Sequencer'
-    pub fn new(data_layer: Arc<Mutex<DataLayer>>, midi_engine_sender: MidiEngineSender) -> Self {
+    pub fn new(data_layer: DataInterface, midi_engine_sender: MidiEngineSender) -> Self {
         Self {
             data_layer,
             midi_engine_sender: Some(midi_engine_sender),
@@ -73,7 +73,7 @@ impl Sequencer {
                     if *self.running.lock().unwrap() {
                         self.process_events();
                         self.current_tick.tick();
-                        self.data_layer.lock().unwrap().set_tick(self.current_tick);
+                        self.data_layer.get().set_tick(self.current_tick);
                     }
                 }
                 Some(command) = command_receiver.recv() => {
@@ -137,4 +137,15 @@ impl Sequencer {
         //     }
         // }
     }
+}
+
+/// starts up the sequencer engine and listens for commands, returns the sender to send commands to the sequencer
+pub fn start_sequencer_engine(
+    midi_sender: MidiEngineSender,
+    data_layer: DataInterface,
+) -> SequencerSender {
+    let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();
+    let sequencer = Sequencer::new(data_layer, midi_sender);
+    task::spawn(sequencer.listen(sequencer_receiver));
+    sequencer_sender
 }

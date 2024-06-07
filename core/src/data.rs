@@ -11,6 +11,10 @@ mod project;
 /// the track data object
 mod track;
 
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::MutexGuard;
+
 pub use clip::Clip;
 pub use clip::ClipId;
 pub use common::DataId;
@@ -30,6 +34,26 @@ pub struct EditorState {
     selected_clip: DataId,
 }
 
+/// interface for talking with main hexencer data object
+#[derive(Default, Debug, Clone)]
+pub struct DataInterface {
+    /// inner object actually holding data
+    inner: Arc<std::sync::Mutex<DataLayer>>,
+}
+
+impl DataInterface {
+    /// get funtion to lock and get data
+    pub fn get(&self) -> MutexGuard<DataLayer> {
+        self.inner.lock().expect("illegal lock")
+    }
+
+    /// creates a new interface for data
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(DataLayer::default())),
+        }
+    }
+}
 /// error type for data_layer
 #[derive(Error, Debug)]
 pub enum DataLayerError {
@@ -102,7 +126,8 @@ mod tests {
             assert!(clips.len() == 0);
         }
         let clip = Clip::new("test", 120);
-        data.add_clip(TrackId::new(), Tick::from(0), clip); //TODO this is flawed, adding to some unkown id
+        data.add_clip(TrackId::new(), Tick::from(0), clip)
+            .expect("failed to add clip"); //TODO this is flawed, adding to some unkown id
 
         {
             let clips = data.project_manager.tracks.get_clips(0).unwrap();
