@@ -14,6 +14,7 @@ mod ui;
 /// the main viewport
 mod viewport;
 
+use eframe::NativeOptions;
 use egui::{Color32, IconData};
 use hexencer_core::data::DataLayer;
 use hexencer_engine::midi_engine::{MidiEngine, MidiEngineSender};
@@ -66,22 +67,8 @@ async fn main() {
     let midi_engine_sender = start_midi_engine();
     let sequencer_sender = start_sequencer_engine(midi_engine_sender, Arc::clone(&data_layer));
 
-    // let icon = load_icon("assets/logo.png");
-
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            // .with_icon(icon)
-            .with_inner_size(egui::vec2(800.0, 600.0)),
-
-        ..Default::default()
-    };
-
-    eframe::run_native(
-        "Hexencer",
-        options,
-        Box::new(|_cc| Box::new(MainViewport::new(data_layer, sequencer_sender))),
-    )
-    .expect("failed to start eframe app");
+    let options = options();
+    run(options, data_layer, sequencer_sender);
 }
 
 /// load icon from png image
@@ -97,5 +84,30 @@ fn load_icon(path: &str) -> IconData {
         }
     } else {
         IconData::default()
+    }
+}
+
+/// run the gui
+fn run(
+    options: NativeOptions,
+    data_layer: Arc<Mutex<DataLayer>>,
+    sequencer_sender: SequencerSender,
+) {
+    eframe::run_native(
+        "Hexencer",
+        options,
+        Box::new(|_cc| Box::new(MainViewport::new(data_layer, sequencer_sender))),
+    )
+    .expect("failed to start eframe app");
+}
+
+/// creates options for the application
+fn options() -> NativeOptions {
+    NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            // .with_icon(icon)
+            .with_inner_size(egui::vec2(800.0, 600.0)),
+
+        ..Default::default()
     }
 }
