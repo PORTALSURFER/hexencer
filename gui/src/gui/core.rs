@@ -14,55 +14,104 @@ use hexencer_core::{
     TrackId,
 };
 use hexencer_engine::{SequencerCommand, SequencerSender};
-use std::{
-    ops::Deref,
-    sync::{Arc, Mutex, MutexGuard},
-};
+use std::sync::{Arc, Mutex};
 
-/// main hexencer viewport/ui
-#[derive(Default)]
-pub struct HexencerGui {
+/// a command that can be sent to the system
+type CommandSender = tokio::sync::mpsc::UnboundedSender<SystemCommand>;
+/// ceiver for system commands
+type CommandReceiver = tokio::sync::mpsc::UnboundedReceiver<SystemCommand>;
+
+/// a command to the system, this is the main way to interact with the system from the ui
+struct Commander {
+    /// use this to send commands to the commander
+    receiver: CommandReceiver,
+}
+
+impl Commander {
+    /// processes the commands sent to this commander
+    pub fn process_commands() {}
+}
+
+/// commands that can be sent to the system
+enum SystemCommand {
+    /// adds a clip to the target track
+    AddClip(TrackId),
+    /// adds a track to the project
+    AddTrack(),
+}
+
+/// ui state of hexencer
+struct HexencerState {}
+
+/// context of the hexencer app, link to permanent data, like projects, etc
+struct HexencerContext {
+    /// sender for system commands
+    command_sender: CommandSender,
+    /// receiver for system commands
+    command_receiver: CommandReceiver,
     /// a reference to the data layer, this the the main way to interact with the data
     data: DataInterface,
     /// use this to send commands to the sequencer
-    sequencer_sender: Option<SequencerSender>,
+    sequencer_sender: SequencerSender,
 }
 
-impl HexencerGui {
+/// main hexencer viewport/ui
+pub struct HexencerApp {
+    /// the current state of the hexencer, used for ui state
+    state: HexencerState,
+    /// context of the hexencer app, link to permanent data, like projects, etc
+    context: HexencerContext,
+}
+
+impl HexencerApp {
     /// create a new instance of the hexencer gui, the main gui
-    pub fn new(data_layer: DataInterface, sender: SequencerSender) -> Self {
+    pub fn new(data_layer: DataInterface, sequencer_sender: SequencerSender) -> Self {
+        let (command_sender, command_receiver) = tokio::sync::mpsc::unbounded_channel();
+
         Self {
-            data: data_layer,
-            sequencer_sender: Some(sender),
+            state: HexencerState {},
+            context: HexencerContext {
+                data: data_layer,
+                sequencer_sender,
+                command_receiver,
+                command_sender,
+            },
         }
     }
 
     /// builds the track manager control ui
     fn track_manager_controls(&mut self, ui: &mut Ui) {
         if ui.button("add track").clicked() {
-            self.data.get().project_manager.push_track();
+            self.context
+                .command_sender
+                .send(SystemCommand::AddTrack())
+                .ok();
+            self.context.data.get().project_manager.push_track();
         }
         if ui.button("remove track").clicked() {
-            self.data.get().project_manager.remove_track();
+            self.context.data.get().project_manager.remove_track();
         }
     }
 
     /// builds the sequencer control ui
     fn sequencer_controls(&mut self, ui: &mut Ui) {
         if ui.button("play").clicked() {
-            if let Some(sender) = self.sequencer_sender.as_mut() {
-                let _ = sender.send(SequencerCommand::Play);
-            }
+            self.context
+                .sequencer_sender
+                .send(SequencerCommand::Play)
+                .ok(); // TODO this should pass through UiCommand?
         }
         if ui.button("stop").clicked() {
-            if let Some(sender) = self.sequencer_sender.as_mut() {
-                let _ = sender.send(SequencerCommand::Stop);
-            }
+            self.context
+                .sequencer_sender
+                .send(SequencerCommand::Stop)
+                .ok();
         }
         if ui.button("reset").clicked() {
-            if let Some(sender) = self.sequencer_sender.as_mut() {
-                let _ = sender.send(SequencerCommand::Reset);
-            }
+            self.context
+                .sequencer_sender
+                .send(SequencerCommand::Reset)
+                .ok();
         }
     }
 
@@ -70,17 +119,20 @@ impl HexencerGui {
     fn editor_ui(&mut self, ui: &mut Ui) {
         let state = GuiState::load(ui);
         if let Some(selected_clip_id) = state.selected_clip {
-            if let Some(selected_clip) =
-                self.data.get().project_manager.find_clip(&selected_clip_id)
+            if let Some(selected_clip) = self
+                .context
+                .data
+                .get()
+                .project_manager
+                .find_clip(&selected_clip_id)
             {
                 NoteEditorWidget::new(selected_clip).show(ui);
             }
         };
     }
-}
 
-impl eframe::App for HexencerGui {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    /// creates the main ui
+    fn ui(&mut self, ctx: &egui::Context) {
         ctx.style_mut(|style| {
             style.spacing.item_spacing = vec2(0.0, 0.0);
             style.spacing.window_margin = Margin::ZERO;
@@ -91,7 +143,7 @@ impl eframe::App for HexencerGui {
             ui.centered_and_justified(|ui| ui.label("toolbar menu"));
         });
         egui::TopBottomPanel::bottom("statusbar").show(ctx, |ui| {
-            let current_tick = self.data.get().get_tick();
+            let current_tick = self.context.data.get().get_tick();
             ui.label(&current_tick.as_time().to_string());
         });
 
@@ -100,6 +152,7 @@ impl eframe::App for HexencerGui {
             .resizable(false)
             .show(ctx, |ui| {
                 let track_ids: Vec<TrackId> = self
+                    .context
                     .data
                     .get()
                     .project_manager
@@ -196,6 +249,7 @@ impl eframe::App for HexencerGui {
             TimelineWidget::new(10.0).show(ui);
             ui.vertical(|ui| {
                 let track_ids: Vec<TrackId> = self
+                    .context
                     .data
                     .get()
                     .project_manager
@@ -205,11 +259,31 @@ impl eframe::App for HexencerGui {
                     .collect();
 
                 for id in track_ids {
-                    track(self.data.clone(), ctx, id, ui);
+                    track(self.context.data.clone(), ctx, id, ui);
                 }
             });
         });
+    }
 
+    /// process any system commands, this is the interface where all project data etc is changed from
+    fn process_commands(&mut self) {
+        if let Ok(command) = self.context.command_receiver.try_recv() {
+            match command {
+                SystemCommand::AddClip(_) => {
+                    tracing::info!("AddClip command received");
+                }
+                SystemCommand::AddTrack() => {
+                    tracing::info!("AddTrack command received");
+                }
+            }
+        }
+    }
+}
+
+impl eframe::App for HexencerApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.ui(ctx);
+        self.process_commands();
         // Request a new frame
         ctx.request_repaint();
     }

@@ -1,12 +1,12 @@
 /// the main viewport
-mod viewport;
+mod core;
 
 use eframe::NativeOptions;
 use egui::Color32;
 use hexencer_core::data::DataInterface;
 use hexencer_engine::SequencerSender;
 
-pub use self::viewport::HexencerGui;
+pub use self::core::HexencerApp;
 
 /// color used for all regular edges in the ui
 pub const EDGE_COLOR: Color32 = Color32::from_rgb(20, 20, 20);
@@ -16,7 +16,7 @@ pub fn run(options: NativeOptions, data_layer: DataInterface, sequencer_sender: 
     eframe::run_native(
         "Hexencer",
         options,
-        Box::new(|_cc| Box::new(HexencerGui::new(data_layer, sequencer_sender))),
+        Box::new(|_cc| Box::new(HexencerApp::new(data_layer, sequencer_sender))),
     )
     .expect("failed to start eframe app");
 }

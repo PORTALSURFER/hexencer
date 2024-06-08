@@ -5,7 +5,22 @@ use hexencer_core::{data::DataInterface, TrackId};
 /// creates a new track ui element
 pub fn track(data_layer: DataInterface, ctx: &egui::Context, index: TrackId, ui: &mut egui::Ui) {
     let track = ui::TrackWidget::new(data_layer, index).fill(TRACK_COLOR);
-    track.show(ui, ctx);
+    track.show(ui, ctx, || {
+        tracing::info!("a clip was dropped on this track")
+
+        // let mut data = self.data_layer.get();
+        // TODO move this over to commander
+        // {
+        //     let clip = data.project_manager.move_clip(clip_id, &self.track_id);
+        //     if let Some(clip) = clip {
+        //         if let Some(track) = data.project_manager.tracks.get_mut(self.track_id) {
+        //             let tick = (pos.x - rect.min.x) / 24.0 * 120.0;
+        //             tracing::info!("pos {}", pos.x);
+        //             track.add_clip(Tick::from(tick), clip);
+        //         }
+        //     }
+        // }
+    });
 }
 
 /// gui representation of track

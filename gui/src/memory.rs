@@ -1,5 +1,5 @@
 use egui::{Id, Pos2, Ui};
-use hexencer_core::{data::ClipId, DataId};
+use hexencer_core::data::ClipId;
 
 /// gui wide shared state, used for storing interaction states used throughout the gui
 #[derive(Clone, Default)]
