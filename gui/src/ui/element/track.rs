@@ -69,8 +69,9 @@ impl TrackWidget {
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
         let response = self.allocate_space(ui, rect);
 
-        let is_anything_being_dragged = DragAndDrop::has_any_payload(ctx);
-        let can_accept_what_is_being_dragged = DragAndDrop::has_payload_of_type::<ClipId>(ctx);
+        // TODO use these or no?
+        let _is_anything_being_dragged = DragAndDrop::has_any_payload(ctx);
+        let _can_accept_what_is_being_dragged = DragAndDrop::has_payload_of_type::<ClipId>(ctx);
 
         let mut dropped_clip = None;
         if let Some(clip_id) = response.dnd_release_payload::<ClipId>() {
