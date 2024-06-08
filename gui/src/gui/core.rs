@@ -33,26 +33,30 @@ impl Commander {
 }
 
 /// commands that can be sent to the system
-enum SystemCommand {
+pub enum SystemCommand {
     /// adds a clip to the target track
     AddClip(TrackId),
     /// adds a track to the project
     AddTrack(),
+    /// move clip to another track
+    MoveClip(),
 }
 
 /// ui state of hexencer
-struct HexencerState {}
+pub struct HexencerState {}
 
 /// context of the hexencer app, link to permanent data, like projects, etc
-struct HexencerContext {
+pub struct HexencerContext {
     /// sender for system commands
-    command_sender: CommandSender,
+    pub command_sender: CommandSender,
     /// receiver for system commands
     command_receiver: CommandReceiver,
     /// a reference to the data layer, this the the main way to interact with the data
     data: DataInterface,
     /// use this to send commands to the sequencer
     sequencer_sender: SequencerSender,
+    // egui context
+    egui_ctx: egui::Context,
 }
 
 /// main hexencer viewport/ui
@@ -65,7 +69,11 @@ pub struct HexencerApp {
 
 impl HexencerApp {
     /// create a new instance of the hexencer gui, the main gui
-    pub fn new(data_layer: DataInterface, sequencer_sender: SequencerSender) -> Self {
+    pub fn new(
+        data_layer: DataInterface,
+        sequencer_sender: SequencerSender,
+        egui_ctx: egui::Context,
+    ) -> Self {
         let (command_sender, command_receiver) = tokio::sync::mpsc::unbounded_channel();
 
         Self {
@@ -75,6 +83,7 @@ impl HexencerApp {
                 sequencer_sender,
                 command_receiver,
                 command_sender,
+                egui_ctx,
             },
         }
     }
@@ -259,7 +268,7 @@ impl HexencerApp {
                     .collect();
 
                 for id in track_ids {
-                    track(self.context.data.clone(), ctx, id, ui);
+                    track(&self.context, self.context.data.clone(), ctx, id, ui);
                 }
             });
         });
@@ -274,6 +283,9 @@ impl HexencerApp {
                 }
                 SystemCommand::AddTrack() => {
                     tracing::info!("AddTrack command received");
+                }
+                SystemCommand::MoveClip() => {
+                    tracing::info!("MoveTrack command received");
                 }
             }
         }

@@ -1,13 +1,22 @@
-use crate::ui::{self, common::TRACK_COLOR};
+use crate::{
+    gui::{HexencerContext, SystemCommand},
+    ui::{self, common::TRACK_COLOR},
+};
 use egui::{layers::ShapeIdx, Color32, Ui};
 use hexencer_core::{data::DataInterface, TrackId};
 
 /// creates a new track ui element
-pub fn track(data_layer: DataInterface, ctx: &egui::Context, index: TrackId, ui: &mut egui::Ui) {
+pub fn track(
+    context: &HexencerContext,
+    data_layer: DataInterface,
+    ctx: &egui::Context,
+    index: TrackId,
+    ui: &mut egui::Ui,
+) {
     let track = ui::TrackWidget::new(data_layer, index).fill(TRACK_COLOR);
     track.show(ui, ctx, || {
-        tracing::info!("a clip was dropped on this track")
-
+        tracing::info!("a clip was dropped on this track");
+        context.command_sender.send(SystemCommand::MoveClip());
         // let mut data = self.data_layer.get();
         // TODO move this over to commander
         // {
