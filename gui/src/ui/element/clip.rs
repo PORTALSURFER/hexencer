@@ -1,17 +1,13 @@
-use std::sync::{Arc, Mutex};
-
 use crate::memory::GuiState;
-use crate::ui;
 use crate::ui::common::TRACK_HEIGHT;
-use eframe::glow::UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY;
 use egui::layers::ShapeIdx;
 use egui::{
     emath::*, epaint, Color32, DragAndDrop, InnerResponse, LayerId, Order, Response, Rounding,
     Sense, Shape, Stroke,
 };
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
-use hexencer_core::data::{ClipId, DataLayer};
-use hexencer_core::{DataId, Tick};
+use hexencer_core::data::ClipId;
+use hexencer_core::Tick;
 
 /// default clip length for painting
 pub const DEFAULT_CLIP_WIDTH: f32 = 96.0;
@@ -111,16 +107,17 @@ impl DragWidget {
         let mut start_pos = ui.max_rect().min;
         start_pos.x += self.clip_position;
 
-        let mut state = State::load(self.id, ui);
+        let state = State::load(self.id, ui);
 
         let is_new = state.is_none();
         if is_new {
             ctx.request_repaint(); // if we don't know the previous size we are likely drawing the area in the wrong place
         }
 
-        let mut state = state.unwrap_or_else(|| State {
+        let mut state = state.unwrap_or(State {
             drag_position: start_pos,
         });
+
         let (rect, move_response) = self.handle_dragging(ui, size, ctx, start_pos, &mut state);
 
         let content_ui = ui.child_ui(rect, *ui.layout());
@@ -159,7 +156,7 @@ impl DragWidget {
         let mut move_response = ui.interact(rect, self.id, Sense::drag());
 
         if move_response.dragged() {
-            DragAndDrop::set_payload(ctx, (self.id, self.clip_id));
+            DragAndDrop::set_payload(ctx, self.clip_id);
             let delta = move_response.drag_delta();
 
             state.drag_position.x += delta.x;

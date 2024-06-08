@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     memory::GuiState,
     ui::{common::TRACK_HEIGHT, quantize},
@@ -8,7 +10,7 @@ use egui::{
 };
 use hexencer_core::{
     data::{Clip, ClipId, DataInterface},
-    DataId, Tick, TrackId,
+    Tick, TrackId,
 };
 
 /// Track bar onto which clip elements can be placed and moved
@@ -68,34 +70,24 @@ impl TrackWidget {
         let response = self.allocate_space(ui, rect);
 
         let is_anything_being_dragged = DragAndDrop::has_any_payload(ctx);
-        let can_accept_what_is_being_dragged = DragAndDrop::has_payload_of_type::<DataId>(ctx);
+        let can_accept_what_is_being_dragged = DragAndDrop::has_payload_of_type::<ClipId>(ctx);
 
-        if let Some(payload) = response.dnd_release_payload::<(Id, ClipId)>() {
-            let (id, clip_id) = payload.as_ref();
-            tracing::info!(
-                "clip with id:{:?} and clip_id:{:?} was released",
-                id,
-                clip_id
-            );
+        let mut dropped_clip = None;
+        if let Some(clip_id) = response.dnd_release_payload::<ClipId>() {
+            // TODO conver to .ok() ?
+            dropped_clip =
+                Some(Arc::try_unwrap(clip_id).expect("error trying to unwrap dropped clip_id"))
 
             // reassign clip to this track instead
-            let mut data = self.data_layer.get();
             // let clip_id = data
             //     .project_manager
             //     .find_clip(payload.as_ref())
             //     .map(|clip| clip.get_id());
 
-            let gui_state = GuiState::load(ui);
-            if let Some(pos) = gui_state.last_dragged_clip_pos {
-                let clip = data.project_manager.move_clip(clip_id, &self.track_id);
-                if let Some(clip) = clip {
-                    if let Some(track) = data.project_manager.tracks.get_mut(self.track_id) {
-                        let tick = (pos.x - rect.min.x) / 24.0 * 120.0;
-                        tracing::info!("pos {}", pos.x);
-                        track.add_clip(Tick::from(tick), clip);
-                    }
-                }
-            }
+            // let gui_state = GuiState::load(ui);
+            // if let Some(pos) = gui_state.last_dragged_clip_pos {
+            //     self.dropped_clip = Some(clip_id);
+            // }
         }
 
         self.layout_clips(ui, self.track_id, ctx, rect);
@@ -105,6 +97,7 @@ impl TrackWidget {
             where_to_put_background,
             rect,
             response,
+            dropped_clip,
         }
     }
 
@@ -120,8 +113,12 @@ impl TrackWidget {
     }
 
     /// use this to process the element so it is painted and returns a response
-    pub fn show(self, ui: &mut Ui, ctx: &Context) -> Response {
+    pub fn show(self, ui: &mut Ui, ctx: &Context, on_dropped: impl FnOnce()) -> Response {
         let prepared = self.begin(ui, ctx);
+        if let Some(clip_id) = prepared.dropped_clip {
+            tracing::info!("dropped ({}) on track", clip_id);
+            on_dropped();
+        }
         prepared.end(ui)
     }
 
@@ -167,6 +164,8 @@ pub struct Prepared {
     rect: Rect,
     /// track ui response
     response: Response,
+    /// dropped clip
+    dropped_clip: Option<ClipId>,
 }
 
 impl Prepared {
@@ -209,11 +208,13 @@ impl Prepared {
             let end = pixel_width_to_tick(width);
             tracing::info!("store clip at {} {}", pos, end);
             state.started_drag_paint = false;
+
             let clip = Clip::new("new clip", end as u64);
             self.track
                 .data_layer
                 .get()
-                .add_clip(self.track.track_id, Tick::from(tick), clip);
+                .add_clip(self.track.track_id, Tick::from(tick), clip)
+                .expect("could not add clip");
         }
     }
 
