@@ -38,9 +38,9 @@ impl ClipCollection {
     }
 
     /// returns the clip at the given tick, if any
-    pub fn find_take(&mut self, clip_id: &ClipId) -> Option<Clip> {
+    pub fn find_take(&mut self, clip_id: ClipId) -> Option<Clip> {
         let key_to_remove = self.inner.iter().find_map(|(key, clip)| {
-            if clip.get_id() == clip_id {
+            if clip.id() == clip_id {
                 Some(*key)
             } else {
                 None
@@ -151,7 +151,7 @@ impl Clip {
     }
 
     /// get a clone of this clips id
-    pub fn get_id(&self) -> &ClipId {
+    pub fn id(&self) -> &ClipId {
         &self.id
     }
 }
