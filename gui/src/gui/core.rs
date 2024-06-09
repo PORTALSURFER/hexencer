@@ -10,8 +10,8 @@ use egui::{
     epaint, vec2, Color32, FontId, Frame, Id, LayerId, Margin, Order, Pos2, Stroke, Ui, Vec2,
 };
 use hexencer_core::{
-    data::{DataInterface, DataLayer},
-    TrackId,
+    data::{ClipId, DataInterface, DataLayer},
+    Tick, TrackId,
 };
 use hexencer_engine::{SequencerCommand, SequencerSender};
 use std::sync::{Arc, Mutex};
@@ -39,7 +39,7 @@ pub enum SystemCommand {
     /// adds a track to the project
     AddTrack(),
     /// move clip to another track
-    MoveClip(),
+    MoveClip(ClipId, TrackId),
 }
 
 /// ui state of hexencer
@@ -56,7 +56,7 @@ pub struct HexencerContext {
     /// use this to send commands to the sequencer
     sequencer_sender: SequencerSender,
     // egui context
-    egui_ctx: egui::Context,
+    pub egui_ctx: egui::Context,
 }
 
 /// main hexencer viewport/ui
@@ -268,7 +268,7 @@ impl HexencerApp {
                     .collect();
 
                 for id in track_ids {
-                    track(&self.context, self.context.data.clone(), ctx, id, ui);
+                    track(&self.context, self.context.data.clone(), id, ui);
                 }
             });
         });
@@ -284,8 +284,22 @@ impl HexencerApp {
                 SystemCommand::AddTrack() => {
                     tracing::info!("AddTrack command received");
                 }
-                SystemCommand::MoveClip() => {
-                    tracing::info!("MoveTrack command received");
+                SystemCommand::MoveClip(clip_id, track_id) => {
+                    tracing::info!("MoveClip command received");
+                    let mut data = self.context.data.get();
+                    {
+                        tracing::info!("moving clip {}", clip_id);
+                        let clip = data.project_manager.move_clip(clip_id, track_id);
+                        if let Some(clip) = clip {
+                            if let Some(track) = data.project_manager.tracks.get_mut(track_id) {
+                                // let tick = (pos.x - rect.min.x) / 24.0 * 120.0;
+                                // tracing::info!("pos {}", pos.x);
+                                track.add_clip(Tick::from(480), clip);
+                            }
+                        } else {
+                            tracing::info!("clip was not found {}", clip_id);
+                        }
+                    }
                 }
             }
         }

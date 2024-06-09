@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
+    gui::{HexencerContext, SystemCommand},
     memory::GuiState,
     ui::{common::TRACK_HEIGHT, quantize},
 };
@@ -22,13 +23,13 @@ pub struct TrackWidget {
     /// color used to fill te background of the track
     fill: Color32,
     /// identifier of the track
-    track_id: TrackId,
+    pub track_id: TrackId,
     /// referene to the data_layer
     data_layer: DataInterface,
 }
 
 /// ui state of the track
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct State {
     /// last known mouse position, used for painting in clips
     drag_start_position: f32,
@@ -36,6 +37,8 @@ pub struct State {
     started_drag_paint: bool,
     /// last known mouse position when drag ended
     drag_end_position: f32,
+    /// identifies the clip
+    pub dropped_clip_id: Option<ClipId>,
 }
 
 impl State {
@@ -52,10 +55,10 @@ impl State {
 
 impl TrackWidget {
     /// creates a new 'Track' element
-    pub fn new(data_layer: DataInterface, index: TrackId) -> Self {
+    pub fn new(data_layer: DataInterface, track_id: TrackId) -> Self {
         Self {
             data_layer,
-            track_id: index,
+            track_id,
             ..Default::default()
         }
     }
@@ -69,14 +72,16 @@ impl TrackWidget {
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
         let response = self.allocate_space(ui, rect);
 
+        let mut state = State::load(ui, ui.id());
+
         // TODO use these or no?
         let _is_anything_being_dragged = DragAndDrop::has_any_payload(ctx);
         let _can_accept_what_is_being_dragged = DragAndDrop::has_payload_of_type::<ClipId>(ctx);
 
-        let mut dropped_clip = None;
         if let Some(clip_id) = response.dnd_release_payload::<ClipId>() {
+            tracing::info!("clip {} dropped on track", clip_id);
             // TODO conver to .ok() ?
-            dropped_clip =
+            state.dropped_clip_id =
                 Some(Arc::try_unwrap(clip_id).expect("error trying to unwrap dropped clip_id"))
 
             // reassign clip to this track instead
@@ -94,11 +99,12 @@ impl TrackWidget {
         self.layout_clips(ui, self.track_id, ctx, rect);
 
         Prepared {
+            track_id: self.track_id,
             track: self,
             where_to_put_background,
             rect,
             response,
-            dropped_clip,
+            state,
         }
     }
 
@@ -114,11 +120,16 @@ impl TrackWidget {
     }
 
     /// use this to process the element so it is painted and returns a response
-    pub fn show(self, ui: &mut Ui, ctx: &Context, on_dropped: impl FnOnce()) -> Response {
-        let prepared = self.begin(ui, ctx);
-        if let Some(clip_id) = prepared.dropped_clip {
-            tracing::info!("dropped ({}) on track", clip_id);
-            on_dropped();
+    pub fn show(self, ui: &mut Ui, context: &HexencerContext) -> Response {
+        let prepared = self.begin(ui, &context.egui_ctx);
+
+        let track_id = prepared.track_id;
+        if let Some(clip_id) = prepared.state.dropped_clip_id {
+            tracing::info!("a clip was dropped on this track");
+            context
+                .command_sender
+                .send(SystemCommand::MoveClip(clip_id, track_id))
+                .ok();
         }
         prepared.end(ui)
     }
@@ -143,10 +154,10 @@ impl TrackWidget {
             let track = data.project_manager.tracks.get(index);
             if let Some(track) = track {
                 for (tick, clip) in &track.clips {
-                    if crate::ui::clip(ctx, ui, clip.get_id(), *tick, clip.end).drag_started() {
+                    if crate::ui::clip(ctx, ui, clip.id(), *tick, clip.end).drag_started() {
                         tracing::info!("clip clicked");
                         let mut gui_state = GuiState::load(ui);
-                        gui_state.selected_clip = Some(*clip.get_id());
+                        gui_state.selected_clip = Some(*clip.id());
                         gui_state.store(ui);
                     };
                 }
@@ -157,6 +168,8 @@ impl TrackWidget {
 
 /// intermediate struct to prepare a track element
 pub struct Prepared {
+    /// id of this track in data land
+    pub track_id: TrackId,
     /// reference to the track widget being prepared
     pub track: TrackWidget,
     /// placeholder where to put the background shape
@@ -165,8 +178,8 @@ pub struct Prepared {
     rect: Rect,
     /// track ui response
     response: Response,
-    /// dropped clip
-    dropped_clip: Option<ClipId>,
+    /// ui state of the track widget
+    pub state: State,
 }
 
 impl Prepared {

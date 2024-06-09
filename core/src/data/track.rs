@@ -79,7 +79,7 @@ impl TrackCollection {
     }
 
     /// take the clip out of any track if found, removing it from the track
-    pub fn take_clip(&mut self, clip_id: &ClipId) -> Option<Clip> {
+    pub fn take_clip(&mut self, clip_id: ClipId) -> Option<Clip> {
         for track in &mut self.inner {
             if let result @ Some(_) = track.clips.find_take(clip_id) {
                 tracing::info!("taking clip from {}", track.id);
@@ -157,6 +157,7 @@ impl Track {
 
     /// add a new clip to the track
     pub fn add_clip(&mut self, tick: Tick, clip: Clip) {
+        tracing::info!("adding clip {} to track: {}", clip.id(), self.id);
         self.clips.insert(tick, clip);
     }
 }
