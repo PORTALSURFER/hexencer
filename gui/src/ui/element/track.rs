@@ -154,7 +154,7 @@ impl TrackWidget {
             let track = data.project_manager.tracks.get(index);
             if let Some(track) = track {
                 for (tick, clip) in &track.clips {
-                    if crate::ui::clip(ctx, ui, clip.id(), *tick, clip.end).drag_started() {
+                    if crate::ui::clip(ctx, ui, clip.id(), *tick, clip.length).drag_started() {
                         tracing::info!("clip clicked");
                         let mut gui_state = GuiState::load(ui);
                         gui_state.selected_clip = Some(*clip.id());
@@ -223,7 +223,7 @@ impl Prepared {
             tracing::info!("store clip at {} {}", pos, end);
             state.started_drag_paint = false;
 
-            let clip = Clip::new("new clip", end as u64);
+            let clip = Clip::new(tick.into(), "new clip", end.into());
             self.track
                 .data_layer
                 .get()

@@ -82,6 +82,8 @@ impl IntoIterator for ClipCollection {
 /// They house things like notes and automation data
 #[derive(Default, Debug)]
 pub struct Clip {
+    /// tick at which the clip starts
+    pub tick: Tick,
     /// id used to identify data objects
     id: ClipId,
     /// visual name of the clip
@@ -89,12 +91,12 @@ pub struct Clip {
     /// notes in this clip
     pub events: EventCollection,
     /// end of the clip
-    pub end: u64,
+    pub length: Tick,
 }
 
 impl Clip {
     /// Create a new clip
-    pub fn new(name: &str, end: u64) -> Self {
+    pub fn new(tick: Tick, name: &str, length: Tick) -> Self {
         let mut test_events = EventCollection::new();
 
         let event1 = EventSegment::new(
@@ -132,10 +134,11 @@ impl Clip {
         test_events.add_event(Tick::from(960), event3);
 
         Self {
+            tick,
             id: ClipId::new(),
             name: String::from(name),
             events: test_events,
-            end,
+            length,
         }
 
         // Self {

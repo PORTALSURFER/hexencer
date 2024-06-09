@@ -294,7 +294,7 @@ impl HexencerApp {
                             if let Some(track) = data.project_manager.tracks.get_mut(track_id) {
                                 // let tick = (pos.x - rect.min.x) / 24.0 * 120.0;
                                 // tracing::info!("pos {}", pos.x);
-                                track.add_clip(Tick::from(480), clip);
+                                track.add_clip(clip.tick, clip);
                             }
                         } else {
                             tracing::info!("clip was not found {}", clip_id);
