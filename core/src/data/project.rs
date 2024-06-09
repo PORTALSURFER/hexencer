@@ -69,13 +69,15 @@ impl Project {
 
 #[cfg(test)]
 mod tests {
+    use crate::Tick;
+
     use super::*;
 
     #[test]
     fn can_find_clip_after_adding() {
         let mut project = Project::new();
         let mut track = Track::new(TrackId::new(), "track 0");
-        let clip = Clip::new("new_clip", 120);
+        let clip = Clip::new(Tick::from(120), "new_clip", Tick::from(120));
         let clip_id = *clip.id();
         track.add_clip(100.into(), clip);
 

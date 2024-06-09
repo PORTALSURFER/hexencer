@@ -15,9 +15,9 @@ pub const DEFAULT_CLIP_WIDTH: f32 = 96.0;
 pub const BEAT_WIDTH: f32 = 24.0;
 
 /// create a new 'clip' and returns it's 'Response'
-pub fn clip(ctx: &Context, ui: &mut Ui, id: &ClipId, tick: Tick, end: u64) -> Response {
+pub fn clip(ctx: &Context, ui: &mut Ui, id: &ClipId, tick: Tick, length: Tick) -> Response {
     let egui_id = egui::Id::new(id.as_bytes());
-    let clip = DragWidget::new(*id, egui_id, tick, end);
+    let clip = DragWidget::new(*id, egui_id, tick, length);
     clip.show(ctx, ui, |ui| ui.label("TEST")).response
 }
 
@@ -71,7 +71,7 @@ pub fn quantize(value: f32, step_size: f32, offset: f32) -> f32 {
 impl DragWidget {
     /// creates a new 'Clip'
     /// 'tick' will set the position of the 'Clip' on the 'Track'
-    pub fn new(clip_id: ClipId, id: Id, tick: Tick, end: u64) -> Self {
+    pub fn new(clip_id: ClipId, id: Id, tick: Tick, length: Tick) -> Self {
         let offset = tick.as_f32() / 480.0 * DEFAULT_CLIP_WIDTH;
 
         Self {
@@ -79,7 +79,7 @@ impl DragWidget {
             id,
             active: true,
             clip_position: offset,
-            width: end,
+            width: length.as_f32() as u64, // TODO, convert tick to pixel width
         }
     }
 

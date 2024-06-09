@@ -125,7 +125,7 @@ mod tests {
             let clips = data.project_manager.tracks.get_clips(0).unwrap();
             assert!(clips.len() == 0);
         }
-        let clip = Clip::new("test", 120);
+        let clip = Clip::new(0.into(), "test", 120.into());
         data.add_clip(TrackId::new(), Tick::from(0), clip)
             .expect("failed to add clip"); //TODO this is flawed, adding to some unkown id
 

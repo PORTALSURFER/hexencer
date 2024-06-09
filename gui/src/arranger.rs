@@ -1,5 +1,5 @@
 use crate::{
-    gui::{HexencerContext, SystemCommand},
+    gui::HexencerContext,
     ui::{self, common::TRACK_COLOR},
 };
 use egui::{layers::ShapeIdx, Color32, Ui};
