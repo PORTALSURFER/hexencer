@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 use super::clip::{Clip, ClipCollection, ClipId};
-use crate::{instrument::Instrument, DataId, Tick};
+use crate::{instrument::Instrument, DataId};
 use std::{fmt::Display, ops::Deref};
 use thiserror::Error;
 
@@ -156,7 +156,7 @@ impl Track {
     }
 
     /// add a new clip to the track
-    pub fn add_clip(&mut self, tick: Tick, clip: Clip) {
+    pub fn add_clip(&mut self, clip: Clip) {
         tracing::info!("adding clip {} to track: {}", clip.id(), self.id);
         self.clips.insert(clip.tick, clip);
     }

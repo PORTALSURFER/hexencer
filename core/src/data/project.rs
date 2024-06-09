@@ -1,3 +1,5 @@
+use crate::Tick;
+
 use super::{
     clip::{Clip, ClipId},
     track::{Track, TrackCollection, TrackId},
@@ -61,9 +63,17 @@ impl Project {
     }
 
     /// moved a clip from one track to another
-    pub fn move_clip(&mut self, clip_id: ClipId, track_id: TrackId) -> Option<Clip> {
+    pub fn move_clip(&mut self, clip_id: ClipId, track_id: TrackId, tick: Tick) {
         let _ = track_id;
-        self.tracks.take_clip(clip_id)
+        let clip = self.tracks.take_clip(clip_id);
+        if let Some(mut clip) = clip {
+            clip.tick = tick;
+            if let Some(track) = self.tracks.get_mut(track_id) {
+                track.add_clip(clip);
+            }
+        } else {
+            tracing::info!("clip was not found {}", clip_id);
+        }
     }
 }
 
@@ -79,7 +89,7 @@ mod tests {
         let mut track = Track::new(TrackId::new(), "track 0");
         let clip = Clip::new(Tick::from(120), "new_clip", Tick::from(120));
         let clip_id = *clip.id();
-        track.add_clip(100.into(), clip);
+        track.add_clip(clip);
 
         project.add_track(track);
 
