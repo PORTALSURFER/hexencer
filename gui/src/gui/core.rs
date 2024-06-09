@@ -39,7 +39,7 @@ pub enum SystemCommand {
     /// adds a track to the project
     AddTrack(),
     /// move clip to another track
-    MoveClip(ClipId, TrackId),
+    MoveClip(ClipId, TrackId, Tick),
 }
 
 /// ui state of hexencer
@@ -284,21 +284,12 @@ impl HexencerApp {
                 SystemCommand::AddTrack() => {
                     tracing::info!("AddTrack command received");
                 }
-                SystemCommand::MoveClip(clip_id, track_id) => {
+                SystemCommand::MoveClip(clip_id, track_id, tick) => {
                     tracing::info!("MoveClip command received");
                     let mut data = self.context.data.get();
                     {
                         tracing::info!("moving clip {}", clip_id);
-                        let clip = data.project_manager.move_clip(clip_id, track_id);
-                        if let Some(clip) = clip {
-                            if let Some(track) = data.project_manager.tracks.get_mut(track_id) {
-                                // let tick = (pos.x - rect.min.x) / 24.0 * 120.0;
-                                // tracing::info!("pos {}", pos.x);
-                                track.add_clip(clip.tick, clip);
-                            }
-                        } else {
-                            tracing::info!("clip was not found {}", clip_id);
-                        }
+                        data.project_manager.move_clip(clip_id, track_id, tick);
                     }
                 }
             }

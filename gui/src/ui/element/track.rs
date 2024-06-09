@@ -11,7 +11,7 @@ use egui::{
 };
 use hexencer_core::{
     data::{Clip, ClipId, DataInterface},
-    Tick, TrackId,
+    TrackId,
 };
 
 /// Track bar onto which clip elements can be placed and moved
@@ -89,11 +89,6 @@ impl TrackWidget {
             //     .project_manager
             //     .find_clip(payload.as_ref())
             //     .map(|clip| clip.get_id());
-
-            // let gui_state = GuiState::load(ui);
-            // if let Some(pos) = gui_state.last_dragged_clip_pos {
-            //     self.dropped_clip = Some(clip_id);
-            // }
         }
 
         self.layout_clips(ui, self.track_id, ctx, rect);
@@ -126,10 +121,15 @@ impl TrackWidget {
         let track_id = prepared.track_id;
         if let Some(clip_id) = prepared.state.dropped_clip_id {
             tracing::info!("a clip was dropped on this track");
-            context
-                .command_sender
-                .send(SystemCommand::MoveClip(clip_id, track_id))
-                .ok();
+            let gui_state = GuiState::load(ui);
+            if let Some(pos) = gui_state.last_dragged_clip_pos {
+                let tick = (pos.x - prepared.rect.min.x) / 24.0 * 120.0;
+                tracing::info!("pos {}", pos.x);
+                context
+                    .command_sender
+                    .send(SystemCommand::MoveClip(clip_id, track_id, tick.into()))
+                    .ok();
+            }
         }
         prepared.end(ui)
     }
@@ -227,7 +227,7 @@ impl Prepared {
             self.track
                 .data_layer
                 .get()
-                .add_clip(self.track.track_id, Tick::from(tick), clip)
+                .add_clip(self.track.track_id, clip)
                 .expect("could not add clip");
         }
     }

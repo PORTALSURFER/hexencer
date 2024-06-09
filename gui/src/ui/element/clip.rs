@@ -18,7 +18,7 @@ pub const BEAT_WIDTH: f32 = 24.0;
 pub fn clip(ctx: &Context, ui: &mut Ui, id: &ClipId, tick: Tick, length: Tick) -> Response {
     let egui_id = egui::Id::new(id.as_bytes());
     let clip = DragWidget::new(*id, egui_id, tick, length);
-    clip.show(ctx, ui, |ui| ui.label("TEST")).response
+    clip.show(ctx, ui, |_| {}).response
 }
 
 /// state of the 'ClipWidget'

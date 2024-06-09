@@ -76,14 +76,9 @@ pub struct DataLayer {
 
 impl DataLayer {
     /// add a new clip to the track specified by 'track_id'
-    pub fn add_clip(
-        &mut self,
-        track_id: TrackId,
-        tick: Tick,
-        clip: Clip,
-    ) -> Result<(), DataLayerError> {
+    pub fn add_clip(&mut self, track_id: TrackId, clip: Clip) -> Result<(), DataLayerError> {
         if let Some(track) = self.project_manager.tracks.get_mut(track_id) {
-            track.add_clip(tick, clip);
+            track.add_clip(clip);
         } else {
             return Err(DataLayerError::NoTrack(track_id));
         }
@@ -126,7 +121,7 @@ mod tests {
             assert!(clips.len() == 0);
         }
         let clip = Clip::new(0.into(), "test", 120.into());
-        data.add_clip(TrackId::new(), Tick::from(0), clip)
+        data.add_clip(TrackId::new(), clip)
             .expect("failed to add clip"); //TODO this is flawed, adding to some unkown id
 
         {
