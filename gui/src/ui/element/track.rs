@@ -137,11 +137,11 @@ impl TrackWidget {
             let data = self.data_layer.get();
             let track = data.project_manager.tracks.get(index);
             if let Some(track) = track {
-                for (tick, clip) in &track.clips {
-                    if crate::ui::clip(ctx, ui, clip.id(), *tick, clip.length).drag_started() {
+                for (_, clip) in &track.clips {
+                    if crate::ui::clip(ctx, ui, clip.id(), clip.tick, clip.length).drag_started() {
                         tracing::info!("clip clicked");
                         let mut gui_state = GuiState::load(ui);
-                        gui_state.selected_clip = Some(*clip.id());
+                        gui_state.selected_clip = Some(clip.id());
                         gui_state.store(ui);
                     };
                 }

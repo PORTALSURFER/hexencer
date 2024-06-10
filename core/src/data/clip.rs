@@ -1,4 +1,11 @@
-use std::{collections::BTreeMap, fmt::Display, ops::Deref};
+use std::{
+    collections::{
+        hash_map::{IntoIter, Iter},
+        HashMap,
+    },
+    fmt::Display,
+    ops::Deref,
+};
 
 use super::{
     common::DataId,
@@ -11,29 +18,29 @@ use crate::{event::EventType, Tick};
 #[derive(Default, Debug)]
 pub struct ClipCollection {
     /// inner object housing the clips
-    inner: BTreeMap<Tick, Clip>,
+    inner: HashMap<ClipId, Clip>,
 }
 
 impl ClipCollection {
     /// interst a new clip to the collection
     pub fn insert(&mut self, clip: Clip) {
-        self.inner.insert(clip.tick, clip);
+        self.inner.insert(clip.id(), clip);
     }
 
     /// returns an iterator over the clips in this collection
-    pub fn iter(&self) -> std::collections::btree_map::Iter<'_, Tick, Clip> {
+    pub fn iter(&self) -> Iter<'_, ClipId, Clip> {
         self.inner.iter()
     }
 
     /// returns an iterator over the clips in this collection
-    pub fn into_iter(self) -> std::collections::btree_map::IntoIter<Tick, Clip> {
+    pub fn into_iter(self) -> IntoIter<ClipId, Clip> {
         self.inner.into_iter()
     }
 
     /// creates a new, empty, 'ClipCollection'
     pub fn new() -> ClipCollection {
         ClipCollection {
-            inner: BTreeMap::new(),
+            inner: HashMap::new(),
         }
     }
 
@@ -52,7 +59,7 @@ impl ClipCollection {
 }
 
 impl Deref for ClipCollection {
-    type Target = BTreeMap<Tick, Clip>;
+    type Target = HashMap<ClipId, Clip>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -60,8 +67,8 @@ impl Deref for ClipCollection {
 }
 
 impl<'a> IntoIterator for &'a ClipCollection {
-    type Item = (&'a Tick, &'a Clip);
-    type IntoIter = std::collections::btree_map::Iter<'a, Tick, Clip>;
+    type Item = (&'a ClipId, &'a Clip);
+    type IntoIter = Iter<'a, ClipId, Clip>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.iter()
@@ -69,9 +76,9 @@ impl<'a> IntoIterator for &'a ClipCollection {
 }
 
 impl IntoIterator for ClipCollection {
-    type Item = (Tick, Clip);
+    type Item = (ClipId, Clip);
 
-    type IntoIter = std::collections::btree_map::IntoIter<Tick, Clip>;
+    type IntoIter = IntoIter<ClipId, Clip>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.into_iter()
@@ -154,8 +161,8 @@ impl Clip {
     }
 
     /// get a clone of this clips id
-    pub fn id(&self) -> &ClipId {
-        &self.id
+    pub fn id(&self) -> ClipId {
+        self.id
     }
 }
 

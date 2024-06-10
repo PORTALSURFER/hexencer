@@ -47,7 +47,7 @@ impl Project {
     pub fn find_clip(&self, selected_clip_id: &ClipId) -> Option<&Clip> {
         for track in self.tracks.iter() {
             for (_, clip) in track.clips.iter() {
-                if clip.id() == selected_clip_id {
+                if clip.id() == *selected_clip_id {
                     let clip = clip.to_owned();
                     return Some(clip);
                 }
@@ -88,7 +88,7 @@ mod tests {
         let mut project = Project::new();
         let mut track = Track::new(TrackId::new(), "track 0");
         let clip = Clip::new(Tick::from(120), "new_clip", Tick::from(120));
-        let clip_id = *clip.id();
+        let clip_id = clip.id();
         track.add_clip(clip);
 
         project.add_track(track);
