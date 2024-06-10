@@ -9,7 +9,6 @@ use egui::{
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
 use hexencer_core::data::ClipId;
 use hexencer_core::Tick;
-use tracing::info;
 
 /// default clip length for painting
 pub const DEFAULT_CLIP_WIDTH: f32 = 96.0;
@@ -17,9 +16,9 @@ pub const DEFAULT_CLIP_WIDTH: f32 = 96.0;
 pub const BEAT_WIDTH: f32 = 24.0;
 
 /// create a new 'clip' and returns it's 'Response'
-pub fn clip(ctx: &Context, ui: &mut Ui, id: &ClipId, tick: Tick, length: Tick) -> Response {
+pub fn clip(ctx: &Context, ui: &mut Ui, id: ClipId, tick: Tick, length: Tick) -> Response {
     let egui_id = egui::Id::new(id.as_bytes());
-    let clip = DragWidget::new(*id, egui_id, tick, length);
+    let clip = DragWidget::new(id, egui_id, tick, length);
     clip.show(ctx, ui, |_| {}).response
 }
 
@@ -30,31 +29,6 @@ struct State {
 }
 
 impl WidgetState for State {}
-
-// /// state of the 'ClipWidget'
-// // TODO merge these state types into a generic type
-// #[derive(Clone, Copy, Debug, Default)]
-// struct State {
-//     /// current position of the clip, used for movement interaction
-//     pub drag_position: Pos2,
-// }
-
-// impl State {
-//     /// load this state from memory, or create a default one
-//     pub fn load_or_default(id: Id, ui: &Ui) -> Self {
-//         ui.memory(|mem| mem.data.get_temp(id).unwrap_or_default())
-//     }
-
-//     /// load this state from memory, or create a default one
-//     pub fn load(id: Id, ui: &Ui) -> Option<Self> {
-//         ui.memory(|mem| mem.data.get_temp(id))
-//     }
-
-//     /// store this state to memory
-//     pub fn store(self, id: Id, ui: &mut Ui) {
-//         ui.memory_mut(|mem| mem.data.insert_temp(id, self))
-//     }
-// }
 
 /// widget used to represent 'Clips' on a 'Track'
 #[must_use = "You should call .show()"]
@@ -109,26 +83,23 @@ impl DragWidget {
     /// begin building the clip widget
     fn begin(self, ctx: &Context, ui: &mut Ui) -> Prepared {
         let where_to_put_background = ui.painter().add(Shape::Noop);
-
-        let height = ui.available_height();
-        let width = (self.width as f32 / 480.0) * 24.0;
-        let size = Vec2::new(width, height);
+        let size = self.get_size(ui);
 
         let mut start_pos = ui.max_rect().min;
         start_pos.x += self.clip_position;
 
-        let state = State::load(self.id, ui);
+        // let state = State::load(self.id, ui);
 
-        let is_new = state.is_none();
-        if is_new {
-            ctx.request_repaint(); // if we don't know the previous size we are likely drawing the area in the wrong place
-        }
+        // let is_new = state.is_none();
+        // if is_new {
+        //     ctx.request_repaint();
+        // }
 
-        let mut state = state.unwrap_or(State {
-            drag_position: start_pos,
-        });
+        // let mut state = state.unwrap_or(State {
+        //     drag_position: start_pos,
+        // });
 
-        let (rect, move_response) = self.handle_dragging(ui, size, ctx, start_pos, &mut state);
+        let (rect, move_response) = self.handle_dragging(ui, size, ctx, start_pos);
 
         let content_ui = ui.child_ui(rect, *ui.layout());
 
@@ -140,8 +111,14 @@ impl DragWidget {
             rect,
             where_to_put_background,
             content_ui,
-            sizing_pass: is_new,
         }
+    }
+
+    fn get_size(&self, ui: &mut Ui) -> Vec2 {
+        let height = ui.available_height();
+        let width = (self.width as f32 / 480.0) * 24.0;
+        let size = Vec2::new(width, height);
+        size
     }
 
     /// handle dragging around of clip on track
@@ -151,20 +128,20 @@ impl DragWidget {
         size: Vec2,
         ctx: &Context,
         start_pos: Pos2,
-        state: &mut State,
     ) -> (Rect, Response) {
-        // let mut state = match State::load(self.id, ui) {
-        //     Some(state) => state,
-        //     _ => State {
-        //         pivot_pos: start_pos,
-        //     },
-        // };
+        // load state
+        // if was loaded,set drag_pos to the start pos
+        let mut state = match State::load(self.id, ui) {
+            Some(state) => state,
+            _ => State {
+                drag_position: start_pos,
+            },
+        };
 
         // let quantized = quantize(state.pivot_pos.x, 24.0, start_pos.x);
         // let quantized_y = quantize(state.pivot_pos.y, TRACK_HEIGHT, start_pos.y);
 
         let mut rect = Rect::from_min_size(start_pos, size);
-        info!("start_pos {:?}", start_pos);
         let mut move_response = ui.interact(rect, self.id, Sense::drag());
 
         if move_response.dragged() {
@@ -226,8 +203,6 @@ pub struct Prepared {
     content_ui: Ui,
     /// placeholder for painting in the background color
     where_to_put_background: ShapeIdx,
-    /// used to prevent flickering
-    sizing_pass: bool,
 }
 
 impl Prepared {
