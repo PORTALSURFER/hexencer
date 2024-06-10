@@ -5,7 +5,7 @@ use egui::{
     Sense, Shape, Stroke, Ui,
 };
 
-use crate::gui::EDGE_COLOR;
+use crate::{gui::EDGE_COLOR, WidgetState};
 
 use self::transform::Transform;
 use super::BEAT_WIDTH;
@@ -47,7 +47,7 @@ where
 }
 
 /// note editor state
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct State {
     /// the last click position when zooming in the note editor
     pub last_click_pos_for_zoom: Option<Pos2>,
@@ -56,18 +56,7 @@ pub struct State {
     /// step size for the note editor
     pub step_size: f32,
 }
-
-impl State {
-    /// load the note editor state from memory
-    pub fn load(ui: &Ui, id: Id) -> Option<Self> {
-        ui.memory(|memory| memory.data.get_temp(id))
-    }
-
-    /// store the note editor state to memory
-    pub fn store(self, ui: &Ui, id: Id) {
-        ui.memory_mut(|memory| memory.data.insert_temp(id, self));
-    }
-}
+impl WidgetState for State {}
 
 /// A note editor widget that can be used to display and edit notes of the currently selected clip
 pub struct NoteEditorWidget<'c> {
@@ -89,7 +78,7 @@ impl<'c> NoteEditorWidget<'c> {
         ui.set_clip_rect(editor_rect);
         let id = Id::new("note_editor");
 
-        let mut state = State::load(ui, id).unwrap_or_else(|| State {
+        let mut state = State::load(id, ui).unwrap_or_else(|| State {
             last_click_pos_for_zoom: None,
             transform: Transform::new(editor_rect, 1.0),
             step_size: 10.0,
@@ -116,7 +105,7 @@ impl<'c> NoteEditorWidget<'c> {
         self.draw_note_lanes(ui, state.step_size, editor_rect, state.transform);
         self.draw_beat_columns(ui, editor_rect);
 
-        state.store(ui, id);
+        state.store(id, ui);
         response
     }
 

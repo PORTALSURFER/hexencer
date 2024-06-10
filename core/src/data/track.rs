@@ -158,6 +158,6 @@ impl Track {
     /// add a new clip to the track
     pub fn add_clip(&mut self, clip: Clip) {
         tracing::info!("adding clip {} to track: {}", clip.id(), self.id);
-        self.clips.insert(clip.tick, clip);
+        self.clips.insert(clip);
     }
 }
