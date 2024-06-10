@@ -4,10 +4,11 @@ use crate::{
     gui::{HexencerContext, SystemCommand},
     memory::GuiState,
     ui::{common::TRACK_HEIGHT, quantize},
+    WidgetState,
 };
 use egui::{
-    epaint, layers::ShapeIdx, pos2, Color32, Context, DragAndDrop, Id, LayerId, Layout, Order,
-    Rect, Response, Rounding, Sense, Shape, Stroke, Ui, Vec2,
+    epaint, layers::ShapeIdx, pos2, Color32, Context, DragAndDrop, LayerId, Layout, Order, Rect,
+    Response, Rounding, Sense, Shape, Stroke, Ui, Vec2,
 };
 use hexencer_core::{
     data::{Clip, ClipId, DataInterface},
@@ -41,17 +42,7 @@ pub struct State {
     pub dropped_clip_id: Option<ClipId>,
 }
 
-impl State {
-    /// load state from memory
-    pub fn load(ui: &Ui, id: Id) -> Self {
-        ui.memory(|mem| mem.data.get_temp(id)).unwrap_or_default()
-    }
-
-    /// store state to memory
-    pub fn store(self, ui: &mut Ui, id: Id) {
-        ui.memory_mut(|mem| mem.data.insert_temp(id, self));
-    }
-}
+impl WidgetState for State {}
 
 impl TrackWidget {
     /// creates a new 'Track' element
@@ -71,8 +62,9 @@ impl TrackWidget {
         let height = TRACK_HEIGHT;
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
         let response = self.allocate_space(ui, rect);
+        self.layout_clips(ui, self.track_id, ctx, rect);
 
-        let mut state = State::load(ui, ui.id());
+        let mut state = State::load_or_default(ui.id(), ui);
 
         // TODO use these or no?
         let _is_anything_being_dragged = DragAndDrop::has_any_payload(ctx);
@@ -83,15 +75,7 @@ impl TrackWidget {
             // TODO conver to .ok() ?
             state.dropped_clip_id =
                 Some(Arc::try_unwrap(clip_id).expect("error trying to unwrap dropped clip_id"))
-
-            // reassign clip to this track instead
-            // let clip_id = data
-            //     .project_manager
-            //     .find_clip(payload.as_ref())
-            //     .map(|clip| clip.get_id());
         }
-
-        self.layout_clips(ui, self.track_id, ctx, rect);
 
         Prepared {
             track_id: self.track_id,
@@ -186,7 +170,7 @@ impl Prepared {
     /// process interaction and paint the element
     pub fn end(self, ui: &mut Ui) -> Response {
         self.paint(ui);
-        let mut state = State::load(ui, ui.id());
+        let mut state = State::load_or_default(ui.id(), ui);
         if self.response.hovered() {
             if let Some(hover_pos) = ui.input(|i| i.pointer.hover_pos()) {
                 let mut clip_min = pos2(hover_pos.x, self.rect.min.y);
@@ -202,7 +186,7 @@ impl Prepared {
         }
 
         self.handle_clip_painting(ui, &mut state);
-        state.store(ui, ui.id());
+        state.store(ui.id(), ui);
         self.response
     }
 

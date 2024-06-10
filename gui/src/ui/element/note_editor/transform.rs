@@ -14,6 +14,16 @@ pub struct Transform {
     pub(crate) translation: Vec2,
 }
 
+impl Default for Transform {
+    fn default() -> Self {
+        Self {
+            scale: 1.0,
+            frame: Rect::ZERO,
+            translation: Vec2::ZERO,
+        }
+    }
+}
+
 impl Transform {
     /// process zooming of the editor
     pub fn zoom(

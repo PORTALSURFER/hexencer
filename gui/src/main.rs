@@ -19,6 +19,7 @@ mod utility;
 pub use gui::{options, run};
 use hexencer_core::data::DataInterface;
 use hexencer_engine::{midi_engine::start_midi_engine, start_sequencer_engine};
+pub use memory::WidgetState;
 use utility::init_logger;
 
 pub use hexencer_core::DataId;

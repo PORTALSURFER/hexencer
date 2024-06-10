@@ -1,5 +1,6 @@
 use crate::memory::GuiState;
 use crate::ui::common::TRACK_HEIGHT;
+use crate::WidgetState;
 use egui::layers::ShapeIdx;
 use egui::{
     emath::*, epaint, Color32, DragAndDrop, InnerResponse, LayerId, Order, Response, Rounding,
@@ -8,6 +9,7 @@ use egui::{
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
 use hexencer_core::data::ClipId;
 use hexencer_core::Tick;
+use tracing::info;
 
 /// default clip length for painting
 pub const DEFAULT_CLIP_WIDTH: f32 = 96.0;
@@ -21,30 +23,38 @@ pub fn clip(ctx: &Context, ui: &mut Ui, id: &ClipId, tick: Tick, length: Tick) -
     clip.show(ctx, ui, |_| {}).response
 }
 
-/// state of the 'ClipWidget'
-// TODO merge these state types into a generic type
 #[derive(Clone, Copy, Debug, Default)]
 struct State {
-    /// current position of the clip, used for movement interaction
+    //     /// current position of the clip, used for movement interaction
     pub drag_position: Pos2,
 }
 
-impl State {
-    /// load this state from memory, or create a default one
-    pub fn load_or_default(id: Id, ui: &Ui) -> Self {
-        ui.memory(|mem| mem.data.get_temp(id).unwrap_or_default())
-    }
+impl WidgetState for State {}
 
-    /// load this state from memory, or create a default one
-    pub fn load(id: Id, ui: &Ui) -> Option<Self> {
-        ui.memory(|mem| mem.data.get_temp(id))
-    }
+// /// state of the 'ClipWidget'
+// // TODO merge these state types into a generic type
+// #[derive(Clone, Copy, Debug, Default)]
+// struct State {
+//     /// current position of the clip, used for movement interaction
+//     pub drag_position: Pos2,
+// }
 
-    /// store this state to memory
-    pub fn store(self, id: Id, ui: &mut Ui) {
-        ui.memory_mut(|mem| mem.data.insert_temp(id, self))
-    }
-}
+// impl State {
+//     /// load this state from memory, or create a default one
+//     pub fn load_or_default(id: Id, ui: &Ui) -> Self {
+//         ui.memory(|mem| mem.data.get_temp(id).unwrap_or_default())
+//     }
+
+//     /// load this state from memory, or create a default one
+//     pub fn load(id: Id, ui: &Ui) -> Option<Self> {
+//         ui.memory(|mem| mem.data.get_temp(id))
+//     }
+
+//     /// store this state to memory
+//     pub fn store(self, id: Id, ui: &mut Ui) {
+//         ui.memory_mut(|mem| mem.data.insert_temp(id, self))
+//     }
+// }
 
 /// widget used to represent 'Clips' on a 'Track'
 #[must_use = "You should call .show()"]
@@ -149,13 +159,16 @@ impl DragWidget {
         //         pivot_pos: start_pos,
         //     },
         // };
+
         // let quantized = quantize(state.pivot_pos.x, 24.0, start_pos.x);
         // let quantized_y = quantize(state.pivot_pos.y, TRACK_HEIGHT, start_pos.y);
 
         let mut rect = Rect::from_min_size(start_pos, size);
+        info!("start_pos {:?}", start_pos);
         let mut move_response = ui.interact(rect, self.id, Sense::drag());
 
         if move_response.dragged() {
+            tracing::info!("drag pos {}", state.drag_position.x);
             DragAndDrop::set_payload(ctx, self.clip_id);
             let delta = move_response.drag_delta();
 

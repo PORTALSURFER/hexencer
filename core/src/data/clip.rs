@@ -16,8 +16,8 @@ pub struct ClipCollection {
 
 impl ClipCollection {
     /// interst a new clip to the collection
-    pub fn insert(&mut self, tick: Tick, clip: Clip) {
-        self.inner.insert(tick, clip);
+    pub fn insert(&mut self, clip: Clip) {
+        self.inner.insert(clip.tick, clip);
     }
 
     /// returns an iterator over the clips in this collection

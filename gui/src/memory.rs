@@ -22,3 +22,27 @@ impl GuiState {
         ui.memory_mut(|memory| memory.data.insert_temp(Id::NULL, self));
     }
 }
+
+/// state of the 'ClipWidget'
+// TODO merge these state types into a generic type
+// #[derive(Clone, Copy, Debug, Default)]
+
+pub trait WidgetState
+where
+    Self: Clone + Default + Sync + Send + 'static,
+{
+    /// load this state from memory, or create a default one
+    fn load_or_default(id: Id, ui: &Ui) -> Self {
+        ui.memory(|mem| mem.data.get_temp(id).unwrap_or_default())
+    }
+
+    /// load this state from memory, or create a default one
+    fn load(id: Id, ui: &Ui) -> Option<Self> {
+        ui.memory(|mem| mem.data.get_temp(id))
+    }
+
+    /// store this state to memory
+    fn store(self, id: Id, ui: &mut Ui) {
+        ui.memory_mut(|mem| mem.data.insert_temp(id, self))
+    }
+}
