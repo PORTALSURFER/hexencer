@@ -11,9 +11,9 @@ mod project;
 /// the track data object
 mod track;
 
+use std::ops::Deref;
 use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::MutexGuard;
+use std::sync::RwLock;
 
 pub use clip::Clip;
 pub use clip::ClipId;
@@ -38,19 +38,22 @@ pub struct EditorState {
 #[derive(Default, Debug, Clone)]
 pub struct DataInterface {
     /// inner object actually holding data
-    inner: Arc<std::sync::Mutex<DataLayer>>,
+    inner: Arc<std::sync::RwLock<DataLayer>>,
+}
+
+impl Deref for DataInterface {
+    type Target = Arc<RwLock<DataLayer>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 impl DataInterface {
-    /// get funtion to lock and get data
-    pub fn get(&self) -> MutexGuard<DataLayer> {
-        self.inner.lock().expect("illegal lock")
-    }
-
     /// creates a new interface for data
     pub fn new() -> Self {
         Self {
-            inner: Arc::new(Mutex::new(DataLayer::default())),
+            inner: Arc::new(RwLock::new(DataLayer::default())),
         }
     }
 }
@@ -111,22 +114,34 @@ mod tests {
     use coverage_helper::test;
 
     #[test]
-    fn test_add_clip() {
+    #[should_panic]
+    fn cant_add_when_track_not_found() {
         let mut data = DataLayer::default();
         let track = Track::new(TrackId::new(), "test");
         data.project_manager.add_track(track);
 
-        {
-            let clips = data.project_manager.tracks.get_clips(0).unwrap();
-            assert!(clips.len() == 0);
-        }
         let clip = Clip::new(0.into(), "test", 120.into());
-        data.add_clip(TrackId::new(), clip)
-            .expect("failed to add clip"); //TODO this is flawed, adding to some unkown id
+        data.add_clip(TrackId::new(), clip).unwrap();
+    }
+
+    #[test]
+    fn can_add_track() {
+        let mut data = DataLayer::default();
+        let track_id = TrackId::new();
+        let track = Track::new(track_id, "test");
+        data.project_manager.add_track(track);
 
         {
             let clips = data.project_manager.tracks.get_clips(0).unwrap();
-            assert!(clips.len() > 0);
+            assert_eq!(clips.len(), 0);
+        }
+
+        let clip = Clip::new(0.into(), "test", 120.into());
+        data.add_clip(track_id, clip).unwrap();
+
+        {
+            let clips = data.project_manager.tracks.get_clips(0).unwrap();
+            assert_eq!(clips.len(), 1);
         }
     }
 

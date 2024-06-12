@@ -30,7 +30,7 @@ pub enum SequencerCommand {
 #[derive(Default)]
 pub struct Sequencer {
     /// the data layer, used to store and retreive projects, etc
-    data_layer: DataInterface,
+    data: DataInterface,
     /// use this to send commands to the midi engine, like playing a note
     midi_engine_sender: Option<MidiEngineSender>,
     /// current bpm of the sequencer
@@ -47,7 +47,7 @@ impl Sequencer {
     /// creates a new 'Sequencer'
     pub fn new(data_layer: DataInterface, midi_engine_sender: MidiEngineSender) -> Self {
         Self {
-            data_layer,
+            data: data_layer,
             midi_engine_sender: Some(midi_engine_sender),
             bpm: 150.0,
             ppqn: 480,
@@ -73,7 +73,7 @@ impl Sequencer {
                     if *self.running.lock().unwrap() {
                         self.process_events();
                         self.current_tick.tick();
-                        self.data_layer.get().set_tick(self.current_tick);
+                        self.data.write().map(|mut data|data.set_tick(self.current_tick));
                     }
                 }
                 Some(command) = command_receiver.recv() => {

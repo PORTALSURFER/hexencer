@@ -90,7 +90,7 @@ impl IntoIterator for ClipCollection {
 #[derive(Default, Debug)]
 pub struct Clip {
     /// tick at which the clip starts
-    pub tick: Tick,
+    pub start: Tick,
     /// id used to identify data objects
     id: ClipId,
     /// visual name of the clip
@@ -141,7 +141,7 @@ impl Clip {
         test_events.add_event(Tick::from(960), event3);
 
         Self {
-            tick,
+            start: tick,
             id: ClipId::new(),
             name: String::from(name),
             events: test_events,
@@ -186,7 +186,7 @@ impl Display for ClipId {
 
 impl ClipId {
     /// creates a new clip id
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self(DataId::new())
     }
 }
@@ -195,4 +195,11 @@ impl PartialEq<ClipId> for &ClipId {
     fn eq(&self, other: &ClipId) -> bool {
         self.0 == other.0
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // #[test]
 }

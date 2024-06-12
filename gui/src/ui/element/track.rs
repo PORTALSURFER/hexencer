@@ -55,24 +55,22 @@ impl TrackWidget {
     }
 
     /// prepares the layout and allocate space for interaction
-    fn begin(self, ui: &mut Ui, ctx: &Context) -> Prepared {
+    fn begin(self, ui: &mut Ui, ctx: &HexencerContext) -> Prepared {
         let where_to_put_background = ui.painter().add(Shape::Noop);
         let outer_rect_bounds = ui.available_rect_before_wrap();
         let available_width = ui.available_width();
         let height = TRACK_HEIGHT;
         let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
         let response = self.allocate_space(ui, rect);
-        self.layout_clips(ui, self.track_id, ctx, rect);
-
+        self.paint_clips(ui, self.track_id, ctx, rect);
         let mut state = State::load_or_default(ui.id(), ui);
 
         // TODO use these or no?
-        let _is_anything_being_dragged = DragAndDrop::has_any_payload(ctx);
-        let _can_accept_what_is_being_dragged = DragAndDrop::has_payload_of_type::<ClipId>(ctx);
+        let _is_anything_being_dragged = DragAndDrop::has_any_payload(&ctx.egui_ctx);
+        let _can_accept_what_is_being_dragged =
+            DragAndDrop::has_payload_of_type::<ClipId>(&ctx.egui_ctx);
 
         if let Some(clip_id) = response.dnd_release_payload::<ClipId>() {
-            tracing::info!("clip {} dropped on track", clip_id);
-            // TODO conver to .ok() ?
             state.dropped_clip_id =
                 Some(Arc::try_unwrap(clip_id).expect("error trying to unwrap dropped clip_id"))
         }
@@ -98,24 +96,45 @@ impl TrackWidget {
         self
     }
 
-    /// use this to process the element so it is painted and returns a response
-    pub fn show(self, ui: &mut Ui, context: &HexencerContext) -> Response {
-        let prepared = self.begin(ui, &context.egui_ctx);
+    /// layout clips on the track
+    fn paint_clips(&self, ui: &mut Ui, index: TrackId, ctx: &HexencerContext, rect: Rect) {
+        let mut child_ui = ui.child_ui(rect, Layout::default());
+        child_ui.horizontal(|ui| {
+            let data = &ctx.data.read().unwrap();
+            let track = data.project_manager.tracks.get(index);
+            if let Some(track) = track {
+                for (_, clip) in &track.clips {
+                    if crate::ui::clip(&ctx, ui, clip.id(), clip.start, clip.length).drag_started()
+                    {
+                        let mut gui_state = GuiState::load(ui);
+                        gui_state.selected_clip = Some(clip.id());
+                        gui_state.store(ui);
+                    };
+                }
+            }
+        });
+    }
 
+    /// use this to process the element so it is painted and returns a response
+    pub fn show(self, ui: &mut Ui, ctx: &HexencerContext) -> Response {
+        let prepared = self.begin(ui, &ctx);
         let track_id = prepared.track_id;
+
         if let Some(clip_id) = prepared.state.dropped_clip_id {
-            tracing::info!("a clip was dropped on this track");
             let gui_state = GuiState::load(ui);
             if let Some(pos) = gui_state.last_dragged_clip_pos {
                 let tick = (pos.x - prepared.rect.min.x) / 24.0 * 120.0;
-                tracing::info!("pos {}", pos.x);
-                context
-                    .command_sender
+                tracing::info!(
+                    "dropped clip at {} {}, sending command to move",
+                    pos.x,
+                    tick
+                );
+                ctx.command_sender
                     .send(SystemCommand::MoveClip(clip_id, track_id, tick.into()))
                     .ok();
             }
         }
-        prepared.end(ui)
+        prepared.end(ui, &ctx)
     }
 
     /// paints the track elements
@@ -128,25 +147,6 @@ impl TrackWidget {
             fill,
             Stroke::new(0.0, Color32::from_rgb(10, 10, 10)),
         ))
-    }
-
-    /// layout clips on the track
-    fn layout_clips(&self, ui: &mut Ui, index: TrackId, ctx: &Context, rect: Rect) {
-        let mut child_ui = ui.child_ui(rect, Layout::default());
-        child_ui.horizontal(|ui| {
-            let data = self.data_layer.get();
-            let track = data.project_manager.tracks.get(index);
-            if let Some(track) = track {
-                for (_, clip) in &track.clips {
-                    if crate::ui::clip(ctx, ui, clip.id(), clip.tick, clip.length).drag_started() {
-                        tracing::info!("clip clicked");
-                        let mut gui_state = GuiState::load(ui);
-                        gui_state.selected_clip = Some(clip.id());
-                        gui_state.store(ui);
-                    };
-                }
-            }
-        });
     }
 }
 
@@ -168,9 +168,10 @@ pub struct Prepared {
 
 impl Prepared {
     /// process interaction and paint the element
-    pub fn end(self, ui: &mut Ui) -> Response {
+    pub fn end(self, ui: &mut Ui, ctx: &HexencerContext) -> Response {
         self.paint(ui);
         let mut state = State::load_or_default(ui.id(), ui);
+
         if self.response.hovered() {
             if let Some(hover_pos) = ui.input(|i| i.pointer.hover_pos()) {
                 let mut clip_min = pos2(hover_pos.x, self.rect.min.y);
@@ -184,14 +185,13 @@ impl Prepared {
                 ui.painter().add(clip_shape);
             }
         }
-
-        self.handle_clip_painting(ui, &mut state);
+        self.handle_drag_painting_clip_add(ui, &mut state);
         state.store(ui.id(), ui);
         self.response
     }
 
-    /// handles painting of clips into drags, adding them to the track
-    fn handle_clip_painting(&self, ui: &mut Ui, state: &mut State) {
+    /// handles drag painting of clips, adding them to the track
+    fn handle_drag_painting_clip_add(&self, ui: &mut Ui, state: &mut State) {
         if self.response.drag_started() {
             self.register_drag_start_position(ui, state);
         }
@@ -199,20 +199,19 @@ impl Prepared {
         if self.response.dragged() {
             self.paint_new_clip(ui, state);
         }
+
         if self.response.drag_stopped() {
             let pos = state.drag_start_position - self.rect.min.x;
             let tick = pos_to_clip_tick(pos);
             let width = state.drag_end_position - state.drag_start_position;
-            let end = pixel_width_to_tick(width);
-            tracing::info!("store clip at {} {}", pos, end);
+            let end = track_width_to_tick(width);
             state.started_drag_paint = false;
-
             let clip = Clip::new(tick.into(), "new clip", end.into());
-            self.track
-                .data_layer
-                .get()
-                .add_clip(self.track.track_id, clip)
-                .expect("could not add clip");
+
+            self.track.data_layer.write().map(|mut data| {
+                data.add_clip(self.track.track_id, clip)
+                    .expect("could not add clip");
+            });
         }
     }
 
@@ -279,6 +278,6 @@ fn pos_to_clip_tick(pos: f32) -> f32 {
 }
 
 /// converts pixel width to tick
-fn pixel_width_to_tick(width: f32) -> f32 {
-    (width / 24.0) * 480.0
+fn track_width_to_tick(width: f32) -> f32 {
+    (width / 24.0) * 120.0
 }
