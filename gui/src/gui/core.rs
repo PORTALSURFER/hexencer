@@ -52,7 +52,7 @@ pub struct HexencerContext {
     /// receiver for system commands
     command_receiver: CommandReceiver,
     /// a reference to the data layer, this the the main way to interact with the data
-    data: DataInterface,
+    pub data: DataInterface,
     /// use this to send commands to the sequencer
     sequencer_sender: SequencerSender,
     // egui context
@@ -95,10 +95,16 @@ impl HexencerApp {
                 .command_sender
                 .send(SystemCommand::AddTrack())
                 .ok();
-            self.context.data.get().project_manager.push_track();
+            self.context
+                .data
+                .write()
+                .map(|mut data| data.project_manager.push_track());
         }
         if ui.button("remove track").clicked() {
-            self.context.data.get().project_manager.remove_track();
+            self.context
+                .data
+                .write()
+                .map(|mut data| data.project_manager.remove_track());
         }
     }
 
@@ -128,14 +134,9 @@ impl HexencerApp {
     fn editor_ui(&mut self, ui: &mut Ui) {
         let state = GuiState::load(ui);
         if let Some(selected_clip_id) = state.selected_clip {
-            if let Some(selected_clip) = self
-                .context
-                .data
-                .get()
-                .project_manager
-                .find_clip(&selected_clip_id)
-            {
-                NoteEditorWidget::new(selected_clip).show(ui);
+            let guard = self.context.data.read().unwrap();
+            if let Some(clip) = guard.project_manager.find_clip(selected_clip_id) {
+                NoteEditorWidget::new(clip).show(ui);
             }
         };
     }
@@ -152,7 +153,7 @@ impl HexencerApp {
             ui.centered_and_justified(|ui| ui.label("toolbar menu"));
         });
         egui::TopBottomPanel::bottom("statusbar").show(ctx, |ui| {
-            let current_tick = self.context.data.get().get_tick();
+            let current_tick = self.context.data.read().unwrap().get_tick();
             ui.label(&current_tick.as_time().to_string());
         });
 
@@ -160,17 +161,15 @@ impl HexencerApp {
             .exact_width(TRACK_HEADER_WIDTH)
             .resizable(false)
             .show(ctx, |ui| {
-                let track_ids: Vec<TrackId> = self
-                    .context
-                    .data
-                    .get()
-                    .project_manager
-                    .tracks
-                    .iter()
-                    .map(|track| track.id)
-                    .collect();
-
-                track_header_list(ui, track_ids);
+                if let Ok(track_ids) = self.context.data.read().map(|data| {
+                    data.project_manager
+                        .tracks
+                        .iter()
+                        .map(|track| track.id)
+                        .collect()
+                }) {
+                    track_header_list(ui, track_ids);
+                }
             });
 
         egui::SidePanel::right("info")
@@ -260,7 +259,8 @@ impl HexencerApp {
                 let track_ids: Vec<TrackId> = self
                     .context
                     .data
-                    .get()
+                    .read()
+                    .unwrap()
                     .project_manager
                     .tracks
                     .iter()
@@ -286,9 +286,8 @@ impl HexencerApp {
                 }
                 SystemCommand::MoveClip(clip_id, track_id, tick) => {
                     tracing::info!("MoveClip command received");
-                    let mut data = self.context.data.get();
+                    let mut data = self.context.data.write().unwrap();
                     {
-                        tracing::info!("moving clip {}", clip_id);
                         data.project_manager.move_clip(clip_id, track_id, tick);
                     }
                 }
