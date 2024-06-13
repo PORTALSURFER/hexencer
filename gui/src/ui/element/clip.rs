@@ -59,7 +59,6 @@ impl DragWidget {
     /// 'tick' will set the position of the 'Clip' on the 'Track'
     pub fn new(clip_id: ClipId, id: Id, tick: Tick, length: Tick) -> Self {
         let offset = tick.as_f32() / 480.0 * DEFAULT_CLIP_WIDTH;
-
         Self {
             clip_id,
             id,
@@ -88,39 +87,13 @@ impl DragWidget {
         let size = self.get_size(ui);
 
         // get the current position of the clip
-        let clip_id = self.clip_id;
-        let guard = ctx.data.read().unwrap();
-
-        let clip = guard
-            .project_manager
-            .find_clip(clip_id)
-            .expect("trying to build a non existent clip");
-
-        // let min = ui.min_rect().min;
-        // let max_x = ui.max_rect().min.y + 24.0;
-        // let max_y = ui.max_rect().min.x + clip.length.as_f32();
-        // let max = pos2(max_x, max_y);
-        
-        let pos1 = pos2(
-            ui.max_rect().min.x + tick_to_track_point_x(clip.start),
-            ui.max_rect().min.y,
-        );
-        let x = tick_to_track_point_x(clip.length);
-        tracing::info!("length {}", clip.length);
-        tracing::info!("length on track {}", x);
-        let vec2 = vec2(x, 18.0);
-        let rect = Rect::from_min_size(pos1, vec2);
-
-        debug_paint_point(pos1, ui, Color32::RED);
-        debug_paint_point(vec2.to_pos2(), ui, Color32::BLUE);
-        
-        // let mut start_pos = ui.max_rect().min;
-        // start_pos.x += self.clip_position;
-        // let mut rect = Rect::from_min_size(start_pos, size);
+        let clip = self.get_clip(ctx);
+        let rect = clip_rect(ui, clip);
 
         let move_response = ui.interact(rect, self.id, Sense::drag());
+
         // let (_, move_response) = self.handle_dragging(ui, size, &ctx.egui_ctx, min);
-        // tracing::info!("after rect {:?}", rect2);
+
         let content_ui = ui.child_ui(rect, *ui.layout());
         let id = self.id;
 
@@ -134,6 +107,16 @@ impl DragWidget {
             where_to_put_background,
             content_ui,
         }
+    }
+
+    fn get_clip(&self, ctx: &HexencerContext) -> Clip {
+        let clip_id = self.clip_id;
+        let data = ctx.data.read().unwrap();
+        let project_manager = &data.project_manager;
+
+        project_manager
+            .find_clip(clip_id)
+            .expect("trying to build a non existent clip")
     }
 
     fn get_size(&self, ui: &mut Ui) -> Vec2 {
@@ -159,7 +142,7 @@ impl DragWidget {
         };
 
         let mut rect = Rect::from_min_size(start_pos, size);
-        let mut move_response = ui.interact(rect, self.id, Sense::drag());
+        let move_response = ui.interact(rect, self.id, Sense::drag());
 
         if move_response.dragged() {
             DragAndDrop::set_payload(ctx, self.clip_id);
@@ -199,6 +182,20 @@ impl DragWidget {
             Stroke::new(1.0, egui::Color32::BLACK),
         ))
     }
+}
+
+fn clip_rect(ui: &mut Ui, clip: Clip) -> Rect {
+    let pos1 = pos2(
+        ui.max_rect().min.x + tick_to_track_point_x(clip.start),
+        ui.max_rect().min.y,
+    );
+    let x = tick_to_track_point_x(clip.length);
+    let vec2 = vec2(x, 18.0);
+    let rect = Rect::from_min_size(pos1, vec2);
+
+    debug_paint_point(pos1, ui, Color32::RED);
+    debug_paint_point(vec2.to_pos2(), ui, Color32::RED);
+    rect
 }
 
 fn debug_paint_point(pos1: Pos2, ui: &mut Ui, color: Color32) {

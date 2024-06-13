@@ -59,14 +59,14 @@ pub struct State {
 impl WidgetState for State {}
 
 /// A note editor widget that can be used to display and edit notes of the currently selected clip
-pub struct NoteEditorWidget<'c> {
+pub struct NoteEditorWidget {
     /// reference to the clip this note editor is editing
-    clip: &'c Clip,
+    clip: Clip,
 }
 
-impl<'c> NoteEditorWidget<'c> {
+impl<'c> NoteEditorWidget {
     /// Create a new note editor widget
-    pub fn new(clip: &'c Clip) -> Self {
+    pub fn new(clip: Clip) -> Self {
         Self { clip }
     }
 

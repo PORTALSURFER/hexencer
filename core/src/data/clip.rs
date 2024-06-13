@@ -87,14 +87,14 @@ impl IntoIterator for ClipCollection {
 
 /// A clip is a collection of events
 /// They house things like notes and automation data
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct Clip {
     /// tick at which the clip starts
     pub start: Tick,
     /// id used to identify data objects
     id: ClipId,
     /// visual name of the clip
-    pub name: String,
+    pub name: Box<String>,
     /// notes in this clip
     pub events: EventCollection,
     /// end of the clip
@@ -143,7 +143,7 @@ impl Clip {
         Self {
             start: tick,
             id: ClipId::new(),
-            name: String::from(name),
+            name: Box::new(String::from(name)),
             events: test_events,
             length,
         }

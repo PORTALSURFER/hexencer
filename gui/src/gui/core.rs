@@ -70,11 +70,14 @@ pub struct HexencerApp {
 impl HexencerApp {
     /// create a new instance of the hexencer gui, the main gui
     pub fn new(
+        cc: &eframe::CreationContext<'_>,
         data_layer: DataInterface,
         sequencer_sender: SequencerSender,
         egui_ctx: egui::Context,
     ) -> Self {
         let (command_sender, command_receiver) = tokio::sync::mpsc::unbounded_channel();
+
+        setup_custom_fonts(&cc.egui_ctx);
 
         Self {
             state: HexencerState {},
@@ -294,6 +297,29 @@ impl HexencerApp {
             }
         }
     }
+}
+
+fn setup_custom_fonts(ctx: &egui::Context) {
+    let mut fonts = egui::FontDefinitions::default();
+
+    fonts.font_data.insert(
+        "square".to_owned(),
+        egui::FontData::from_static(include_bytes!("../../../assets/fonts/5squared-pixel.ttf")),
+    );
+
+    fonts
+        .families
+        .entry(egui::FontFamily::Proportional)
+        .or_default()
+        .insert(0, "square".to_owned());
+
+    fonts
+        .families
+        .entry(egui::FontFamily::Monospace)
+        .or_default()
+        .push("square".to_owned());
+
+    ctx.set_fonts(fonts);
 }
 
 impl eframe::App for HexencerApp {
