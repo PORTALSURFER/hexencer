@@ -44,7 +44,7 @@ impl Project {
     }
 
     /// returns reference to the clip if found, else 'None'
-    pub fn find_clip(&self, clip_id: ClipId) -> Option<&Clip> {
+    pub fn find_clip(&self, clip_id: ClipId) -> Option<Clip> {
         for track in self.tracks.iter() {
             for (_, clip) in track.clips.iter() {
                 if clip.id() == clip_id {

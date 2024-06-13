@@ -20,6 +20,7 @@ pub fn run(options: NativeOptions, data_layer: DataInterface, sequencer_sender: 
         options,
         Box::new(|cc| {
             Box::new(HexencerApp::new(
+                cc,
                 data_layer,
                 sequencer_sender,
                 cc.egui_ctx.clone(),
