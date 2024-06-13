@@ -4,8 +4,9 @@ use crate::ui::common::TRACK_HEIGHT;
 use crate::WidgetState;
 use egui::layers::ShapeIdx;
 use egui::{
-    emath::*, epaint, Color32, DragAndDrop, InnerResponse, LayerId, Order, Response, Rounding,
-    Sense, Shape, Stroke,
+    emath::{self, *},
+    epaint, Color32, DragAndDrop, InnerResponse, LayerId, Order, Response, Rounding, Sense, Shape,
+    Stroke,
 };
 use egui::{Context, Id, Pos2, Rect, Ui, Vec2};
 use hexencer_core::data::{Clip, ClipId};
@@ -21,13 +22,14 @@ pub const BEAT_WIDTH: f32 = 24.0;
 pub fn clip(ctx: &HexencerContext, ui: &mut Ui, id: ClipId, tick: Tick, length: Tick) -> Response {
     let egui_id = egui::Id::new(id.as_bytes());
     let clip = DragWidget::new(id, egui_id, tick, length);
-    clip.show(&ctx, ui, |_| {}).response
+    clip.show(&ctx, ui)
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 struct State {
     //     /// current position of the clip, used for movement interaction
     pub drag_position: Pos2,
+    pub is_dragged: bool,
 }
 
 impl WidgetState for State {}
@@ -69,16 +71,16 @@ impl DragWidget {
     }
 
     /// renders this element and returns the 'Response'
-    pub fn show<R>(
+    pub fn show(
         self,
         ctx: &HexencerContext,
         ui: &mut Ui,
-        add_contents: impl FnOnce(&mut Ui) -> R,
-    ) -> InnerResponse<R> {
+        // add_contents: impl FnOnce(&mut Ui) -> R,
+    ) -> Response {
         let mut prepared = self.begin(ctx, ui);
-        let inner = add_contents(&mut prepared.content_ui);
+        // let inner = add_contents(&mut prepared.content_ui);
         let response = prepared.end(ui, ctx);
-        InnerResponse::new(inner, response)
+        response
     }
 
     /// begin building the clip widget
@@ -90,11 +92,11 @@ impl DragWidget {
         let clip = self.get_clip(ctx);
         let rect = clip_rect(ui, clip);
 
-        let move_response = ui.interact(rect, self.id, Sense::drag());
+        let mut response = ui.interact(rect, self.id, Sense::drag());
+        if ctx.egui_ctx.is_being_dragged(self.id) {
+            response = self.drag_clip(ui, rect, ctx, response);
+        }
 
-        // let (_, move_response) = self.handle_dragging(ui, size, &ctx.egui_ctx, min);
-
-        let content_ui = ui.child_ui(rect, *ui.layout());
         let id = self.id;
 
         Prepared {
@@ -102,10 +104,9 @@ impl DragWidget {
             clip: self.clone(),
             active: self.active,
             temporarily_invisible: false,
-            move_response,
+            response,
             rect,
             where_to_put_background,
-            content_ui,
         }
     }
 
@@ -127,51 +128,51 @@ impl DragWidget {
     }
 
     /// handle dragging around of clip on track
-    fn handle_dragging(
-        &self,
-        ui: &mut Ui,
-        size: Vec2,
-        ctx: &Context,
-        start_pos: Pos2,
-    ) -> (Rect, Response) {
-        let mut state = match State::load(self.id, ui) {
-            Some(state) => state,
-            _ => State {
-                drag_position: start_pos,
-            },
-        };
+    // fn handle_dragging(
+    //     &self,
+    //     ui: &mut Ui,
+    //     size: Vec2,
+    //     ctx: &Context,
+    //     start_pos: Pos2,
+    // ) -> (Rect, Response) {
+    // let mut state = match State::load(self.id, ui) {
+    //     Some(state) => state,
+    //     _ => State {
+    //         drag_position: start_pos,
+    //     },
+    // };
 
-        let mut rect = Rect::from_min_size(start_pos, size);
-        let move_response = ui.interact(rect, self.id, Sense::drag());
+    // let mut rect = Rect::from_min_size(start_pos, size);
+    // let move_response = ui.interact(rect, self.id, Sense::drag());
 
-        if move_response.dragged() {
-            DragAndDrop::set_payload(ctx, self.clip_id);
-            let delta = move_response.drag_delta();
+    // if move_response.dragged() {
+    //     DragAndDrop::set_payload(ctx, self.clip_id);
+    //     let delta = move_response.drag_delta();
 
-            state.drag_position.x += delta.x;
-            state.drag_position.y += delta.y;
+    //     state.drag_position.x += delta.x;
+    //     state.drag_position.y += delta.y;
 
-            let quantized_x = quantize(state.drag_position.x, 24.0, start_pos.x);
-            let quantized_y = quantize(state.drag_position.y, TRACK_HEIGHT, start_pos.y);
-            let new_pos = pos2(quantized_x, quantized_y);
-            rect = Rect::from_min_size(new_pos, size);
+    //     let quantized_x = quantize(state.drag_position.x, 24.0, start_pos.x);
+    //     let quantized_y = quantize(state.drag_position.y, TRACK_HEIGHT, start_pos.y);
+    //     let new_pos = pos2(quantized_x, quantized_y);
+    //     rect = Rect::from_min_size(new_pos, size);
 
-            let mut global_state = GuiState::load(ui);
-            global_state.last_dragged_clip_pos = Some(new_pos);
-            global_state.store(ui);
+    //     let mut global_state = GuiState::load(ui);
+    //     global_state.last_dragged_clip_pos = Some(new_pos);
+    //     global_state.store(ui);
 
-            state.store(self.id, ui);
-        }
+    //     state.store(self.id, ui);
+    // }
 
-        if move_response.drag_stopped() {
-            state.store(self.id, ui);
-        }
+    // if move_response.drag_stopped() {
+    //     state.store(self.id, ui);
+    // }
 
-        // update response with drag movement
-        // move_response.rect = rect;
-        // move_response.interact_rect = rect;
-        (rect, move_response)
-    }
+    // update response with drag movement
+    // move_response.rect = rect;
+    // move_response.interact_rect = rect;
+    // (rect, move_response)
+    // }
 
     /// paint this clip widget
     fn paint(&self, paint_rect: Rect, fill_color: Color32) -> Shape {
@@ -181,6 +182,49 @@ impl DragWidget {
             fill_color,
             Stroke::new(1.0, egui::Color32::BLACK),
         ))
+    }
+
+    fn drag_clip(
+        &self,
+        ui: &mut Ui,
+        rect: Rect,
+        ctx: &HexencerContext,
+        response: Response,
+    ) -> Response {
+        let mut state = State::load_or_default(self.id, ui);
+        let drag_rect = rect;
+        DragAndDrop::set_payload(&ctx.egui_ctx, self.clip_id);
+
+        let delta = response.drag_delta();
+        state.drag_position.x += delta.x;
+        state.drag_position.y += delta.y;
+
+        let start_pos = drag_rect.min;
+
+        let quantized_x = quantize(state.drag_position.x, 24.0, start_pos.x);
+        let quantized_y = quantize(state.drag_position.y, TRACK_HEIGHT, start_pos.y);
+        let new_pos = pos2(quantized_x, quantized_y);
+
+        let mut global_state = GuiState::load(ui);
+        global_state.last_dragged_clip_pos = Some(new_pos);
+        global_state.store(ui);
+        println!("is being dragged");
+        state.is_dragged = true;
+        state.store(self.id, ui);
+
+        /////
+
+        let layer_id = LayerId::new(Order::Tooltip, self.id);
+
+        let shape =
+            epaint::RectShape::new(drag_rect, Rounding::ZERO, Color32::LIGHT_BLUE, Stroke::NONE);
+        ui.with_layer_id(layer_id, |ui| ui.painter().add(shape));
+        if let Some(pointer_pos) = ctx.egui_ctx.pointer_interact_pos() {
+            let delta = pointer_pos - response.rect.center();
+            ctx.egui_ctx
+                .transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
+        }
+        response
     }
 }
 
@@ -220,11 +264,11 @@ pub struct Prepared {
     /// used to prevent a glicht in egui causing the first frame to flicker, not actively used atm i think
     temporarily_invisible: bool,
     /// response from the clip widget
-    move_response: Response,
+    response: Response,
     /// rect of this clip
     rect: Rect,
-    /// inner ui
-    content_ui: Ui,
+    // / inner ui
+    // content_ui: Ui,
     /// placeholder for painting in the background color
     where_to_put_background: ShapeIdx,
 }
@@ -241,23 +285,26 @@ impl Prepared {
             Some(s) if s == self.clip.clip_id => SELECTED_COLOR,
             _ => DEFAULT_COLOR,
         };
-        self.paint(ui, clip_color, &ctx.egui_ctx);
-        self.move_response
+
+        let is_clip_being_dragged = DragAndDrop::has_any_payload(&ctx.egui_ctx);
+        if !is_clip_being_dragged {
+            self.paint(ui, clip_color, &ctx.egui_ctx);
+        }
+
+        self.response
     }
 
     /// paints this clip widget
     fn paint(&self, ui: &mut Ui, fill_color: Color32, ctx: &Context) {
-        if !ctx.is_being_dragged(self.id) {
-            let layer_id = LayerId::new(Order::Foreground, Id::new("drag clip"));
+        let layer_id = LayerId::new(Order::Foreground, Id::new("drag clip"));
 
-            let paint_rect = self.rect;
+        let paint_rect = self.rect;
 
-            // if ui.is_rect_visible(paint_rect) {
-            let shape = self.clip.paint(paint_rect, fill_color);
-            ui.painter().add(shape); //TODO this bit paints the clip? something about this seems to put the old position in cache and for one frame it will still paint after moving
-                                     // look at frame code, it has some work around it seems for preventing a paint the first frame?
-                                     // ui.with_layer_id(layer_id, |ui| );
-                                     // }
-        }
+        // if ui.is_rect_visible(paint_rect) {
+        let shape = self.clip.paint(paint_rect, fill_color);
+        ui.painter().add(shape); //TODO this bit paints the clip? something about this seems to put the old position in cache and for one frame it will still paint after moving
+                                 // look at frame code, it has some work around it seems for preventing a paint the first frame?
+                                 // ui.with_layer_id(layer_id, |ui| );
+                                 // }
     }
 }
