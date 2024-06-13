@@ -65,12 +65,8 @@ impl TrackWidget {
         self.paint_clips(ui, self.track_id, ctx, rect);
         let mut state = State::load_or_default(ui.id(), ui);
 
-        // TODO use these or no?
-        let _is_anything_being_dragged = DragAndDrop::has_any_payload(&ctx.egui_ctx);
-        let _can_accept_what_is_being_dragged =
-            DragAndDrop::has_payload_of_type::<ClipId>(&ctx.egui_ctx);
-
         if let Some(clip_id) = response.dnd_release_payload::<ClipId>() {
+            println!("released _id {} over track {}", clip_id, self.track_id);
             state.dropped_clip_id =
                 Some(Arc::try_unwrap(clip_id).expect("error trying to unwrap dropped clip_id"))
         }
@@ -124,11 +120,7 @@ impl TrackWidget {
             let gui_state = GuiState::load(ui);
             if let Some(pos) = gui_state.last_dragged_clip_pos {
                 let tick = (pos.x - prepared.rect.min.x) / 24.0 * 120.0;
-                tracing::info!(
-                    "dropped clip at {} {}, sending command to move",
-                    pos.x,
-                    tick
-                );
+                tracing::info!("dropped clip");
                 ctx.command_sender
                     .send(SystemCommand::MoveClip(clip_id, track_id, tick.into()))
                     .ok();
