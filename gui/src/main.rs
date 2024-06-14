@@ -4,6 +4,7 @@
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
 
 //! the main entry point for the application
+use std::borrow::Cow;
 
 /// arranger part of the gui
 mod arranger;
@@ -43,7 +44,16 @@ async fn main() -> iced::Result {
     // let options = options();
     // run(options, data_layer, sequencer_sender);
 
-    Hexencer::run(iced::Settings::default())
+    let fonts = vec![Cow::from(include_bytes!(
+        "../../assets/fonts/5squared-pixel.ttf"
+    ))];
+
+    let settings = iced::Settings {
+        fonts,
+        default_font: Font::with_name("5squared pixel"),
+        ..Default::default()
+    };
+    Hexencer::run(settings)
 }
 
 #[derive(Debug, Clone, Copy)]
