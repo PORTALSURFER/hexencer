@@ -9,12 +9,7 @@ homepage = "https://github.com/PORTALSURFER/hexencer"
 
 [dependencies]
 
-##
-egui= {version="0.27.2", features=["callstack"]}
-eframe = {version="0.27.2", features=["wgpu"]}
-##
-
-iced = {version="0.12.1", features=["canvas"]}
+iced = {version="0.12.1", features=["canvas", "advanced"]}
 image = "0.25.1"
 winit = "0.30.0"
 

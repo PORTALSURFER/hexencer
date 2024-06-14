@@ -1246,7 +1246,6 @@ dependencies = [
  "objc",
  "parking_lot 0.12.2",
  "percent-encoding",
- "pollster",
  "raw-window-handle 0.5.2",
  "raw-window-handle 0.6.2",
  "static_assertions",
@@ -1255,7 +1254,6 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "web-time 0.2.4",
- "wgpu",
  "winapi",
  "winit 0.29.15",
 ]
@@ -1268,7 +1266,6 @@ checksum = "584c5d1bf9a67b25778a3323af222dbe1a1feb532190e103901187f92c7fe29a"
 dependencies = [
  "accesskit",
  "ahash",
- "backtrace",
  "epaint",
  "log",
  "nohash-hasher",
@@ -2029,8 +2026,6 @@ dependencies = [
 name = "hexencer-gui"
 version = "0.2.0"
 dependencies = [
- "eframe",
- "egui",
  "hexencer-core",
  "hexencer-engine",
  "iced",
@@ -3381,12 +3376,6 @@ dependencies = [
  "tracing",
  "windows-sys 0.52.0",
 ]
-
-[[package]]
-name = "pollster"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22686f4785f02a4fcc856d3b3bb19bf6c8160d103f7a99cc258bddd0251dc7f2"
 
 [[package]]
 name = "ppv-lite86"
