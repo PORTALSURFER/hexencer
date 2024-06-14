@@ -1,5 +1,5 @@
 /// height of an arranger track
-pub const TRACK_HEIGHT: f32 = 16.0;
+pub const TRACK_HEIGHT: f32 = 18.0;
 /// width of the header with track controls
 pub const TRACK_HEADER_WIDTH: f32 = 128.0;
 /// color used by a track

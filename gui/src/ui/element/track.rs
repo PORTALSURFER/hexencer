@@ -3,17 +3,19 @@ use std::sync::Arc;
 use crate::{
     gui::{HexencerContext, SystemCommand},
     memory::GuiState,
-    ui::{common::TRACK_HEIGHT, quantize},
+    ui::{common::TRACK_HEIGHT, debug_paint_point, quantize},
     WidgetState,
 };
 use egui::{
-    epaint, layers::ShapeIdx, pos2, Color32, Context, DragAndDrop, LayerId, Layout, Order, Rect,
-    Response, Rounding, Sense, Shape, Stroke, Ui, Vec2,
+    epaint, layers::ShapeIdx, pos2, vec2, Color32, Id, LayerId, Layout, Order, Rect, Response,
+    Rounding, Sense, Shape, Stroke, Ui, Vec2,
 };
 use hexencer_core::{
     data::{Clip, ClipId, DataInterface},
     TrackId,
 };
+
+use super::tick_to_track_point_x;
 
 /// Track bar onto which clip elements can be placed and moved
 #[derive(Clone, Debug, Default)]
@@ -60,13 +62,39 @@ impl TrackWidget {
         let outer_rect_bounds = ui.available_rect_before_wrap();
         let available_width = ui.available_width();
         let height = TRACK_HEIGHT;
-        let rect = Rect::from_min_size(outer_rect_bounds.min, Vec2::new(available_width, height));
-        let response = self.allocate_space(ui, rect);
-        self.paint_clips(ui, self.track_id, ctx, rect);
+        let size = Vec2::new(available_width, height);
+        let track_rect = Rect::from_min_size(outer_rect_bounds.min, size);
+        // let response_rect = track_rect;
+        let response = ui.allocate_response(size, Sense::drag());
+        self.paint_clips(ui, self.track_id, ctx, track_rect);
+
         let mut state = State::load_or_default(ui.id(), ui);
+        if let Some(clip_id) = ui
+            .interact(track_rect, ui.id(), Sense::hover())
+            .dnd_hover_payload::<ClipId>()
+        {
+            if let Some(clip) = ctx.data.read().unwrap().project_manager.find_clip(*clip_id) {
+                let global_state = GuiState::load(ui);
+                let clip_pos = global_state.last_dragged_clip_pos.unwrap();
+                let clip_pos = pos2(clip_pos.x, track_rect.min.y);
+                debug_paint_point(clip_pos, ui, Color32::GREEN);
+
+                let clip_rect = Rect::from_min_size(
+                    clip_pos,
+                    Vec2::new(tick_to_track_point_x(clip.length), TRACK_HEIGHT),
+                );
+                let layer_id = LayerId::new(Order::Tooltip, Id::new("drop_clip"));
+                let shape = epaint::RectShape::new(
+                    clip_rect,
+                    Rounding::ZERO,
+                    Color32::LIGHT_BLUE,
+                    Stroke::NONE,
+                );
+                ui.with_layer_id(layer_id, |ui| ui.painter().add(shape));
+            }
+        }
 
         if let Some(clip_id) = response.dnd_release_payload::<ClipId>() {
-            println!("released _id {} over track {}", clip_id, self.track_id);
             state.dropped_clip_id =
                 Some(Arc::try_unwrap(clip_id).expect("error trying to unwrap dropped clip_id"))
         }
@@ -75,15 +103,10 @@ impl TrackWidget {
             track_id: self.track_id,
             track: self,
             where_to_put_background,
-            rect,
+            rect: track_rect,
             response,
             state,
         }
-    }
-
-    /// allocate response space for track element
-    fn allocate_space(&self, ui: &mut Ui, rect: Rect) -> Response {
-        ui.allocate_rect(rect, Sense::drag())
     }
 
     /// assign the color to be used for element background fill
