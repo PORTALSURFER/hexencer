@@ -6,27 +6,24 @@
 //! the main entry point for the application
 use std::borrow::Cow;
 
-mod theme;
 mod style;
+mod theme;
 mod widgets;
 
-use widgets::track::Track;
 use theme::Theme;
+use widgets::track::Track;
 
 use hexencer_core::data::DataInterface;
 use hexencer_engine::{midi_engine::start_midi_engine, start_sequencer_engine};
-use iced::widget::{
-    canvas, column, container, horizontal_space, row, scrollable, Canvas
-};
+use iced::widget::{canvas, column, container, horizontal_space, row, scrollable, Canvas};
 use iced::{
-    mouse, Alignment, Application, Color, Element, Font, Length, Point, Rectangle, Renderer 
+    mouse, Alignment, Application, Color, Element, Font, Length, Point, Rectangle, Renderer,
 };
 
 pub use hexencer_core::DataId;
 
 #[tokio::main]
 async fn main() -> iced::Result {
-
     let data_layer = DataInterface::new();
     let midi_engine_sender = start_midi_engine();
     let sequencer_sender = start_sequencer_engine(midi_engine_sender, data_layer.clone());
@@ -78,13 +75,15 @@ impl iced::Application for Hexencer {
             row![horizontal_space(), "Header!", horizontal_space(),]
                 .padding(10)
                 .align_items(Alignment::Center),
-        ).style(style::Container::Header);
+        )
+        .style(style::Container::Header);
 
         let bottom = container(
             row![horizontal_space(), "bottom!", horizontal_space(),]
                 .padding(10)
                 .align_items(Alignment::Center),
-        ).style(style::Container::Bottom);
+        )
+        .style(style::Container::Bottom);
 
         // let sidebar = container(
         //     column!["Sidebar!"]
@@ -94,11 +93,18 @@ impl iced::Application for Hexencer {
         //         .align_items(Alignment::Center),
         // );
         // .height(Length::Fill);
-        let track = Track::new();
+
+        let mut tracks = Vec::new();
+        for i in 0..5 {
+            let track = Track::new();
+            tracks.push(track.into());
+        }
+
+        let tracks_column = column(tracks).spacing(2);
 
         let content = container(
             scrollable(
-                column!["Some tracks", track,  "The end"]
+                column!["Some tracks", tracks_column, "The end"]
                     .spacing(40)
                     .align_items(Alignment::Center)
                     .width(Length::Fill),
@@ -107,22 +113,20 @@ impl iced::Application for Hexencer {
         )
         .padding(10);
 
-
         column![header, content, bottom].into()
     }
 
     fn theme(&self) -> Theme {
         Theme::Dark
     }
-    
+
     fn subscription(&self) -> iced::Subscription<Self::Message> {
         iced::Subscription::none()
     }
-    
+
     fn scale_factor(&self) -> f64 {
         1.0
     }
-
 }
 
 // fn square<'a>(size: impl Into<Length> + Copy) -> Element<'a, Message, Renderer> {
@@ -144,7 +148,7 @@ impl iced::Application for Hexencer {
 //             frame.fill_rectangle(
 //                 Point::ORIGIN,
 //                 bounds.size(),
-//                 Color::from_rgb(1.0, 0.0, 0.0), 
+//                 Color::from_rgb(1.0, 0.0, 0.0),
 //             );
 
 //             vec![frame.into_geometry()]
