@@ -86,19 +86,23 @@ impl DragWidget {
     /// begin building the clip widget
     fn begin(self, ctx: &HexencerContext, ui: &mut Ui) -> Prepared {
         let where_to_put_background = ui.painter().add(Shape::Noop);
-        let size = self.get_size(ui);
+        let size = self.clip_size(ui);
 
         // get the current position of the clip
         let clip = self.get_clip(ctx);
-        let rect = clip_rect(ui, clip);
+        let rect = rect_from_clip(ui, clip);
+
+        let state = State::load(self.id, ui).unwrap_or_else(|| State {
+            drag_position: rect.min,
+            is_dragged: false,
+        });
 
         let mut response = ui.interact(rect, self.id, Sense::drag());
         if ctx.egui_ctx.is_being_dragged(self.id) {
-            response = self.drag_clip(ui, rect, ctx, response);
+            response = self.drag_clip(ui, rect, ctx, response, ui.max_rect(), state);
         }
 
         let id = self.id;
-
         Prepared {
             id,
             clip: self.clone(),
@@ -120,7 +124,7 @@ impl DragWidget {
             .expect("trying to build a non existent clip")
     }
 
-    fn get_size(&self, ui: &mut Ui) -> Vec2 {
+    fn clip_size(&self, ui: &mut Ui) -> Vec2 {
         let height = ui.available_height();
         let width = (self.width as f32 / 480.0) * 24.0;
         let size = Vec2::new(width, height);
@@ -180,7 +184,8 @@ impl DragWidget {
             paint_rect,
             Rounding::ZERO,
             fill_color,
-            Stroke::new(1.0, egui::Color32::BLACK),
+            Stroke::NONE,
+            // Stroke::new(1.0, egui::Color32::BLACK),
         ))
     }
 
@@ -190,8 +195,9 @@ impl DragWidget {
         rect: Rect,
         ctx: &HexencerContext,
         response: Response,
+        start_pos: Rect,
+        mut state: State,
     ) -> Response {
-        let mut state = State::load_or_default(self.id, ui);
         let drag_rect = rect;
         DragAndDrop::set_payload(&ctx.egui_ctx, self.clip_id);
 
@@ -199,36 +205,30 @@ impl DragWidget {
         state.drag_position.x += delta.x;
         state.drag_position.y += delta.y;
 
-        let start_pos = drag_rect.min;
-
-        let quantized_x = quantize(state.drag_position.x, 24.0, start_pos.x);
-        let quantized_y = quantize(state.drag_position.y, TRACK_HEIGHT, start_pos.y);
+        let quantized_x = quantize(state.drag_position.x, 24.0, start_pos.min.x);
+        let quantized_y = quantize(state.drag_position.y, TRACK_HEIGHT, start_pos.min.y);
         let new_pos = pos2(quantized_x, quantized_y);
+
+        debug_paint_point(new_pos, ui, Color32::YELLOW);
 
         let mut global_state = GuiState::load(ui);
         global_state.last_dragged_clip_pos = Some(new_pos);
         global_state.store(ui);
-        println!("is being dragged");
         state.is_dragged = true;
         state.store(self.id, ui);
 
-        /////
-
-        let layer_id = LayerId::new(Order::Tooltip, self.id);
-
-        let shape =
-            epaint::RectShape::new(drag_rect, Rounding::ZERO, Color32::LIGHT_BLUE, Stroke::NONE);
-        ui.with_layer_id(layer_id, |ui| ui.painter().add(shape));
-        if let Some(pointer_pos) = ctx.egui_ctx.pointer_interact_pos() {
-            let delta = pointer_pos - response.rect.center();
-            ctx.egui_ctx
-                .transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
-        }
+        // let layer_id = LayerId::new(Order::Tooltip, self.id);
+        // let shape =
+        // epaint::RectShape::new(drag_rect, Rounding::ZERO, Color32::LIGHT_BLUE, Stroke::NONE);
+        // ui.with_layer_id(layer_id, |ui| ui.painter().add(shape));
+        // let delta = ui.input(|i| i.pointer.delta());
+        // ctx.egui_ctx
+        // .transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
         response
     }
 }
 
-fn clip_rect(ui: &mut Ui, clip: Clip) -> Rect {
+fn rect_from_clip(ui: &mut Ui, clip: Clip) -> Rect {
     let pos1 = pos2(
         ui.max_rect().min.x + tick_to_track_point_x(clip.start),
         ui.max_rect().min.y,
@@ -237,12 +237,12 @@ fn clip_rect(ui: &mut Ui, clip: Clip) -> Rect {
     let vec2 = vec2(x, 18.0);
     let rect = Rect::from_min_size(pos1, vec2);
 
-    debug_paint_point(pos1, ui, Color32::RED);
-    debug_paint_point(vec2.to_pos2(), ui, Color32::RED);
+    // debug_paint_point(pos1, ui, Color32::RED);
+    // debug_paint_point(vec2.to_pos2(), ui, Color32::RED);
     rect
 }
 
-fn debug_paint_point(pos1: Pos2, ui: &mut Ui, color: Color32) {
+pub fn debug_paint_point(pos1: Pos2, ui: &mut Ui, color: Color32) {
     let center = pos1;
     let layer_id = LayerId::new(Order::Foreground, Id::new("debug dot"));
     ui.with_layer_id(layer_id, |ui| {
@@ -250,7 +250,7 @@ fn debug_paint_point(pos1: Pos2, ui: &mut Ui, color: Color32) {
     });
 }
 
-fn tick_to_track_point_x(tick: Tick) -> f32 {
+pub fn tick_to_track_point_x(tick: Tick) -> f32 {
     (tick.as_f32() / 480.0) * BEAT_WIDTH * 4.0
 }
 
