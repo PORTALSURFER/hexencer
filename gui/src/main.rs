@@ -85,21 +85,7 @@ impl iced::Application for Hexencer {
         )
         .style(style::Container::Bottom);
 
-        // let sidebar = container(
-        //     column!["Sidebar!"]
-        //         .spacing(40)
-        //         .padding(10)
-        //         .width(200)
-        //         .align_items(Alignment::Center),
-        // );
-        // .height(Length::Fill);
-
-        let mut tracks = Vec::new();
-        for i in 0..5 {
-            let track = Track::new();
-            tracks.push(track.into());
-        }
-
+        let tracks = load_tracks();
         let tracks_column = column(tracks).spacing(2);
 
         let content = container(
@@ -127,6 +113,16 @@ impl iced::Application for Hexencer {
     fn scale_factor(&self) -> f64 {
         1.0
     }
+}
+
+fn load_tracks() -> Vec<iced::advanced::graphics::core::Element<'static, Message, Theme, Renderer>>
+{
+    let mut tracks = Vec::new();
+    for _ in 0..5 {
+        let track = Track::new();
+        tracks.push(track.into());
+    }
+    tracks
 }
 
 // fn square<'a>(size: impl Into<Length> + Copy) -> Element<'a, Message, Renderer> {
