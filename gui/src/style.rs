@@ -159,6 +159,7 @@ impl widgets::track::StyleSheet for Theme {
         Appearance {
             background: Some(Background::Color(Color::from_rgb(0.04, 0.27, 0.47))),
             text_color: Color::WHITE,
+            clip_color: Color::from_rgb(0.34, 0.87, 0.97),
         }
     }
 }
