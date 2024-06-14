@@ -3,11 +3,10 @@ resolver="2"
 members= [
   "engine",
   "gui", 
-  "gui2", 
   "core"
 ]
   
-default-run = "gui2"
+default-run = "gui"
 
 [workspace.dependencies]
 tokio ={ version = "1.37.0", features = ["full"] }
