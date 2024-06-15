@@ -86,7 +86,7 @@ impl iced::Application for Hexencer {
         .style(style::Container::Bottom);
 
         let tracks = load_tracks();
-        let tracks_column = column(tracks).spacing(2);
+        let tracks_column = column(tracks).spacing(1);
 
         let content = container(
             scrollable(

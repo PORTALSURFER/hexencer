@@ -1,7 +1,8 @@
+use iced::advanced::graphics::core::event;
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer::{self, Quad};
 use iced::advanced::widget::{self, Widget};
-use iced::{mouse, Background};
+use iced::{mouse, Background, Event, Point, Shadow};
 use iced::{Border, Color, Element, Length, Rectangle, Size};
 
 pub struct Track<Theme = crate::Theme>
@@ -10,6 +11,7 @@ where
 {
     height: f32,
     style: Theme::Style,
+    hovered: bool,
 }
 
 impl<Theme> Track<Theme>
@@ -20,8 +22,14 @@ where
         Self {
             height: 18.0,
             style: Default::default(),
+            hovered: false,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct State {
+    is_dragging: bool,
 }
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Track<Theme>
@@ -29,6 +37,9 @@ where
     Theme: StyleSheet,
     Renderer: renderer::Renderer,
 {
+    fn state(&self) -> widget::tree::State {
+        widget::tree::State::new(State { is_dragging: false })
+    }
     fn size(&self) -> Size<Length> {
         Size {
             width: Length::Shrink,
@@ -47,14 +58,15 @@ where
 
     fn draw(
         &self,
-        _state: &widget::Tree,
+        tree: &widget::Tree,
         renderer: &mut Renderer,
         theme: &Theme,
         style: &renderer::Style,
         layout: Layout<'_>,
-        _cursor: mouse::Cursor,
+        cursor: mouse::Cursor,
         _viewport: &Rectangle,
     ) {
+        let state = tree.state.downcast_ref::<State>();
         let style = theme.appearance(&self.style);
         renderer.fill_quad(
             renderer::Quad {
@@ -71,15 +83,77 @@ where
             width: 50.0,
             height: 18.0,
         };
-        let rect = Rectangle::new(layout.bounds().position(), size);
-        renderer.fill_quad(
-            renderer::Quad {
-                bounds: rect,
-                border: Border::default(),
-                ..renderer::Quad::default()
-            },
-            style.clip_color,
-        );
+
+        // let bounds_y = layout.bounds().y;
+        // let top_left = match state.is_dragging {
+        //     false => Point::new(0.0, bounds_y),
+        //     true => Point::new(cursor.position().x, bounds_y),
+        // };
+
+        // let rect = Rectangle::new(top_left, size);
+
+        let bounds = Rectangle {
+            x: layout.bounds().x,
+            y: layout.bounds().y,
+            width: size.width,
+            height: size.height,
+        };
+        let translation = cursor.position().unwrap() - Point::new(0.0, 0.0);
+        let quad = Quad {
+            bounds: bounds,
+            border: Border::default(),
+            shadow: Shadow::default(),
+        };
+        renderer.with_translation(translation, |renderer| {
+            renderer.with_layer(bounds, |renderer| {
+                renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.42, 0.74, 0.98)));
+            });
+        });
+    }
+
+    fn on_event(
+        &mut self,
+        tree: &mut widget::Tree,
+        event: iced::Event,
+        layout: Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
+        _renderer: &Renderer,
+        _clipboard: &mut dyn iced::advanced::Clipboard,
+        _shell: &mut iced::advanced::Shell<'_, Message>,
+        _viewport: &Rectangle,
+    ) -> event::Status {
+        let state = tree.state.downcast_mut::<State>();
+        let is_dragging = state.is_dragging;
+
+        match event {
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
+                if cursor.is_over(layout.bounds()) {
+                    match !is_dragging {
+                        true => {
+                            state.is_dragging = true;
+                        }
+                        false => {
+                            state.is_dragging = false;
+                        }
+                    }
+
+                    return event::Status::Captured;
+                }
+            }
+            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                if is_dragging {
+                    state.is_dragging = false;
+                    return event::Status::Captured;
+                }
+            }
+            Event::Mouse(mouse::Event::CursorMoved { .. }) => {
+                if is_dragging {
+                    return event::Status::Captured;
+                }
+            }
+            _ => {}
+        }
+        event::Status::Ignored
     }
 }
 
