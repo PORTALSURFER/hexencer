@@ -21,10 +21,10 @@ pub struct TrackCollection {
 
 impl TrackCollection {
     /// gets slice of clips at a given track index
-    pub fn get_clips(&self, track_id: usize) -> Result<&ClipCollection, TrackCollectionError> {
-        match self.inner.get(track_id) {
+    pub fn get_clips(&self, index: usize) -> Result<&ClipCollection, TrackCollectionError> {
+        match self.inner.get(index) {
             Some(track) => Ok(&track.clips),
-            _ => Err(TrackCollectionError::NoTrack(track_id)),
+            _ => Err(TrackCollectionError::NoTrack(index)),
         }
     }
 
@@ -54,7 +54,7 @@ impl TrackCollection {
     }
 
     /// push a new track onto the collection
-    pub(crate) fn push(&mut self, track: Track) {
+    pub fn push(&mut self, track: Track) {
         self.inner.push(track);
     }
 

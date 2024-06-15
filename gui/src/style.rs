@@ -10,7 +10,7 @@ use iced::{
 
 use crate::{
     theme::Theme,
-    widgets::{self, track::Appearance},
+    widgets::{self, clip, track},
 };
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -156,10 +156,32 @@ impl widgets::track::StyleSheet for Theme {
     type Style = Track;
 
     fn appearance(&self, _style: &Self::Style) -> widgets::track::Appearance {
-        Appearance {
+        track::Appearance {
             background: Some(Background::Color(Color::from_rgb(0.04, 0.27, 0.47))),
             text_color: Color::WHITE,
             clip_color: Color::from_rgb(0.34, 0.87, 0.97),
+        }
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy)]
+pub enum Clip {
+    #[default]
+    Active,
+    Inactive,
+    Hovered,
+    Dragging,
+    Selected,
+}
+
+impl widgets::clip::StyleSheet for Theme {
+    type Style = Clip;
+
+    fn appearance(&self, _style: &Self::Style) -> widgets::clip::Appearance {
+        clip::Appearance {
+            background_color: Color::from_rgb(0.04, 0.27, 0.47),
+            color: Color::from_rgb(0.34, 0.87, 0.97),
+            border_radius: 0.0,
         }
     }
 }
