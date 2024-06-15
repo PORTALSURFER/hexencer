@@ -1,5 +1,5 @@
 use hexencer_core::data::StorageInterface;
-use iced::advanced::graphics::core::event;
+use iced::advanced::graphics::core::{event, Element};
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer::{self, Quad};
 use iced::advanced::widget::{self, Widget};
@@ -14,18 +14,20 @@ where
     style: Theme::Style,
     hovered: bool,
     storage: &'s StorageInterface,
+    track_index: usize,
 }
 
 impl<'s, Theme> Track<'s, Theme>
 where
     Theme: StyleSheet,
 {
-    pub fn new(storage: &'s StorageInterface) -> Self {
+    pub fn new(storage: &'s StorageInterface, track_index: usize) -> Self {
         Self {
             height: 18.0,
             style: Default::default(),
             hovered: false,
             storage,
+            track_index,
         }
     }
 }
@@ -82,14 +84,14 @@ where
         );
 
         let state = tree.state.downcast_ref::<State>();
-        let style = theme.appearance(&self.style);
+        let appearance = theme.appearance(&self.style);
         renderer.fill_quad(
             renderer::Quad {
                 bounds: layout.bounds(),
                 border: Border::default(),
                 ..renderer::Quad::default()
             },
-            style.background.unwrap(),
+            appearance.background.unwrap(),
         );
 
         // paint a clip
@@ -123,12 +125,19 @@ where
                     shadow: Shadow::default(),
                 };
                 renderer.with_translation(translation, |renderer| {
-                    renderer.with_layer(bounds, |renderer| {
-                        renderer
-                            .fill_quad(quad, Background::Color(Color::from_rgb(0.42, 0.74, 0.98)));
-                    });
+                    renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.42, 0.74, 0.98)));
                 });
             }
+        }
+
+        let clips = storage
+            .project_manager
+            .tracks
+            .get_clips(self.track_index)
+            .unwrap();
+        for (clip_id, clip) in clips.iter() {
+            let clip_widget = crate::widgets::clip::Clip::new(*clip_id, &self.storage);
+            clip_widget.draw(tree, renderer, theme, style, layout, cursor, _viewport);
         }
     }
 

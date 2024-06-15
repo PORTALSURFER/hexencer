@@ -103,14 +103,14 @@ impl iced::Application for Hexencer {
         )
         .style(style::Container::Bottom);
 
-        // let tracks = load_tracks();
-        // let tracks_column = column(tracks).spacing(1);
+        let tracks = load_tracks(&self.storage);
+        let tracks_column = column(tracks).spacing(1);
 
-        let track = Track::new(&self.storage);
+        // let track = Track::new(&self.storage);
 
         let content = container(
             scrollable(
-                column!["Some tracks", track, "The end"]
+                column!["Some tracks", tracks_column, "The end"]
                     .spacing(40)
                     .align_items(Alignment::Center)
                     .width(Length::Fill),
@@ -135,14 +135,16 @@ impl iced::Application for Hexencer {
     }
 }
 
-// fn load_tracks() -> Vec<Element<'static, Message, Theme, Renderer>> {
-//     let mut tracks = Vec::new();
-//     for _ in 0..5 {
-//         let track = Track::new();
-//         tracks.push(track.into());
-//     }
-//     tracks
-// }
+fn load_tracks<'s>(storage: &'s StorageInterface) -> Vec<Element<'s, Message, Theme, Renderer>> {
+    let mut elements = Vec::new();
+    let data = storage.read().unwrap();
+    let tracks = &data.project_manager.tracks;
+    for (index, _) in tracks.iter().enumerate() {
+        let track = Track::new(storage, index);
+        elements.push(track.into());
+    }
+    elements
+}
 
 // fn square<'a>(size: impl Into<Length> + Copy) -> Element<'a, Message, Renderer> {
 //     struct Square;

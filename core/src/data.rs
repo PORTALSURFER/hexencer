@@ -75,7 +75,6 @@ pub struct DataLayer {
     /// represents the current state of the editor, like note editor or automation editor modes.
     pub editor_state: EditorState,
     /// current tick passed to data layer to give the gui access to it, originally in the sequencer
-    /// TODO needs cleanup
     tick: Tick,
 }
 
@@ -102,9 +101,18 @@ impl DataLayer {
 
     fn fake_data() -> DataLayer {
         let mut project_manager = Project::default();
-        project_manager.add_track(Track::new(TrackId::new(), "test"));
-        project_manager.add_track(Track::new(TrackId::new(), "test2"));
-        project_manager.add_track(Track::new(TrackId::new(), "test3"));
+
+        let track_0 = Track::new(TrackId::new(), "track_0");
+        project_manager.add_track(track_0);
+
+        let mut track_1 = Track::new(TrackId::new(), "track_1");
+        track_1.add_clip(clip::Clip::new(0.into(), "clip_0", 120.into()));
+        project_manager.add_track(track_1);
+
+        let mut track_2 = Track::new(TrackId::new(), "track_2");
+        track_2.add_clip(clip::Clip::new(120.into(), "clip_1", 120.into()));
+        track_2.add_clip(clip::Clip::new(480.into(), "clip_2", 120.into()));
+        project_manager.add_track(track_2);
 
         Self {
             project_manager,
