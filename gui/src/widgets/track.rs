@@ -1,3 +1,4 @@
+use hexencer_core::data::StorageInterface;
 use iced::advanced::graphics::core::event;
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer::{self, Quad};
@@ -5,24 +6,26 @@ use iced::advanced::widget::{self, Widget};
 use iced::{mouse, Background, Event, Point, Shadow};
 use iced::{Border, Color, Element, Length, Rectangle, Size};
 
-pub struct Track<Theme = crate::Theme>
+pub struct Track<'s, Theme = crate::Theme>
 where
     Theme: StyleSheet,
 {
     height: f32,
     style: Theme::Style,
     hovered: bool,
+    storage: &'s StorageInterface,
 }
 
-impl<Theme> Track<Theme>
+impl<'s, Theme> Track<'s, Theme>
 where
     Theme: StyleSheet,
 {
-    pub fn new() -> Self {
+    pub fn new(storage: &'s StorageInterface) -> Self {
         Self {
             height: 18.0,
             style: Default::default(),
             hovered: false,
+            storage,
         }
     }
 }
@@ -32,7 +35,7 @@ struct State {
     is_dragging: bool,
 }
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Track<Theme>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Track<'_, Theme>
 where
     Theme: StyleSheet,
     Renderer: renderer::Renderer,
@@ -66,6 +69,18 @@ where
         cursor: mouse::Cursor,
         _viewport: &Rectangle,
     ) {
+        let storage = self.storage.read().unwrap();
+        tracing::info!(
+            "First track id: {}",
+            storage
+                .project_manager
+                .tracks
+                .iter()
+                .next()
+                .expect("no first track in storage")
+                .id
+        );
+
         let state = tree.state.downcast_ref::<State>();
         let style = theme.appearance(&self.style);
         renderer.fill_quad(
@@ -98,13 +113,9 @@ where
             height: size.height,
         };
 
-        // let color = match state.is_dragging {
-        //     false => style.clip_color,
-        //     true => Color::from_rgb(0.42, 0.74, 0.98),
-        // };
         if state.is_dragging {
             if let Some(cursor_position) = cursor.position() {
-                let translation = cursor_position - top_left;
+                let translation = Point::new(cursor_position.x, top_left.y) - top_left;
 
                 let quad = Quad {
                     bounds: bounds,
@@ -140,17 +151,12 @@ where
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {}
             Event::Mouse(mouse::Event::CursorMoved { .. }) => {
                 if cursor.is_over(layout.bounds()) {
-                    match !is_dragging {
-                        true => {
-                            state.is_dragging = true;
-                        }
-                        false => {
-                            state.is_dragging = false;
-                        }
-                    }
-
-                    return event::Status::Captured;
+                    tracing::info!("Cursor moved over the track");
+                    state.is_dragging = true;
+                } else {
+                    state.is_dragging = false;
                 }
+                return event::Status::Captured;
             }
             _ => {}
         }
@@ -158,13 +164,13 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<Track<Theme>> for Element<'a, Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer> From<Track<'a, Theme>> for Element<'a, Message, Theme, Renderer>
 where
     Message: 'a,
     Theme: 'a + StyleSheet,
     Renderer: 'a + renderer::Renderer,
 {
-    fn from(track: Track<Theme>) -> Self {
+    fn from(track: Track<'a, Theme>) -> Self {
         Self::new(track)
     }
 }

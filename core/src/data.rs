@@ -19,7 +19,9 @@ pub use clip::Clip;
 pub use clip::ClipId;
 pub use common::DataId;
 pub use midi_message::MidiMessage;
+pub use track::Track;
 pub use track::TrackId;
+
 /// event list
 pub mod event_list;
 
@@ -36,12 +38,12 @@ pub struct EditorState {
 
 /// interface for talking with main hexencer data object
 #[derive(Default, Debug, Clone)]
-pub struct DataInterface {
+pub struct StorageInterface {
     /// inner object actually holding data
     inner: Arc<std::sync::RwLock<DataLayer>>,
 }
 
-impl Deref for DataInterface {
+impl Deref for StorageInterface {
     type Target = Arc<RwLock<DataLayer>>;
 
     fn deref(&self) -> &Self::Target {
@@ -49,11 +51,11 @@ impl Deref for DataInterface {
     }
 }
 
-impl DataInterface {
+impl StorageInterface {
     /// creates a new interface for data
     pub fn new() -> Self {
         Self {
-            inner: Arc::new(RwLock::new(DataLayer::default())),
+            inner: Arc::new(RwLock::new(DataLayer::fake_data())),
         }
     }
 }
@@ -96,6 +98,19 @@ impl DataLayer {
     /// get the current playhead tick
     pub fn get_tick(&self) -> Tick {
         self.tick
+    }
+
+    fn fake_data() -> DataLayer {
+        let mut project_manager = Project::default();
+        project_manager.add_track(Track::new(TrackId::new(), "test"));
+        project_manager.add_track(Track::new(TrackId::new(), "test2"));
+        project_manager.add_track(Track::new(TrackId::new(), "test3"));
+
+        Self {
+            project_manager,
+            editor_state: EditorState::default(),
+            tick: Tick::zero(),
+        }
     }
 }
 
