@@ -4,7 +4,7 @@ use std::{
 };
 
 use hexencer_core::{
-    data::{DataInterface, MidiMessage},
+    data::{MidiMessage, StorageInterface},
     Tick,
 };
 use tokio::{task, time};
@@ -30,7 +30,7 @@ pub enum SequencerCommand {
 #[derive(Default)]
 pub struct Sequencer {
     /// the data layer, used to store and retreive projects, etc
-    data: DataInterface,
+    data: StorageInterface,
     /// use this to send commands to the midi engine, like playing a note
     midi_engine_sender: Option<MidiEngineSender>,
     /// current bpm of the sequencer
@@ -45,7 +45,7 @@ pub struct Sequencer {
 
 impl Sequencer {
     /// creates a new 'Sequencer'
-    pub fn new(data_layer: DataInterface, midi_engine_sender: MidiEngineSender) -> Self {
+    pub fn new(data_layer: StorageInterface, midi_engine_sender: MidiEngineSender) -> Self {
         Self {
             data: data_layer,
             midi_engine_sender: Some(midi_engine_sender),
@@ -142,7 +142,7 @@ impl Sequencer {
 /// starts up the sequencer engine and listens for commands, returns the sender to send commands to the sequencer
 pub fn start_sequencer_engine(
     midi_sender: MidiEngineSender,
-    data_layer: DataInterface,
+    data_layer: StorageInterface,
 ) -> SequencerSender {
     let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();
     let sequencer = Sequencer::new(data_layer, midi_sender);

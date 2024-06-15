@@ -10,45 +10,63 @@ mod style;
 mod theme;
 mod widgets;
 
+use iced::advanced::graphics::core::Element;
 use theme::Theme;
+use tracing::Level;
+use tracing_subscriber::FmtSubscriber;
 use widgets::track::Track;
 
-use hexencer_core::data::DataInterface;
+use hexencer_core::data::StorageInterface;
 use hexencer_engine::{midi_engine::start_midi_engine, start_sequencer_engine};
-use iced::widget::{canvas, column, container, horizontal_space, row, scrollable, Canvas};
-use iced::{
-    mouse, Alignment, Application, Color, Element, Font, Length, Point, Rectangle, Renderer,
-};
+use iced::widget::{column, container, horizontal_space, row, scrollable};
+use iced::{Alignment, Application, Font, Length, Renderer};
 
 pub use hexencer_core::DataId;
 
 #[tokio::main]
 async fn main() -> iced::Result {
-    let data_layer = DataInterface::new();
-    let midi_engine_sender = start_midi_engine();
-    let sequencer_sender = start_sequencer_engine(midi_engine_sender, data_layer.clone());
+    init_logger();
 
-    // let options = options();
-    // run(options, data_layer, sequencer_sender);
-
-    let fonts = vec![Cow::from(include_bytes!(
-        "../../assets/fonts/5squared-pixel.ttf"
-    ))];
-
-    let settings = iced::Settings {
-        fonts,
-        default_font: Font::with_name("5squared pixel"),
-        ..Default::default()
-    };
+    let settings = init_settings();
     Hexencer::run(settings)
 }
+/// initialize the logging system
+pub fn init_logger() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
 
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+    tracing::info!("hexencer started");
+}
 #[derive(Debug, Clone, Copy)]
 enum Message {
     Exit,
 }
 
-struct Hexencer {}
+fn init_settings<Flags: Default>() -> iced::Settings<Flags> {
+    let fonts = vec![Cow::from(include_bytes!(
+        "../../assets/fonts/5squared-pixel.ttf"
+    ))];
+
+    iced::Settings {
+        fonts,
+        default_font: Font::with_name("5squared pixel"),
+        ..Default::default()
+    }
+}
+
+struct Hexencer {
+    storage: StorageInterface,
+}
+impl Hexencer {
+    fn init() -> Self {
+        let storage = StorageInterface::new();
+        let midi_engine_sender = start_midi_engine();
+        let sequencer_sender = start_sequencer_engine(midi_engine_sender, storage.clone());
+        Hexencer { storage }
+    }
+}
 
 impl iced::Application for Hexencer {
     type Executor = iced::executor::Default;
@@ -57,7 +75,7 @@ impl iced::Application for Hexencer {
     type Flags = ();
 
     fn new(_flags: ()) -> (Hexencer, iced::Command<Message>) {
-        (Hexencer {}, iced::Command::none())
+        (Hexencer::init(), iced::Command::none())
     }
 
     fn title(&self) -> String {
@@ -70,7 +88,7 @@ impl iced::Application for Hexencer {
         }
     }
 
-    fn view(&self) -> Element<Self::Message, Self::Theme> {
+    fn view(&self) -> Element<Self::Message, Self::Theme, Renderer> {
         let header = container(
             row![horizontal_space(), "Header!", horizontal_space(),]
                 .padding(10)
@@ -85,12 +103,14 @@ impl iced::Application for Hexencer {
         )
         .style(style::Container::Bottom);
 
-        let tracks = load_tracks();
-        let tracks_column = column(tracks).spacing(1);
+        // let tracks = load_tracks();
+        // let tracks_column = column(tracks).spacing(1);
+
+        let track = Track::new(&self.storage);
 
         let content = container(
             scrollable(
-                column!["Some tracks", tracks_column, "The end"]
+                column!["Some tracks", track, "The end"]
                     .spacing(40)
                     .align_items(Alignment::Center)
                     .width(Length::Fill),
@@ -115,15 +135,14 @@ impl iced::Application for Hexencer {
     }
 }
 
-fn load_tracks() -> Vec<iced::advanced::graphics::core::Element<'static, Message, Theme, Renderer>>
-{
-    let mut tracks = Vec::new();
-    for _ in 0..5 {
-        let track = Track::new();
-        tracks.push(track.into());
-    }
-    tracks
-}
+// fn load_tracks() -> Vec<Element<'static, Message, Theme, Renderer>> {
+//     let mut tracks = Vec::new();
+//     for _ in 0..5 {
+//         let track = Track::new();
+//         tracks.push(track.into());
+//     }
+//     tracks
+// }
 
 // fn square<'a>(size: impl Into<Length> + Copy) -> Element<'a, Message, Renderer> {
 //     struct Square;
