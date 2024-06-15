@@ -2,6 +2,7 @@ use iced::advanced::graphics::core::event;
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer::{self, Quad};
 use iced::advanced::widget::{self, Widget};
+use iced::advanced::Renderer;
 use iced::{mouse, Background, Event, Point, Shadow};
 use iced::{Border, Color, Element, Length, Rectangle, Size};
 
@@ -23,6 +24,42 @@ where
             height: 18.0,
             style: Default::default(),
             hovered: false,
+        }
+    }
+    fn draw_dragged_clip(layout: Layout, cursor: mouse::Cursor, renderer: &mut Renderer) {
+        // paint a clip
+        let size = Size {
+            width: 50.0,
+            height: 18.0,
+        };
+
+        let bounds = layout.bounds();
+        // let top_left = match state.is_dragging {
+        //     false => Point::new(0.0, bounds_y),
+        //     true => Point::new(cursor.position().x, bounds_y),
+        // };
+        let top_left = Point::new(bounds.x, bounds.y);
+        let rect = Rectangle::new(top_left, size);
+
+        let bounds = Rectangle {
+            x: layout.bounds().x,
+            y: layout.bounds().y,
+            width: size.width,
+            height: size.height,
+        };
+        if let Some(cursor_position) = cursor.position() {
+            let translation = cursor_position - top_left;
+
+            let quad = Quad {
+                bounds: bounds,
+                border: Border::default(),
+                shadow: Shadow::default(),
+            };
+            renderer.with_translation(translation, |renderer| {
+                renderer.with_layer(bounds, |renderer| {
+                    renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.42, 0.74, 0.98)));
+                });
+            });
         }
     }
 }
@@ -77,38 +114,7 @@ where
             style.background.unwrap(),
         );
 
-        // paint a clip
-
-        let size = Size {
-            width: 50.0,
-            height: 18.0,
-        };
-
-        // let bounds_y = layout.bounds().y;
-        // let top_left = match state.is_dragging {
-        //     false => Point::new(0.0, bounds_y),
-        //     true => Point::new(cursor.position().x, bounds_y),
-        // };
-
-        // let rect = Rectangle::new(top_left, size);
-
-        let bounds = Rectangle {
-            x: layout.bounds().x,
-            y: layout.bounds().y,
-            width: size.width,
-            height: size.height,
-        };
-        let translation = cursor.position().unwrap() - Point::new(0.0, 0.0);
-        let quad = Quad {
-            bounds: bounds,
-            border: Border::default(),
-            shadow: Shadow::default(),
-        };
-        renderer.with_translation(translation, |renderer| {
-            renderer.with_layer(bounds, |renderer| {
-                renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.42, 0.74, 0.98)));
-            });
-        });
+        draw_dragged_clip(layout, cursor, renderer);
     }
 
     fn on_event(
