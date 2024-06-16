@@ -1,6 +1,7 @@
 use hexencer_core::data::{ClipId, StorageInterface};
 use iced::{
     advanced::{
+        layout,
         renderer::{self, Quad},
         Widget,
     },
@@ -47,7 +48,13 @@ where
         renderer: &Renderer,
         limits: &iced::advanced::layout::Limits,
     ) -> iced::advanced::layout::Node {
-        todo!()
+        // todo: move to outside of the function when reading the clip, just store in the clip struct on creation
+        let storage = self.storage.read().unwrap();
+        let clip = storage.project_manager.find_clip(self.clip_id).unwrap();
+        layout::Node::new(Size {
+            width: clip.length.as_f32(),
+            height: 18.0,
+        })
     }
 
     fn draw(
@@ -63,14 +70,8 @@ where
         let storage = self.storage.read().unwrap();
         let clip = storage.project_manager.find_clip(self.clip_id).unwrap();
 
-        let clip_bounds = Rectangle {
-            x: layout.bounds().x + clip.start.as_f32(),
-            y: layout.bounds().y,
-            width: clip.length.as_f32(),
-            height: 18.0,
-        };
         let quad = Quad {
-            bounds: clip_bounds,
+            bounds: layout.bounds(),
             border: Border::default(),
             shadow: Shadow::default(),
         };
