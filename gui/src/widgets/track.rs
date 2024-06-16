@@ -3,31 +3,58 @@ use iced::advanced::graphics::core::event;
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer::{self, Quad};
 use iced::advanced::widget::{self, Widget};
-use iced::{mouse, Background, Event, Point, Shadow};
+use iced::{alignment, mouse, Alignment, Background, Event, Padding, Point, Shadow};
 use iced::{Border, Color, Element, Length, Rectangle, Size};
 
-pub struct Track<'s, Theme = crate::Theme>
+/// The identifier of a [`Container`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Id(widget::Id);
+pub struct Track<'a, Message, Theme = crate::Theme, Renderer = crate::Renderer>
 where
     Theme: Catalog,
+    Renderer: renderer::Renderer,
 {
-    height: f32,
+    id: Option<Id>,
+    padding: Padding,
+    width: Length,
+    height: Length,
+    max_width: f32,
+    max_height: f32,
+    horizontal_alignment: alignment::Horizontal,
+    vertical_alignment: alignment::Vertical,
     style: Theme::Style,
     hovered: bool,
-    storage: &'s StorageInterface,
+    storage: &'a StorageInterface,
     track_index: usize,
+    content: Element<'a, Message, Theme, Renderer>,
 }
 
-impl<'s, Theme> Track<'s, Theme>
+impl<'s, Message, Theme, Renderer> Track<'s, Message, Theme, Renderer>
 where
     Theme: Catalog,
+    Renderer: renderer::Renderer,
 {
-    pub fn new(storage: &'s StorageInterface, track_index: usize) -> Self {
+    pub fn new(
+        storage: &'s StorageInterface,
+        track_index: usize,
+        content: impl Into<Element<'s, Message, Theme, Renderer>>,
+    ) -> Self {
+        let content = content.into();
+        let size = content.as_widget().size_hint();
         Self {
-            height: 18.0,
+            width: Length::Fill,
+            height: Length::Fixed(18.0),
             style: Default::default(),
             hovered: false,
             storage,
             track_index,
+            content,
+            id: None,
+            padding: Padding::ZERO,
+            max_width: f32::INFINITY,
+            max_height: f32::INFINITY,
+            horizontal_alignment: alignment::Horizontal::Left,
+            vertical_alignment: alignment::Vertical::Top,
         }
     }
 }
@@ -37,14 +64,16 @@ struct State {
     is_dragging: bool,
 }
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Track<'_, Theme>
+impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
+    for Track<'a, Message, Theme, Renderer>
 where
     Theme: Catalog,
     Renderer: renderer::Renderer,
 {
     fn state(&self) -> widget::tree::State {
-        widget::tree::State::new(State { is_dragging: false })
+        self.content.as_widget().state()
     }
+
     fn size(&self) -> Size<Length> {
         Size {
             width: Length::Shrink,
@@ -55,10 +84,20 @@ where
     fn layout(
         &self,
         tree: &mut widget::Tree,
-        _renderer: &Renderer,
-        _limits: &layout::Limits,
+        renderer: &Renderer,
+        limits: &layout::Limits,
     ) -> layout::Node {
-        layout::Node::new(Size::new(_limits.max().width, self.height))
+        layout(
+            limits,
+            self.width,
+            self.height,
+            self.max_width,
+            self.max_height,
+            self.padding,
+            self.horizontal_alignment,
+            self.vertical_alignment,
+            |limits| self.content.as_widget().layout(tree, renderer, limits),
+        )
     }
 
     fn draw(
@@ -69,9 +108,102 @@ where
         style: &renderer::Style,
         layout: Layout<'_>,
         cursor: mouse::Cursor,
-        _viewport: &Rectangle,
+        viewport: &Rectangle,
     ) {
         let storage = self.storage.read().unwrap();
+        self.draw_background(storage, tree, theme, renderer, layout, cursor);
+
+        self.content.as_widget().draw(
+            tree,
+            renderer,
+            theme,
+            style,
+            layout.children().next().expect("no children"),
+            cursor,
+            viewport,
+        );
+        // let clips = storage
+        //     .project_manager
+        //     .tracks
+        //     .get_clips(self.track_index)
+        //     .unwrap();
+        // for (clip_id, clip) in clips.iter() {
+        //     // let clip_widget = crate::widgets::clip::Clip::new(*clip_id, &self.storage);
+        //     // clip_widget.draw(tree, renderer, theme, style, layout, cursor, _viewport);
+        //     // let text = iced::widget::Text::new("test");
+        //     // text.w(tree, renderer, theme, style, layout, cursor, viewport);
+        // }
+    }
+
+    fn on_event(
+        &mut self,
+        tree: &mut widget::Tree,
+        event: iced::Event,
+        layout: Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
+        _renderer: &Renderer,
+        _clipboard: &mut dyn iced::advanced::Clipboard,
+        _shell: &mut iced::advanced::Shell<'_, Message>,
+        _viewport: &Rectangle,
+    ) -> event::Status {
+        match event {
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {}
+            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {}
+            Event::Mouse(mouse::Event::CursorMoved { .. }) => {
+                if cursor.is_over(layout.bounds()) {
+                    tracing::info!("Cursor moved over the track");
+                    self.hovered = true;
+                } else {
+                    self.hovered = false;
+                }
+                return event::Status::Captured;
+            }
+            _ => {}
+        }
+        event::Status::Ignored
+    }
+}
+/// Computes the layout of a [`Container`].
+pub fn layout(
+    limits: &layout::Limits,
+    width: Length,
+    height: Length,
+    max_width: f32,
+    max_height: f32,
+    padding: Padding,
+    horizontal_alignment: alignment::Horizontal,
+    vertical_alignment: alignment::Vertical,
+    layout_content: impl FnOnce(&layout::Limits) -> layout::Node,
+) -> layout::Node {
+    layout::positioned(
+        &limits.max_width(max_width).max_height(max_height),
+        width,
+        height,
+        padding,
+        |limits| layout_content(&limits.loose()),
+        |content, size| {
+            content.align(
+                Alignment::from(horizontal_alignment),
+                Alignment::from(vertical_alignment),
+                size,
+            )
+        },
+    )
+}
+impl<'a, Message, Theme, Renderer> Track<'a, Message, Theme, Renderer>
+where
+    Theme: Catalog,
+    Renderer: renderer::Renderer,
+{
+    fn draw_background(
+        &self,
+        storage: std::sync::RwLockReadGuard<hexencer_core::data::DataLayer>,
+        tree: &widget::Tree,
+        theme: &Theme,
+        renderer: &mut Renderer,
+        layout: Layout,
+        cursor: mouse::Cursor,
+    ) {
         tracing::info!(
             "First track id: {}",
             storage
@@ -83,7 +215,6 @@ where
                 .id
         );
 
-        let state = tree.state.downcast_ref::<State>();
         let appearance = theme.appearance(&self.style);
         renderer.fill_quad(
             renderer::Quad {
@@ -115,7 +246,7 @@ where
             height: size.height,
         };
 
-        if state.is_dragging {
+        if self.hovered {
             if let Some(cursor_position) = cursor.position() {
                 let translation = Point::new(cursor_position.x, top_left.y) - top_left;
 
@@ -129,59 +260,17 @@ where
                 });
             }
         }
-
-        let clips = storage
-            .project_manager
-            .tracks
-            .get_clips(self.track_index)
-            .unwrap();
-        for (clip_id, clip) in clips.iter() {
-            // let clip_widget = crate::widgets::clip::Clip::new(*clip_id, &self.storage);
-            // clip_widget.draw(tree, renderer, theme, style, layout, cursor, _viewport);
-            let text = iced::widget::Text::new("test");
-            text.draw(tree, renderer, theme, style, layout, cursor, viewport);
-        }
-    }
-
-    fn on_event(
-        &mut self,
-        tree: &mut widget::Tree,
-        event: iced::Event,
-        layout: Layout<'_>,
-        cursor: iced::advanced::mouse::Cursor,
-        _renderer: &Renderer,
-        _clipboard: &mut dyn iced::advanced::Clipboard,
-        _shell: &mut iced::advanced::Shell<'_, Message>,
-        _viewport: &Rectangle,
-    ) -> event::Status {
-        let state = tree.state.downcast_mut::<State>();
-        let is_dragging = state.is_dragging;
-
-        match event {
-            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {}
-            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {}
-            Event::Mouse(mouse::Event::CursorMoved { .. }) => {
-                if cursor.is_over(layout.bounds()) {
-                    tracing::info!("Cursor moved over the track");
-                    state.is_dragging = true;
-                } else {
-                    state.is_dragging = false;
-                }
-                return event::Status::Captured;
-            }
-            _ => {}
-        }
-        event::Status::Ignored
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<Track<'a, Theme>> for Element<'a, Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer> From<Track<'a, Message, Theme, Renderer>>
+    for Element<'a, Message, Theme, Renderer>
 where
     Message: 'a,
     Theme: 'a + Catalog,
     Renderer: 'a + renderer::Renderer,
 {
-    fn from(track: Track<'a, Theme>) -> Self {
+    fn from(track: Track<'a, Message, Theme, Renderer>) -> Self {
         Self::new(track)
     }
 }

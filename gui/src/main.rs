@@ -11,14 +11,15 @@ mod theme;
 mod widgets;
 
 use iced::advanced::graphics::core::Element;
+use iced::advanced::renderer;
 use theme::Theme;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
-use widgets::track::Track;
+use widgets::track::{Catalog, Track};
 
 use hexencer_core::data::StorageInterface;
 use hexencer_engine::{midi_engine::start_midi_engine, start_sequencer_engine};
-use iced::widget::{column, container, horizontal_space, row, scrollable};
+use iced::widget::{column, container, horizontal_space, row, scrollable, text};
 use iced::{Alignment, Application, Font, Length, Renderer};
 
 pub use hexencer_core::DataId;
@@ -103,10 +104,15 @@ impl iced::Application for Hexencer {
         )
         .style(style::Container::Bottom);
 
-        let tracks = load_tracks(&self.storage);
-        let tracks_column = column(tracks).spacing(1);
-
-        // let track = Track::new(&self.storage);
+        let mut elements = Vec::new();
+        let data = self.storage.read().unwrap();
+        let tracks = &data.project_manager.tracks;
+        for (index, _) in tracks.iter().enumerate() {
+            let track = Track::new(&self.storage, index, text("test"));
+            elements.push(track.into());
+        }
+        // let tracks = load_tracks(&self.storage);
+        let tracks_column = column(elements).spacing(1);
 
         let content = container(
             scrollable(
@@ -133,17 +139,6 @@ impl iced::Application for Hexencer {
     fn scale_factor(&self) -> f64 {
         1.0
     }
-}
-
-fn load_tracks<'s>(storage: &'s StorageInterface) -> Vec<Element<'s, Message, Theme, Renderer>> {
-    let mut elements = Vec::new();
-    let data = storage.read().unwrap();
-    let tracks = &data.project_manager.tracks;
-    for (index, _) in tracks.iter().enumerate() {
-        let track = Track::new(storage, index);
-        elements.push(track.into());
-    }
-    elements
 }
 
 // fn square<'a>(size: impl Into<Length> + Copy) -> Element<'a, Message, Renderer> {
