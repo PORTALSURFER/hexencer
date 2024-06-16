@@ -15,6 +15,7 @@ use iced::advanced::renderer;
 use theme::Theme;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
+use widgets::clip::Clip;
 use widgets::track::{Catalog, Track};
 
 use hexencer_core::data::StorageInterface;
@@ -107,16 +108,25 @@ impl iced::Application for Hexencer {
         let mut elements = Vec::new();
         let data = self.storage.read().unwrap();
         let tracks = &data.project_manager.tracks;
-        for (index, _) in tracks.iter().enumerate() {
-            let track = Track::new(&self.storage, index, text("test"));
+        for (index, track) in tracks.iter().enumerate() {
+            let clips = &track.clips;
+            let mut clip_elements = Vec::new();
+
+            for (clip_id, _clip) in clips {
+                let clip_element = Clip::new(*clip_id, &self.storage);
+                clip_elements.push(clip_element.into());
+            }
+
+            let track = Track::new(&self.storage, index, clip_elements);
             elements.push(track.into());
         }
         // let tracks = load_tracks(&self.storage);
         let tracks_column = column(elements).spacing(1);
+        let test = column![text("test")];
 
         let content = container(
             scrollable(
-                column!["Some tracks", tracks_column, "The end"]
+                column!["Some tracks", tracks_column, test, "The end"]
                     .spacing(40)
                     .align_items(Alignment::Center)
                     .width(Length::Fill),

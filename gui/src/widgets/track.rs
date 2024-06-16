@@ -1,9 +1,14 @@
 use hexencer_core::data::StorageInterface;
 use iced::advanced::graphics::core::event;
 use iced::advanced::layout::{self, Layout};
+use iced::advanced::overlay::from_children;
 use iced::advanced::renderer::{self, Quad};
-use iced::advanced::widget::{self, Widget};
-use iced::{alignment, mouse, Alignment, Background, Event, Padding, Point, Shadow};
+use iced::advanced::widget::{self, Tree, Widget};
+use iced::advanced::Text;
+use iced::widget::text;
+use iced::{
+    alignment, mouse, overlay, Alignment, Background, Event, Padding, Point, Shadow, Vector,
+};
 use iced::{Border, Color, Element, Length, Rectangle, Size};
 
 /// The identifier of a [`Container`].
@@ -26,7 +31,7 @@ where
     hovered: bool,
     storage: &'a StorageInterface,
     track_index: usize,
-    content: Element<'a, Message, Theme, Renderer>,
+    contents: Vec<Element<'a, Message, Theme, Renderer>>,
 }
 
 impl<'s, Message, Theme, Renderer> Track<'s, Message, Theme, Renderer>
@@ -37,10 +42,8 @@ where
     pub fn new(
         storage: &'s StorageInterface,
         track_index: usize,
-        content: impl Into<Element<'s, Message, Theme, Renderer>>,
+        contents: Vec<Element<'s, Message, Theme, Renderer>>,
     ) -> Self {
-        let content = content.into();
-        let size = content.as_widget().size_hint();
         Self {
             width: Length::Fill,
             height: Length::Fixed(18.0),
@@ -48,12 +51,12 @@ where
             hovered: false,
             storage,
             track_index,
-            content,
+            contents,
             id: None,
             padding: Padding::ZERO,
             max_width: f32::INFINITY,
             max_height: f32::INFINITY,
-            horizontal_alignment: alignment::Horizontal::Left,
+            horizontal_alignment: alignment::Horizontal::Center,
             vertical_alignment: alignment::Vertical::Top,
         }
     }
@@ -70,8 +73,8 @@ where
     Theme: Catalog,
     Renderer: renderer::Renderer,
 {
-    fn state(&self) -> widget::tree::State {
-        self.content.as_widget().state()
+    fn children(&self) -> Vec<Tree> {
+        self.contents.iter().map(Tree::new).collect()
     }
 
     fn size(&self) -> Size<Length> {
@@ -87,17 +90,14 @@ where
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        layout(
-            limits,
-            self.width,
-            self.height,
-            self.max_width,
-            self.max_height,
-            self.padding,
-            self.horizontal_alignment,
-            self.vertical_alignment,
-            |limits| self.content.as_widget().layout(tree, renderer, limits),
-        )
+        let size = limits.resolve(self.width, self.height, Size::ZERO);
+        let children = self
+            .contents
+            .iter()
+            .map(|child| child.as_widget().layout(tree, renderer, limits))
+            .collect();
+
+        layout::Node::with_children(size, children)
     }
 
     fn draw(
@@ -112,27 +112,31 @@ where
     ) {
         let storage = self.storage.read().unwrap();
         self.draw_background(storage, tree, theme, renderer, layout, cursor);
+        // let theme_style = theme.style(&self.style);
 
-        self.content.as_widget().draw(
-            tree,
-            renderer,
-            theme,
-            style,
-            layout.children().next().expect("no children"),
-            cursor,
-            viewport,
-        );
-        // let clips = storage
-        //     .project_manager
-        //     .tracks
-        //     .get_clips(self.track_index)
-        //     .unwrap();
-        // for (clip_id, clip) in clips.iter() {
-        //     // let clip_widget = crate::widgets::clip::Clip::new(*clip_id, &self.storage);
-        //     // clip_widget.draw(tree, renderer, theme, style, layout, cursor, _viewport);
-        //     // let text = iced::widget::Text::new("test");
-        //     // text.w(tree, renderer, theme, style, layout, cursor, viewport);
-        // }
+        // self.contents.as_widget().draw(
+        //     tree,
+        //     renderer,
+        //     theme,
+        //     &renderer::Style {
+        //         text_color: style.text_color,
+        //     },
+        //     layout.children().next().expect("no children"),
+        //     cursor,
+        //     viewport,
+        // );
+
+        for child in self.contents.iter() {
+            child.as_widget().draw(
+                tree,
+                renderer,
+                theme,
+                style,
+                layout.children().next().expect("no children"),
+                cursor,
+                viewport,
+            );
+        }
     }
 
     fn on_event(
@@ -162,34 +166,18 @@ where
         }
         event::Status::Ignored
     }
+
+    fn overlay<'b>(
+        &'b mut self,
+        tree: &'b mut Tree,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+        translation: Vector,
+    ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
+        from_children(&mut self.contents, tree, layout, renderer, translation)
+    }
 }
-/// Computes the layout of a [`Container`].
-pub fn layout(
-    limits: &layout::Limits,
-    width: Length,
-    height: Length,
-    max_width: f32,
-    max_height: f32,
-    padding: Padding,
-    horizontal_alignment: alignment::Horizontal,
-    vertical_alignment: alignment::Vertical,
-    layout_content: impl FnOnce(&layout::Limits) -> layout::Node,
-) -> layout::Node {
-    layout::positioned(
-        &limits.max_width(max_width).max_height(max_height),
-        width,
-        height,
-        padding,
-        |limits| layout_content(&limits.loose()),
-        |content, size| {
-            content.align(
-                Alignment::from(horizontal_alignment),
-                Alignment::from(vertical_alignment),
-                size,
-            )
-        },
-    )
-}
+
 impl<'a, Message, Theme, Renderer> Track<'a, Message, Theme, Renderer>
 where
     Theme: Catalog,
