@@ -7,7 +7,7 @@ use iced::{
     Background, Border, Color, Element, Length, Rectangle, Shadow, Size,
 };
 
-pub struct Clip<'s, Theme = crate::Theme>
+pub struct Clip<'s, Theme>
 where
     Theme: StyleSheet,
 {

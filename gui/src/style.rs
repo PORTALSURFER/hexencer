@@ -152,7 +152,7 @@ pub enum Track {
     Packages,
 }
 
-impl widgets::track::StyleSheet for Theme {
+impl widgets::track::Catalog for Theme {
     type Style = Track;
 
     fn appearance(&self, _style: &Self::Style) -> widgets::track::Appearance {
@@ -174,10 +174,10 @@ pub enum Clip {
     Selected,
 }
 
-impl widgets::clip::StyleSheet for Theme {
+impl clip::StyleSheet for Theme {
     type Style = Clip;
 
-    fn appearance(&self, _style: &Self::Style) -> widgets::clip::Appearance {
+    fn appearance(&self, _style: &Self::Style) -> clip::Appearance {
         clip::Appearance {
             background_color: Color::from_rgb(0.04, 0.27, 0.47),
             color: Color::from_rgb(0.34, 0.87, 0.97),

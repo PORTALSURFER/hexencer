@@ -1,5 +1,5 @@
 use hexencer_core::data::StorageInterface;
-use iced::advanced::graphics::core::{event, Element};
+use iced::advanced::graphics::core::event;
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer::{self, Quad};
 use iced::advanced::widget::{self, Widget};
@@ -8,7 +8,7 @@ use iced::{Border, Color, Element, Length, Rectangle, Size};
 
 pub struct Track<'s, Theme = crate::Theme>
 where
-    Theme: StyleSheet,
+    Theme: Catalog,
 {
     height: f32,
     style: Theme::Style,
@@ -19,7 +19,7 @@ where
 
 impl<'s, Theme> Track<'s, Theme>
 where
-    Theme: StyleSheet,
+    Theme: Catalog,
 {
     pub fn new(storage: &'s StorageInterface, track_index: usize) -> Self {
         Self {
@@ -39,7 +39,7 @@ struct State {
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Track<'_, Theme>
 where
-    Theme: StyleSheet,
+    Theme: Catalog,
     Renderer: renderer::Renderer,
 {
     fn state(&self) -> widget::tree::State {
@@ -136,8 +136,10 @@ where
             .get_clips(self.track_index)
             .unwrap();
         for (clip_id, clip) in clips.iter() {
-            let clip_widget = crate::widgets::clip::Clip::new(*clip_id, &self.storage);
-            clip_widget.draw(tree, renderer, theme, style, layout, cursor, _viewport);
+            // let clip_widget = crate::widgets::clip::Clip::new(*clip_id, &self.storage);
+            // clip_widget.draw(tree, renderer, theme, style, layout, cursor, _viewport);
+            let text = iced::widget::Text::new("test");
+            text.draw(tree, renderer, theme, style, layout, cursor, viewport);
         }
     }
 
@@ -176,7 +178,7 @@ where
 impl<'a, Message, Theme, Renderer> From<Track<'a, Theme>> for Element<'a, Message, Theme, Renderer>
 where
     Message: 'a,
-    Theme: 'a + StyleSheet,
+    Theme: 'a + Catalog,
     Renderer: 'a + renderer::Renderer,
 {
     fn from(track: Track<'a, Theme>) -> Self {
@@ -194,8 +196,9 @@ pub struct Appearance {
     /// The [`Background`] of the button.
     pub clip_color: Color,
 }
-/// A set of rules that dictate the [`Appearance`] of a track.
-pub trait StyleSheet {
+
+/// Theme catalog of a ['Track'].
+pub trait Catalog {
     /// The supported style of the [`StyleSheet`].
     type Style: Default;
 
