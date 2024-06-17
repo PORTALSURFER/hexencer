@@ -108,6 +108,7 @@ impl iced::Application for Hexencer {
         let mut elements = Vec::new();
         let data = self.storage.read().unwrap();
         let tracks = &data.project_manager.tracks;
+
         for (index, track) in tracks.iter().enumerate() {
             let clips = &track.clips;
             let mut clip_elements = Vec::new();
@@ -120,6 +121,7 @@ impl iced::Application for Hexencer {
             let track = Track::new(&self.storage, index, clip_elements);
             elements.push(track.into());
         }
+
         // let tracks = load_tracks(&self.storage);
         let tracks_column = column(elements).spacing(1);
         let test = column![text("test")];
