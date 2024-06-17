@@ -15,10 +15,10 @@ use iced::advanced::renderer;
 use theme::Theme;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
-use widgets::clip::Clip;
+use widgets::clip::{self, Clip};
 use widgets::track::{Catalog, Track};
 
-use hexencer_core::data::StorageInterface;
+use hexencer_core::data::{ClipId, StorageInterface};
 use hexencer_engine::{midi_engine::start_midi_engine, start_sequencer_engine};
 use iced::widget::{column, container, horizontal_space, row, scrollable, text};
 use iced::{Alignment, Application, Font, Length, Renderer};
@@ -114,7 +114,7 @@ impl iced::Application for Hexencer {
             let mut clip_elements = Vec::new();
 
             for (clip_id, _clip) in clips {
-                let clip_element = Clip::new(*clip_id, &self.storage);
+                let clip_element = Clip::new(*clip_id, &self.storage, text("Test"));
                 clip_elements.push(clip_element.into());
             }
 

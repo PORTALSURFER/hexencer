@@ -1,10 +1,9 @@
 use hexencer_core::data::StorageInterface;
 use iced::advanced::graphics::core::event;
-use iced::advanced::layout::{self, Layout};
 use iced::advanced::overlay::from_children;
 use iced::advanced::renderer::{self, Quad};
-use iced::advanced::widget::{self, Tree, Widget};
-use iced::advanced::Text;
+use iced::advanced::widget::{self, Operation, Tree, Widget};
+use iced::advanced::{layout, Layout, Text};
 use iced::widget::text;
 use iced::{
     alignment, mouse, overlay, Alignment, Background, Event, Padding, Point, Shadow, Vector,
@@ -32,7 +31,7 @@ where
     hovered: bool,
     storage: &'a StorageInterface,
     track_index: usize,
-    contents: Vec<Element<'a, Message, Theme, Renderer>>,
+    children: Vec<Element<'a, Message, Theme, Renderer>>,
 }
 
 impl<'s, Message, Theme, Renderer> Track<'s, Message, Theme, Renderer>
@@ -52,7 +51,7 @@ where
             hovered: false,
             storage,
             track_index,
-            contents,
+            children: contents,
             id: None,
             padding: Padding::ZERO,
             max_width: f32::INFINITY,
@@ -75,7 +74,11 @@ where
     Renderer: renderer::Renderer,
 {
     fn children(&self) -> Vec<Tree> {
-        self.contents.iter().map(Tree::new).collect()
+        self.children.iter().map(Tree::new).collect()
+    }
+
+    fn diff(&self, tree: &mut Tree) {
+        tree.diff_children(&self.children);
     }
 
     fn size(&self) -> Size<Length> {
@@ -91,11 +94,10 @@ where
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        info!("track layout");
         let size = limits.resolve(self.width, self.height, Size::ZERO);
 
         let children = self
-            .contents
+            .children
             .iter()
             .zip(&mut tree.children)
             .map(|(child, child_tree)| child.as_widget().layout(child_tree, renderer, limits))
@@ -116,22 +118,13 @@ where
     ) {
         let storage = self.storage.read().unwrap();
         self.draw_background(storage, tree, theme, renderer, layout, cursor);
-        // let theme_style = theme.style(&self.style);
 
-        // self.contents.as_widget().draw(
-        //     tree,
-        //     renderer,
-        //     theme,
-        //     &renderer::Style {
-        //         text_color: style.text_color,
-        //     },
-        //     layout.children().next().expect("no children"),
-        //     cursor,
-        //     viewport,
-        // );
-        info!("drawing track");
-        for (child, child_layout) in self.contents.iter().zip(layout.children()) {
-            info!("drawing child");
+        for ((child, tree), child_layout) in self
+            .children
+            .iter()
+            .zip(&tree.children)
+            .zip(layout.children())
+        {
             child
                 .as_widget()
                 .draw(tree, renderer, theme, style, child_layout, cursor, viewport);
@@ -144,25 +137,28 @@ where
         event: iced::Event,
         layout: Layout<'_>,
         cursor: iced::advanced::mouse::Cursor,
-        _renderer: &Renderer,
-        _clipboard: &mut dyn iced::advanced::Clipboard,
-        _shell: &mut iced::advanced::Shell<'_, Message>,
-        _viewport: &Rectangle,
+        renderer: &Renderer,
+        clipboard: &mut dyn iced::advanced::Clipboard,
+        shell: &mut iced::advanced::Shell<'_, Message>,
+        viewport: &Rectangle,
     ) -> event::Status {
-        match event {
-            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {}
-            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {}
-            Event::Mouse(mouse::Event::CursorMoved { .. }) => {
-                if cursor.is_over(layout.bounds()) {
-                    self.hovered = true;
-                } else {
-                    self.hovered = false;
-                }
-                return event::Status::Captured;
-            }
-            _ => {}
-        }
-        event::Status::Ignored
+        self.children
+            .iter_mut()
+            .zip(&mut tree.children)
+            .zip(layout.children())
+            .map(|((child, state), layout)| {
+                child.as_widget_mut().on_event(
+                    state,
+                    event.clone(),
+                    layout,
+                    cursor,
+                    renderer,
+                    clipboard,
+                    shell,
+                    viewport,
+                )
+            })
+            .fold(event::Status::Ignored, event::Status::merge)
     }
 
     fn overlay<'b>(
@@ -172,7 +168,48 @@ where
         renderer: &Renderer,
         translation: Vector,
     ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
-        from_children(&mut self.contents, tree, layout, renderer, translation)
+        from_children(&mut self.children, tree, layout, renderer, translation)
+    }
+
+    fn mouse_interaction(
+        &self,
+        tree: &Tree,
+        layout: Layout<'_>,
+        cursor: mouse::Cursor,
+        viewport: &Rectangle,
+        renderer: &Renderer,
+    ) -> mouse::Interaction {
+        self.children
+            .iter()
+            .zip(&tree.children)
+            .zip(layout.children())
+            .map(|((child, state), layout)| {
+                child
+                    .as_widget()
+                    .mouse_interaction(state, layout, cursor, viewport, renderer)
+            })
+            .max()
+            .unwrap_or_default()
+    }
+
+    fn operate(
+        &self,
+        tree: &mut Tree,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+        operation: &mut dyn Operation<Message>,
+    ) {
+        operation.container(None, layout.bounds(), &mut |operation| {
+            self.children
+                .iter()
+                .zip(&mut tree.children)
+                .zip(layout.children())
+                .for_each(|((child, state), layout)| {
+                    child
+                        .as_widget()
+                        .operate(state, layout, renderer, operation);
+                });
+        });
     }
 }
 
@@ -190,50 +227,33 @@ where
         layout: Layout,
         cursor: mouse::Cursor,
     ) {
-        let appearance = theme.appearance(&self.style);
-        renderer.fill_quad(
-            renderer::Quad {
-                bounds: layout.bounds(),
-                border: Border::default(),
-                ..renderer::Quad::default()
-            },
-            appearance.background.unwrap(),
-        );
-
-        // paint a clip
-        let size = Size {
-            width: 50.0,
-            height: 18.0,
-        };
+        let size = layout.bounds().size();
 
         let bounds = layout.bounds();
-        // let top_left = match state.is_dragging {
-        //     false => Point::new(0.0, bounds_y),
-        //     true => Point::new(cursor.position().x, bounds_y),
-        // };
-        let top_left = Point::new(bounds.x, bounds.y);
-        let rect = Rectangle::new(top_left, size);
-
-        let bounds = Rectangle {
-            x: layout.bounds().x,
-            y: layout.bounds().y,
-            width: size.width,
-            height: size.height,
+        let quad = Quad {
+            bounds: Rectangle {
+                x: bounds.x,
+                y: bounds.y,
+                width: size.width,
+                height: size.height,
+            },
+            border: Border::default(),
+            shadow: Shadow::default(),
         };
 
-        if self.hovered {
-            if let Some(cursor_position) = cursor.position() {
-                let translation = Point::new(cursor_position.x, top_left.y) - top_left;
+        let appearance = theme.appearance(&self.style);
 
-                let quad = Quad {
-                    bounds: bounds,
+        if self.hovered {
+            renderer.fill_quad(quad, Background::Color(appearance.background_hoovered));
+        } else {
+            renderer.fill_quad(
+                renderer::Quad {
+                    bounds: layout.bounds(),
                     border: Border::default(),
-                    shadow: Shadow::default(),
-                };
-                renderer.with_translation(translation, |renderer| {
-                    renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.42, 0.74, 0.98)));
-                });
-            }
+                    ..renderer::Quad::default()
+                },
+                appearance.background.unwrap(),
+            );
         }
     }
 }
@@ -259,6 +279,8 @@ pub struct Appearance {
     pub text_color: Color,
     /// The [`Background`] of the button.
     pub clip_color: Color,
+    /// The hovered color
+    pub background_hoovered: Color,
 }
 
 /// Theme catalog of a ['Track'].
