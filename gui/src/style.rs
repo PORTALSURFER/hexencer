@@ -1,10 +1,6 @@
 use iced::{
     application,
-    widget::{
-        container,
-        scrollable::{self},
-        text,
-    },
+    widget::{button, container, scrollable, text},
     Background, Border, Color, Shadow,
 };
 
@@ -155,11 +151,12 @@ pub enum Track {
 impl widgets::track::Catalog for Theme {
     type Style = Track;
 
-    fn appearance(&self, _style: &Self::Style) -> widgets::track::Appearance {
+    fn appearance(&self, style: &Self::Style) -> widgets::track::Appearance {
         track::Appearance {
             background: Some(Background::Color(Color::from_rgb(0.04, 0.27, 0.47))),
             text_color: Color::WHITE,
             clip_color: Color::from_rgb(0.34, 0.87, 0.97),
+            background_hoovered: Color::from_rgb(0.07, 0.30, 0.50),
         }
     }
 }
@@ -177,11 +174,127 @@ pub enum Clip {
 impl clip::StyleSheet for Theme {
     type Style = Clip;
 
-    fn appearance(&self, _style: &Self::Style) -> clip::Appearance {
-        clip::Appearance {
-            background_color: Color::from_rgb(0.04, 0.27, 0.47),
-            color: Color::from_rgb(0.34, 0.87, 0.97),
-            border_radius: 0.0,
+    fn appearance(&self, style: &Self::Style) -> clip::Appearance {
+        match style {
+            Clip::Active => clip::Appearance {
+                background_color: Color::from_rgb(0.04, 0.27, 0.47),
+                color: Color::from_rgb(0.34, 0.87, 0.97),
+                border_radius: 0.0,
+            },
+            Clip::Hovered => clip::Appearance {
+                background_color: Color::from_rgb(0.07, 0.30, 0.50),
+                color: Color::from_rgb(0.34, 0.87, 0.97),
+                border_radius: 0.0,
+            },
+            Clip::Dragging => clip::Appearance {
+                background_color: Color::from_rgb(0.04, 0.27, 0.47),
+                color: Color::from_rgb(0.34, 0.87, 0.97),
+                border_radius: 0.0,
+            },
+            Clip::Selected => clip::Appearance {
+                background_color: Color::from_rgb(0.04, 0.27, 0.47),
+                color: Color::from_rgb(0.34, 0.87, 0.97),
+                border_radius: 0.0,
+            },
+            Clip::Inactive => clip::Appearance {
+                background_color: Color::from_rgb(0.04, 0.27, 0.47),
+                color: Color::from_rgb(0.34, 0.87, 0.97),
+                border_radius: 0.0,
+            },
+        }
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Button {
+    #[default]
+    Primary,
+    Unavailable,
+    SelfUpdate,
+    Refresh,
+    UninstallPackage,
+    RestorePackage,
+    NormalPackage,
+    SelectedPackage,
+}
+
+impl button::StyleSheet for Theme {
+    type Style = Button;
+
+    fn active(&self, style: &Self::Style) -> button::Appearance {
+        let p = self.palette();
+
+        let appearance = button::Appearance {
+            ..Default::default()
+        };
+
+        let active_appearance = |bg: Option<Color>, mc| button::Appearance {
+            background: Some(Background::Color(bg.unwrap_or(p.base.foreground))),
+            ..appearance
+        };
+
+        match style {
+            Button::Primary | Button::SelfUpdate | Button::Refresh => {
+                active_appearance(None, p.bright.primary)
+            }
+            Button::RestorePackage => active_appearance(None, p.bright.secondary),
+            Button::NormalPackage => button::Appearance {
+                background: Some(Background::Color(p.base.foreground)),
+                text_color: p.bright.surface,
+                ..appearance
+            },
+            Button::SelectedPackage => button::Appearance { ..appearance },
+            Button::Unavailable | Button::UninstallPackage => {
+                active_appearance(None, p.bright.error)
+            }
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style) -> button::Appearance {
+        let active = self.active(style);
+        let p = self.palette();
+
+        let hover_appearance = |bg, tc: Option<Color>| button::Appearance {
+            background: Some(Background::Color(Color { a: 0.25, ..bg })),
+            text_color: tc.unwrap_or(bg),
+            ..active
+        };
+
+        match style {
+            Button::Primary | Button::SelfUpdate | Button::Refresh => {
+                hover_appearance(p.bright.primary, None)
+            }
+            Button::NormalPackage => hover_appearance(p.normal.primary, Some(p.bright.surface)),
+            Button::SelectedPackage => hover_appearance(p.normal.primary, None),
+            Button::RestorePackage => hover_appearance(p.bright.secondary, None),
+            Button::Unavailable | Button::UninstallPackage => {
+                hover_appearance(p.bright.error, None)
+            }
+        }
+    }
+
+    fn pressed(&self, style: &Self::Style) -> button::Appearance {
+        self.active(style)
+    }
+
+    fn disabled(&self, style: &Self::Style) -> button::Appearance {
+        let active = self.active(style);
+        let p = self.palette();
+
+        let disabled_appearance = |bg, tc: Option<Color>| button::Appearance {
+            background: Some(Background::Color(Color { a: 0.05, ..bg })),
+            text_color: Color {
+                a: 0.50,
+                ..tc.unwrap_or(bg)
+            },
+            ..active
+        };
+
+        match style {
+            Button::RestorePackage => disabled_appearance(p.normal.primary, Some(p.bright.primary)),
+            Button::UninstallPackage => disabled_appearance(p.bright.error, None),
+            Button::Primary => disabled_appearance(p.bright.primary, Some(p.bright.primary)),
+            _ => active,
         }
     }
 }
