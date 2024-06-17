@@ -10,6 +10,7 @@ use iced::{
     alignment, mouse, overlay, Alignment, Background, Event, Padding, Point, Shadow, Vector,
 };
 use iced::{Border, Color, Element, Length, Rectangle, Size};
+use tracing::info;
 
 /// The identifier of a [`Container`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -90,11 +91,14 @@ where
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
+        info!("track layout");
         let size = limits.resolve(self.width, self.height, Size::ZERO);
+
         let children = self
             .contents
             .iter()
-            .map(|child| child.as_widget().layout(tree, renderer, limits))
+            .zip(&mut tree.children)
+            .map(|(child, child_tree)| child.as_widget().layout(child_tree, renderer, limits))
             .collect();
 
         layout::Node::with_children(size, children)
@@ -125,17 +129,12 @@ where
         //     cursor,
         //     viewport,
         // );
-
-        for child in self.contents.iter() {
-            child.as_widget().draw(
-                tree,
-                renderer,
-                theme,
-                style,
-                layout.children().next().expect("no children"),
-                cursor,
-                viewport,
-            );
+        info!("drawing track");
+        for (child, child_layout) in self.contents.iter().zip(layout.children()) {
+            info!("drawing child");
+            child
+                .as_widget()
+                .draw(tree, renderer, theme, style, child_layout, cursor, viewport);
         }
     }
 
@@ -155,7 +154,6 @@ where
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {}
             Event::Mouse(mouse::Event::CursorMoved { .. }) => {
                 if cursor.is_over(layout.bounds()) {
-                    tracing::info!("Cursor moved over the track");
                     self.hovered = true;
                 } else {
                     self.hovered = false;
@@ -192,17 +190,6 @@ where
         layout: Layout,
         cursor: mouse::Cursor,
     ) {
-        tracing::info!(
-            "First track id: {}",
-            storage
-                .project_manager
-                .tracks
-                .iter()
-                .next()
-                .expect("no first track in storage")
-                .id
-        );
-
         let appearance = theme.appearance(&self.style);
         renderer.fill_quad(
             renderer::Quad {

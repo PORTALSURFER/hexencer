@@ -1,12 +1,14 @@
 use hexencer_core::data::{ClipId, StorageInterface};
 use iced::{
     advanced::{
-        layout,
+        layout::{self, Node},
         renderer::{self, Quad},
+        widget::tree,
         Widget,
     },
-    Background, Border, Color, Element, Length, Rectangle, Shadow, Size,
+    Background, Border, Color, Element, Length, Point, Rectangle, Shadow, Size,
 };
+use tracing::info;
 
 pub struct Clip<'s, Theme>
 where
@@ -30,11 +32,18 @@ where
     }
 }
 
+#[derive(Default)]
+struct State {}
+
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Clip<'_, Theme>
 where
     Theme: StyleSheet,
     Renderer: renderer::Renderer,
 {
+    fn tag(&self) -> tree::Tag {
+        tree::Tag::of::<State>()
+    }
+
     fn size(&self) -> iced::Size<iced::Length> {
         Size {
             width: Length::Shrink,
@@ -48,13 +57,23 @@ where
         renderer: &Renderer,
         limits: &iced::advanced::layout::Limits,
     ) -> iced::advanced::layout::Node {
+        info!("clip layout");
         // todo: move to outside of the function when reading the clip, just store in the clip struct on creation
         let storage = self.storage.read().unwrap();
         let clip = storage.project_manager.find_clip(self.clip_id).unwrap();
-        layout::Node::new(Size {
-            width: clip.length.as_f32(),
-            height: 18.0,
-        })
+
+        let width = Length::Fixed(clip.length.as_f32());
+        let height = Length::Fixed(18.0);
+
+        let size = limits.resolve(width, height, Size::ZERO);
+        let node = layout::Node::new(size);
+
+        let position = Point::new(clip.start.as_f32(), 0.0);
+        node.move_to(position)
+    }
+
+    fn state(&self) -> tree::State {
+        tree::State::new(State::default())
     }
 
     fn draw(

@@ -3,6 +3,7 @@ use std::{
         hash_map::{IntoIter, Iter},
         HashMap,
     },
+    f32,
     fmt::Display,
     ops::Deref,
 };
@@ -198,6 +199,4 @@ impl PartialEq<ClipId> for &ClipId {
 }
 
 #[cfg(test)]
-mod tests {
-
-}
+mod tests {}
