@@ -11,7 +11,6 @@ mod theme;
 mod widgets;
 
 use iced::advanced::graphics::core::Element;
-use iced::advanced::renderer;
 use theme::Theme;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
@@ -41,9 +40,24 @@ pub fn init_logger() {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
     tracing::info!("hexencer started");
 }
+
+/// Message enum for the application
 #[derive(Debug, Clone, Copy)]
-enum Message {
+pub enum Message {
+    /// exit this application
     Exit,
+    /// global message for dragging a clip
+    DragClip {
+        /// the clip id of the clip being dragged
+        clip_id: ClipId,
+        /// the point where the mouse click started the drag
+        origin: (f32, f32),
+    },
+    /// a clip was dropped
+    DroppedClip {
+        /// the clip id of the clip being dragged
+        clip_id: ClipId,
+    },
 }
 
 fn init_settings<Flags: Default>() -> iced::Settings<Flags> {
@@ -60,13 +74,17 @@ fn init_settings<Flags: Default>() -> iced::Settings<Flags> {
 
 struct Hexencer {
     storage: StorageInterface,
+    dropped_clip: Option<ClipId>,
 }
 impl Hexencer {
     fn init() -> Self {
         let storage = StorageInterface::new();
         let midi_engine_sender = start_midi_engine();
         let sequencer_sender = start_sequencer_engine(midi_engine_sender, storage.clone());
-        Hexencer { storage }
+        Hexencer {
+            storage,
+            dropped_clip: None,
+        }
     }
 }
 
@@ -87,10 +105,21 @@ impl iced::Application for Hexencer {
     fn update(&mut self, message: Message) -> iced::Command<Message> {
         match message {
             Message::Exit => std::process::exit(0),
+            Message::DragClip { clip_id, origin } => {
+                self.dropped_clip = None;
+                iced::Command::none()
+            }
+            Message::DroppedClip { clip_id } => {
+                self.dropped_clip = Some(clip_id);
+                iced::Command::none()
+            }
         }
     }
 
     fn view(&self) -> Element<Self::Message, Self::Theme, Renderer> {
+        if let Some(dropped_clip) = self.dropped_clip {
+            tracing::info!("dropped clip: {:?}", dropped_clip);
+        }
         let header = container(
             row![horizontal_space(), "Header!", horizontal_space(),]
                 .padding(10)
@@ -114,7 +143,16 @@ impl iced::Application for Hexencer {
             let mut clip_elements = Vec::new();
 
             for (clip_id, _clip) in clips {
-                let clip_element = Clip::new(*clip_id, &self.storage, text("Test"));
+                let clip_id = clip_id.clone();
+                let clip_element = Clip::new(clip_id, &self.storage, text("Test"))
+                    .on_drag(move |_| {
+                        println!("dragging");
+                        Message::DragClip {
+                            clip_id: clip_id,
+                            origin: (0.0, 0.0),
+                        }
+                    })
+                    .on_drop(move |_| Message::DroppedClip { clip_id: clip_id });
                 clip_elements.push(clip_element.into());
             }
 
