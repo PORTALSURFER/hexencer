@@ -151,7 +151,7 @@ pub enum Track {
 impl widgets::track::Catalog for Theme {
     type Style = Track;
 
-    fn appearance(&self, style: &Self::Style) -> widgets::track::Appearance {
+    fn appearance(&self, _style: &Self::Style) -> widgets::track::Appearance {
         track::Appearance {
             background: Some(Background::Color(Color::from_rgb(0.04, 0.27, 0.47))),
             text_color: Color::WHITE,
@@ -228,7 +228,7 @@ impl button::StyleSheet for Theme {
             ..Default::default()
         };
 
-        let active_appearance = |bg: Option<Color>, mc| button::Appearance {
+        let active_appearance = |bg: Option<Color>, _mc| button::Appearance {
             background: Some(Background::Color(bg.unwrap_or(p.base.foreground))),
             ..appearance
         };

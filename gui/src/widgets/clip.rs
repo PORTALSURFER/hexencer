@@ -1,4 +1,3 @@
-use crate::Message::DragClip;
 use hexencer_core::data::{ClipId, StorageInterface};
 
 use iced::{

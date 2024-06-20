@@ -3,7 +3,7 @@ use iced::advanced::graphics::core::event;
 use iced::advanced::overlay::from_children;
 use iced::advanced::renderer::{self, Quad};
 use iced::advanced::widget::{self, Operation, Tree, Widget};
-use iced::advanced::{layout, Layout, Text};
+use iced::advanced::{layout, Layout};
 use iced::widget::text;
 use iced::{
     alignment, mouse, overlay, Alignment, Background, Event, Padding, Point, Shadow, Vector,
@@ -142,6 +142,21 @@ where
         shell: &mut iced::advanced::Shell<'_, Message>,
         viewport: &Rectangle,
     ) -> event::Status {
+        if let Event::Mouse(mouse::Event::CursorMoved { .. }) = event {
+            let bounds = layout.bounds();
+            if let Some(cursor_position) = cursor.position_in(bounds) {
+                if bounds.contains(cursor_position) {
+                    if !self.hovered {
+                        self.hovered = true;
+                        info!("hovered");
+                    }
+                } else if self.hovered {
+                    self.hovered = false;
+                    info!("not hovered");
+                }
+            }
+        }
+
         self.children
             .iter_mut()
             .zip(&mut tree.children)
@@ -218,6 +233,7 @@ where
     Theme: Catalog,
     Renderer: renderer::Renderer,
 {
+    /// draws the track background    
     fn draw_background(
         &self,
         storage: std::sync::RwLockReadGuard<hexencer_core::data::DataLayer>,
@@ -270,7 +286,7 @@ where
     }
 }
 
-// The appearance of a button.
+/// The appearance of a button.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Appearance {
     /// The [`Background`] of the button.
