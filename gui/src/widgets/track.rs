@@ -1,4 +1,5 @@
 use hexencer_core::data::{ClipId, StorageInterface};
+use hexencer_core::TrackId;
 use iced::advanced::graphics::core::event;
 use iced::advanced::overlay::from_children;
 use iced::advanced::renderer::{self, Quad};
@@ -12,6 +13,9 @@ use tracing::info;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Id(widget::Id);
 
+/// handler for on track drop events
+type DropHandler<'a, Message> = Option<Box<dyn Fn(ClipId, TrackId, f32) -> Message + 'a>>;
+
 /// Represents a track widget.
 pub struct Track<'a, Message, Theme = crate::Theme, Renderer = crate::Renderer>
 where
@@ -20,6 +24,8 @@ where
 {
     /// The unique identifier for the track.
     id: Option<Id>,
+    /// track id this widget represents
+    track_id: TrackId,
     /// The padding of the track.
     padding: Padding,
     /// The width of the track.
@@ -47,7 +53,7 @@ where
     /// The dropped clip.
     dropped_clip: Option<ClipId>,
     /// if something was dropped on this track
-    on_drop: Option<Box<dyn Fn(ClipId) -> Message + 'a>>,
+    on_drop: DropHandler<'a, Message>,
 }
 
 impl<'a, Message, Theme, Renderer> Track<'a, Message, Theme, Renderer>
@@ -59,6 +65,7 @@ where
     pub fn new(
         storage: &'a StorageInterface,
         track_index: usize,
+        track_id: TrackId,
         contents: Vec<Element<'a, Message, Theme, Renderer>>,
         dropped_clip: Option<ClipId>,
     ) -> Self {
@@ -78,13 +85,14 @@ where
             vertical_alignment: alignment::Vertical::Top,
             dropped_clip,
             on_drop: None,
+            track_id,
         }
     }
 
     /// takes a closure for when something is dropped on this track
     pub fn on_drop<F>(mut self, f: F) -> Self
     where
-        F: 'a + Fn(ClipId) -> Message,
+        F: 'a + Fn(ClipId, TrackId, f32) -> Message,
     {
         self.on_drop = Some(Box::new(f));
         self
@@ -174,13 +182,19 @@ where
         viewport: &Rectangle,
     ) -> event::Status {
         let bounds = layout.bounds();
-        if cursor.is_over(bounds) {
+        if let Some(cursor_position) = cursor.position_in(bounds) {
             if let Some(on_drop) = &self.on_drop {
                 if let Some(clip_id) = self.dropped_clip {
                     info!("dropped - {}", clip_id);
                     println!("track release");
                     self.dropped_clip = None;
-                    shell.publish(on_drop(clip_id));
+
+                    let pos = bounds.position();
+                    info!("track position: {:?}", pos);
+                    info!("cursor position: {:?}", cursor_position.x);
+                    let test = cursor_position.x - pos.x;
+                    info!("test: {:?}", test);
+                    shell.publish(on_drop(clip_id, self.track_id, cursor_position.x));
                     return event::Status::Captured;
                 }
             }
@@ -207,7 +221,7 @@ where
         let track_event = match event {
             Event::Mouse(mouse::Event::CursorMoved { .. }) => {
                 let bounds = layout.bounds();
-                if let Some(position) = cursor.position_in(bounds) {
+                if let Some(_position) = cursor.position_in(bounds) {
                     if !self.hovered {
                         self.hovered = true;
                         return event::Status::Captured;

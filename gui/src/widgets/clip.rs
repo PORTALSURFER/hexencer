@@ -11,12 +11,16 @@ use iced::{
     },
     Background, Border, Color, Element, Event, Length, Point, Rectangle, Shadow, Size,
 };
+use tracing::info;
 
 /// drag events
 #[derive(Debug, Clone, Copy)]
 pub enum DragEvent {
     /// drag has started
-    DragStarted {},
+    DragStarted {
+        /// position of the grab, relative to the clip
+        grab_position: f32,
+    },
     /// clip was dropped
     Dropped {
         /// id of the clip which was dropped
@@ -193,7 +197,7 @@ where
                                 renderer.with_layer(bounds, |renderer| {
                                     renderer.fill_quad(
                                         quad,
-                                        Background::Color(Color::from_rgb(0.92, 0.24, 0.24)),
+                                        Background::Color(Color::from_rgb(0.82, 0.44, 0.92)),
                                     );
                                 });
                             });
@@ -201,7 +205,7 @@ where
                     }
                     State::Hovered => {
                         renderer
-                            .fill_quad(quad, Background::Color(Color::from_rgb(0.42, 0.74, 0.98)));
+                            .fill_quad(quad, Background::Color(Color::from_rgb(0.92, 0.74, 0.98)));
                     }
                     State::Idle => {
                         renderer
@@ -240,27 +244,39 @@ where
                 let state = tree.state.downcast_mut::<State>();
                 if let State::Dragged { .. } = *state {
                     if let Some(on_drop) = &self.on_drop {
-                        shell.publish(on_drop(DragEvent::Dropped {
-                            clip_id: self.clip_id,
-                        }));
+                        if let Some(cursor_position) = cursor.position() {
+                            let relative_mouse = cursor_position.x - bounds.position().x;
+                            let tick = cursor_position.x - relative_mouse;
+                            println!("drop {}", relative_mouse);
+                            println!("drop {}", tick);
+                            shell.publish(on_drop(DragEvent::Dropped {
+                                clip_id: self.clip_id,
+                            }));
+                        }
                     }
                     *state = State::Idle;
-                    println!("clip release");
                     return event::Status::Captured;
                 }
             }
             Event::Mouse(mouse::Event::CursorMoved {
                 position: _position,
             }) => {
+                info!("cursor moved, {:?}", cursor.position());
                 let state = tree.state.downcast_mut::<State>();
                 if let Some(cursor_position) = cursor.position_over(bounds) {
+                    let relative_mouse = cursor_position.x - bounds.position().x;
+                    let tick = cursor_position.x - relative_mouse;
+                    println!("grab {}", relative_mouse);
+                    println!("grab {}", tick);
                     if *state == State::Pressed {
                         *state = State::Dragged {
                             origin: cursor_position,
                             clip_id: self.clip_id,
                         };
                         if let Some(on_drag) = &self.on_drag {
-                            shell.publish(on_drag(DragEvent::DragStarted {}));
+                            shell.publish(on_drag(DragEvent::DragStarted {
+                                grab_position: relative_mouse,
+                            }));
                         }
                         return event::Status::Captured;
                     }
