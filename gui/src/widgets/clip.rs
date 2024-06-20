@@ -238,18 +238,16 @@ where
             }
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 let state = tree.state.downcast_mut::<State>();
-
                 if let State::Dragged { .. } = *state {
-                    let state = tree.state.downcast_mut::<State>();
                     if let Some(on_drop) = &self.on_drop {
                         shell.publish(on_drop(DragEvent::Dropped {
                             clip_id: self.clip_id,
                         }));
                     }
                     *state = State::Idle;
+                    println!("clip release");
+                    return event::Status::Captured;
                 }
-
-                return event::Status::Captured;
             }
             Event::Mouse(mouse::Event::CursorMoved {
                 position: _position,

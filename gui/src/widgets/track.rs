@@ -1,4 +1,4 @@
-use hexencer_core::data::StorageInterface;
+use hexencer_core::data::{ClipId, StorageInterface};
 use iced::advanced::graphics::core::event;
 use iced::advanced::overlay::from_children;
 use iced::advanced::renderer::{self, Quad};
@@ -44,18 +44,23 @@ where
     track_index: usize,
     /// The children of the track.
     children: Vec<Element<'a, Message, Theme, Renderer>>,
+    /// The dropped clip.
+    dropped_clip: Option<ClipId>,
+    /// if something was dropped on this track
+    on_drop: Option<Box<dyn Fn(ClipId) -> Message + 'a>>,
 }
 
-impl<'s, Message, Theme, Renderer> Track<'s, Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer> Track<'a, Message, Theme, Renderer>
 where
     Theme: Catalog,
     Renderer: renderer::Renderer,
 {
     /// Creates a new [`Track`] widget.
     pub fn new(
-        storage: &'s StorageInterface,
+        storage: &'a StorageInterface,
         track_index: usize,
-        contents: Vec<Element<'s, Message, Theme, Renderer>>,
+        contents: Vec<Element<'a, Message, Theme, Renderer>>,
+        dropped_clip: Option<ClipId>,
     ) -> Self {
         Self {
             width: Length::Fill,
@@ -71,7 +76,18 @@ where
             max_height: f32::INFINITY,
             horizontal_alignment: alignment::Horizontal::Center,
             vertical_alignment: alignment::Vertical::Top,
+            dropped_clip,
+            on_drop: None,
         }
+    }
+
+    /// takes a closure for when something is dropped on this track
+    pub fn on_drop<F>(mut self, f: F) -> Self
+    where
+        F: 'a + Fn(ClipId) -> Message,
+    {
+        self.on_drop = Some(Box::new(f));
+        self
     }
 }
 
@@ -157,22 +173,21 @@ where
         shell: &mut iced::advanced::Shell<'_, Message>,
         viewport: &Rectangle,
     ) -> event::Status {
-        if let Event::Mouse(mouse::Event::CursorMoved { .. }) = event {
-            let bounds = layout.bounds();
-            if let Some(cursor_position) = cursor.position_in(bounds) {
-                if bounds.contains(cursor_position) {
-                    if !self.hovered {
-                        self.hovered = true;
-                        info!("hovered");
-                    }
-                } else if self.hovered {
-                    self.hovered = false;
-                    info!("not hovered");
+        let bounds = layout.bounds();
+        if cursor.is_over(bounds) {
+            if let Some(on_drop) = &self.on_drop {
+                if let Some(clip_id) = self.dropped_clip {
+                    info!("dropped - {}", clip_id);
+                    println!("track release");
+                    self.dropped_clip = None;
+                    shell.publish(on_drop(clip_id));
+                    return event::Status::Captured;
                 }
             }
         }
 
-        self.children
+        let child_events = self
+            .children
             .iter_mut()
             .zip(&mut tree.children)
             .zip(layout.children())
@@ -188,7 +203,24 @@ where
                     viewport,
                 )
             })
-            .fold(event::Status::Ignored, event::Status::merge)
+            .fold(event::Status::Ignored, event::Status::merge);
+        let track_event = match event {
+            Event::Mouse(mouse::Event::CursorMoved { .. }) => {
+                let bounds = layout.bounds();
+                if let Some(position) = cursor.position_in(bounds) {
+                    if !self.hovered {
+                        self.hovered = true;
+                        return event::Status::Captured;
+                    }
+                } else if self.hovered {
+                    self.hovered = false;
+                    return event::Status::Captured;
+                }
+                event::Status::Ignored
+            }
+            _ => event::Status::Ignored,
+        };
+        child_events.merge(track_event)
     }
 
     fn overlay<'b>(
