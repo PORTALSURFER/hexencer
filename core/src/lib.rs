@@ -72,6 +72,11 @@ impl Tick {
     pub fn as_f32(&self) -> f32 {
         self.0 as f32
     }
+
+    /// returns this 'Tick' as an 'u32'
+    fn as_u32(&self) -> u32 {
+        self.0 as u32
+    }
 }
 
 impl Display for Tick {
@@ -107,5 +112,13 @@ impl From<u64> for Tick {
 impl From<u32> for Tick {
     fn from(tick: u32) -> Self {
         Self(tick as u64)
+    }
+}
+
+impl std::ops::Add for Tick {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
     }
 }

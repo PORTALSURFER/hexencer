@@ -97,13 +97,15 @@ pub struct Clip {
     pub name: Box<String>,
     /// notes in this clip
     pub events: EventCollection,
-    /// end of the clip
+    /// length of the clip
     pub length: Tick,
+    /// tick at which the clip ends
+    pub end: Tick,
 }
 
 impl Clip {
     /// Create a new clip
-    pub fn new(tick: Tick, name: &str, length: Tick) -> Self {
+    pub fn new(start: Tick, name: &str, length: Tick) -> Self {
         let mut test_events = EventCollection::new();
 
         let event1 = EventSegment::new(
@@ -141,11 +143,12 @@ impl Clip {
         test_events.add_event(Tick::from(960), event3);
 
         Self {
-            start: tick,
+            start,
             id: ClipId::new(),
             name: Box::new(String::from(name)),
             events: test_events,
             length,
+            end: start + length,
         }
 
         // Self {
@@ -194,6 +197,86 @@ impl ClipId {
 impl PartialEq<ClipId> for &ClipId {
     fn eq(&self, other: &ClipId) -> bool {
         self.0 == other.0
+    }
+}
+
+/// Note of the track interval tree housing clips
+struct Node {
+    /// clip in this node
+    clip: Clip,
+    /// maximum end time of the clips in this node
+    max_end: u32,
+    /// left child node
+    left: Option<Box<Node>>,
+    /// right child node
+    right: Option<Box<Node>>,
+}
+
+/// Interval tree for track clips
+struct IntervalTree {
+    /// root node of the tree
+    root: Option<Box<Node>>,
+}
+
+impl IntervalTree {
+    /// Create a new interval tree
+    fn new() -> Self {
+        IntervalTree { root: None }
+    }
+
+    /// Insert a clip into the tree
+    fn insert(&mut self, clip: Clip) {
+        self.root = Self::insert_rec(self.root.take(), clip);
+    }
+
+    /// Recursive insert function
+    fn insert_rec(node: Option<Box<Node>>, clip: Clip) -> Option<Box<Node>> {
+        if let Some(mut current_node) = node {
+            if clip.start < current_node.clip.start {
+                current_node.left = Self::insert_rec(current_node.left.take(), clip.clone());
+            } else {
+                current_node.right = Self::insert_rec(current_node.right.take(), clip.clone());
+            }
+            current_node.max_end = std::cmp::max(current_node.max_end, clip.clone().end.as_u32());
+            Some(current_node)
+        } else {
+            Some(Box::new(Node {
+                clip: clip.clone(),
+                max_end: clip.clone().end.as_u32(),
+                left: None,
+                right: None,
+            }))
+        }
+    }
+
+    /// Split a clip at a specific point
+    fn split(&mut self, split_point: u32) {
+        self.root = Self::split_rec(self.root.take(), Tick::from(split_point));
+    }
+
+    /// Recursive split function
+    fn split_rec(node: Option<Box<Node>>, split_point: Tick) -> Option<Box<Node>> {
+        if let Some(mut current_node) = node {
+            if split_point > current_node.clip.start && split_point < current_node.clip.end {
+                let original_end = current_node.clip.end;
+                current_node.clip.end = split_point;
+
+                let new_clip = Clip {
+                    start: split_point,
+                    end: original_end,
+                    ..Default::default()
+                };
+
+                current_node.right = Self::insert_rec(current_node.right.take(), new_clip);
+            } else if split_point <= current_node.clip.start {
+                current_node.left = Self::split_rec(current_node.left.take(), split_point);
+            } else {
+                current_node.right = Self::split_rec(current_node.right.take(), split_point);
+            }
+            Some(current_node)
+        } else {
+            None
+        }
     }
 }
 

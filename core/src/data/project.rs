@@ -91,5 +91,7 @@ mod tests {
         track.add_clip(clip);
 
         project.add_track(track);
+
+        // assert!(clip.id() == clip_id);
     }
 }

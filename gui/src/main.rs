@@ -4,6 +4,7 @@
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
 
 //! the main entry point for the application
+
 use std::borrow::Cow;
 
 /// contains styling for the application
@@ -15,11 +16,12 @@ mod theme;
 /// custom widgets for the application
 mod widgets;
 
+use hexencer_core::{Tick, TrackId};
 use iced::advanced::graphics::core::Element;
 use theme::Theme;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
-use widgets::clip::Clip;
+use widgets::clip::{Clip, DragEvent};
 use widgets::track::Track;
 
 use hexencer_core::data::{ClipId, StorageInterface};
@@ -28,6 +30,9 @@ use iced::widget::{column, container, horizontal_space, row, scrollable, text};
 use iced::{Alignment, Application, Font, Length, Renderer};
 
 pub use hexencer_core::DataId;
+
+/// the coolest message
+static INSTA_MESSAGE: &str = "drag drop system in place...ya";
 
 #[tokio::main]
 async fn main() -> iced::Result {
@@ -56,7 +61,7 @@ pub enum Message {
         /// the clip id of the clip being dragged
         clip_id: ClipId,
         /// the point where the mouse click started the drag
-        origin: (f32, f32),
+        origin: f32,
     },
     /// a clip was dropped
     DroppedClip {
@@ -68,7 +73,9 @@ pub enum Message {
         /// the id of the clip to move
         clip_id: ClipId,
         /// the new position of the clip
-        position: (f32, f32),
+        track_id: TrackId,
+        /// tick where the clip should be placed
+        cursor_position: f32,
     },
 }
 
@@ -91,6 +98,8 @@ struct Hexencer {
     storage: StorageInterface,
     /// the clip id of the clip that was dropped
     dropped_clip: Option<ClipId>,
+    /// relative origin of the latest clip drag
+    drag_origin: f32, //TODO store this in the clip state instead?
 }
 impl Hexencer {
     /// initialize the application
@@ -101,6 +110,7 @@ impl Hexencer {
         Hexencer {
             storage,
             dropped_clip: None,
+            drag_origin: 0.0,
         }
     }
 }
@@ -126,10 +136,8 @@ impl iced::Application for Hexencer {
         }
         match message {
             Message::Exit => std::process::exit(0),
-            Message::DragClip {
-                clip_id: _,
-                origin: _,
-            } => {
+            Message::DragClip { origin, .. } => {
+                self.drag_origin = origin;
                 self.dropped_clip = None;
                 iced::Command::none()
             }
@@ -137,8 +145,18 @@ impl iced::Application for Hexencer {
                 self.dropped_clip = Some(clip_id);
                 iced::Command::none()
             }
-            Message::MoveClipRequest { clip_id, position } => {
-                info!("move clip request: {:?} to {:?}", clip_id, position);
+            Message::MoveClipRequest {
+                clip_id,
+                track_id,
+                cursor_position,
+            } => {
+                info!("move clip request: {:?} to {:?}", clip_id, track_id);
+                let tick = Tick::from(cursor_position - self.drag_origin);
+                self.storage
+                    .write()
+                    .unwrap()
+                    .project_manager
+                    .move_clip(clip_id, track_id, tick);
                 iced::Command::none()
             }
         }
@@ -169,33 +187,45 @@ impl iced::Application for Hexencer {
 
             for (clip_id, _clip) in clips {
                 let clip_id = *clip_id;
-                let clip_element = Clip::new(clip_id, &self.storage, text("Test"))
-                    .on_drag(move |_| {
-                        println!("dragging");
-                        Message::DragClip {
-                            clip_id,
-                            origin: (0.0, 0.0),
-                        }
-                    })
-                    .on_drop(move |_| Message::DroppedClip { clip_id });
+                let clip_element = Clip::new(
+                    clip_id,
+                    &self.storage,
+                    text("drag drop system in place...yay"),
+                )
+                .on_drag(move |drag_event| {
+                    let mut origin = 0.0;
+                    if let DragEvent::DragStarted { grab_position } = drag_event {
+                        println!("start drag at {:?}", grab_position);
+                        origin = grab_position;
+                    }
+                    Message::DragClip { clip_id, origin }
+                })
+                .on_drop(move |_| Message::DroppedClip { clip_id });
                 clip_elements.push(clip_element.into());
             }
+            let track_id = track.id;
 
-            let track = Track::new(&self.storage, index, clip_elements, self.dropped_clip).on_drop(
-                move |clip_id| {
-                    info!("dropped clip: {:?} onto track {}", clip_id, index);
-                    Message::MoveClipRequest {
-                        clip_id,
-                        position: (0.0, 0.0),
-                    }
-                },
-            );
+            let track = Track::new(
+                &self.storage,
+                index,
+                track_id,
+                clip_elements,
+                self.dropped_clip,
+            )
+            .on_drop(move |clip_id, track_id, cursor_position| {
+                info!("dropped clip: {:?} onto track {}", clip_id, index);
+                Message::MoveClipRequest {
+                    clip_id,
+                    track_id,
+                    cursor_position,
+                }
+            });
             elements.push(track.into());
         }
 
         // let tracks = load_tracks(&self.storage);
         let tracks_column = column(elements).spacing(1);
-        let test = column![text("test")];
+        let test = column![text(INSTA_MESSAGE)];
 
         let content = container(
             scrollable(
