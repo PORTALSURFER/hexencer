@@ -14,8 +14,8 @@ use iced::advanced::graphics::core::Element;
 use theme::Theme;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
-use widgets::clip::{self, Clip};
-use widgets::track::{Catalog, Track};
+use widgets::clip::Clip;
+use widgets::track::Track;
 
 use hexencer_core::data::{ClipId, StorageInterface};
 use hexencer_engine::{midi_engine::start_midi_engine, start_sequencer_engine};
@@ -80,7 +80,7 @@ impl Hexencer {
     fn init() -> Self {
         let storage = StorageInterface::new();
         let midi_engine_sender = start_midi_engine();
-        let sequencer_sender = start_sequencer_engine(midi_engine_sender, storage.clone());
+        let _sequencer_sender = start_sequencer_engine(midi_engine_sender, storage.clone());
         Hexencer {
             storage,
             dropped_clip: None,
@@ -105,7 +105,10 @@ impl iced::Application for Hexencer {
     fn update(&mut self, message: Message) -> iced::Command<Message> {
         match message {
             Message::Exit => std::process::exit(0),
-            Message::DragClip { clip_id, origin } => {
+            Message::DragClip {
+                clip_id: _,
+                origin: _,
+            } => {
                 self.dropped_clip = None;
                 iced::Command::none()
             }
@@ -148,11 +151,11 @@ impl iced::Application for Hexencer {
                     .on_drag(move |_| {
                         println!("dragging");
                         Message::DragClip {
-                            clip_id: clip_id,
+                            clip_id,
                             origin: (0.0, 0.0),
                         }
                     })
-                    .on_drop(move |_| Message::DroppedClip { clip_id: clip_id });
+                    .on_drop(move |_| Message::DroppedClip { clip_id });
                 clip_elements.push(clip_element.into());
             }
 

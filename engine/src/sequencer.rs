@@ -73,7 +73,7 @@ impl Sequencer {
                     if *self.running.lock().unwrap() {
                         self.process_events();
                         self.current_tick.tick();
-                        self.data.write().map(|mut data|data.set_tick(self.current_tick));
+                        if let Ok(mut data) = self.data.write() { data.set_tick(self.current_tick) }
                     }
                 }
                 Some(command) = command_receiver.recv() => {

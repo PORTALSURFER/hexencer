@@ -3,7 +3,6 @@ use std::{
         hash_map::{IntoIter, Iter},
         HashMap,
     },
-    f32,
     fmt::Display,
     ops::Deref,
 };

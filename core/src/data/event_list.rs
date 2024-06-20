@@ -23,7 +23,7 @@ impl FromIterator<(Tick, Vec<EventSegment>)> for EventCollection {
 impl EventCollection {
     /// creates an empty `EventList`
     pub fn new() -> EventCollection {
-        EventCollection(Box::new(BTreeMap::new()))
+        EventCollection(Box::default())
     }
 
     /// adds a new event to the 'EventList'

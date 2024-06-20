@@ -88,11 +88,8 @@ mod tests {
         let mut project = Project::new();
         let mut track = Track::new(TrackId::new(), "track 0");
         let clip = Clip::new(Tick::from(120), "new_clip", Tick::from(120));
-        let clip_id = clip.id();
         track.add_clip(clip);
 
         project.add_track(track);
-
-        // assert!(clip.id() == clip_id);
     }
 }

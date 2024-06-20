@@ -99,6 +99,7 @@ impl DataLayer {
         self.tick
     }
 
+    /// generates DataLayer with fake data for testing
     fn fake_data() -> DataLayer {
         let mut project_manager = Project::default();
 
