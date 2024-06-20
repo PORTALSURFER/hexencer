@@ -17,7 +17,7 @@ mod widgets;
 
 use iced::advanced::graphics::core::Element;
 use theme::Theme;
-use tracing::Level;
+use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 use widgets::clip::Clip;
 use widgets::track::Track;
@@ -62,6 +62,13 @@ pub enum Message {
     DroppedClip {
         /// the clip id of the clip being dragged
         clip_id: ClipId,
+    },
+    /// request to move clip between tracks
+    MoveClipRequest {
+        /// the id of the clip to move
+        clip_id: ClipId,
+        /// the new position of the clip
+        position: (f32, f32),
     },
 }
 
@@ -113,6 +120,10 @@ impl iced::Application for Hexencer {
     }
 
     fn update(&mut self, message: Message) -> iced::Command<Message> {
+        if let Some(dropped_clip) = self.dropped_clip {
+            tracing::info!("dropped clip: {:?}", dropped_clip);
+            self.dropped_clip = None;
+        }
         match message {
             Message::Exit => std::process::exit(0),
             Message::DragClip {
@@ -126,13 +137,14 @@ impl iced::Application for Hexencer {
                 self.dropped_clip = Some(clip_id);
                 iced::Command::none()
             }
+            Message::MoveClipRequest { clip_id, position } => {
+                info!("move clip request: {:?} to {:?}", clip_id, position);
+                iced::Command::none()
+            }
         }
     }
 
     fn view(&self) -> Element<Self::Message, Self::Theme, Renderer> {
-        if let Some(dropped_clip) = self.dropped_clip {
-            tracing::info!("dropped clip: {:?}", dropped_clip);
-        }
         let header = container(
             row![horizontal_space(), "Header!", horizontal_space(),]
                 .padding(10)
@@ -169,7 +181,15 @@ impl iced::Application for Hexencer {
                 clip_elements.push(clip_element.into());
             }
 
-            let track = Track::new(&self.storage, index, clip_elements);
+            let track = Track::new(&self.storage, index, clip_elements, self.dropped_clip).on_drop(
+                move |clip_id| {
+                    info!("dropped clip: {:?} onto track {}", clip_id, index);
+                    Message::MoveClipRequest {
+                        clip_id,
+                        position: (0.0, 0.0),
+                    }
+                },
+            );
             elements.push(track.into());
         }
 
@@ -203,32 +223,3 @@ impl iced::Application for Hexencer {
         1.0
     }
 }
-
-// fn square<'a>(size: impl Into<Length> + Copy) -> Element<'a, Message, Renderer> {
-//     struct Square;
-
-//     impl canvas::Program<Message, Theme, Renderer> for Square {
-//         type State = ();
-
-//         fn draw(
-//             &self,
-//             _state: &Self::State,
-//             renderer: &Renderer,
-//             theme: &Theme,
-//             bounds: Rectangle,
-//             _cursor: mouse::Cursor,
-//         ) -> Vec<canvas::Geometry> {
-//             let mut frame = canvas::Frame::new(renderer, bounds.size());
-
-//             frame.fill_rectangle(
-//                 Point::ORIGIN,
-//                 bounds.size(),
-//                 Color::from_rgb(1.0, 0.0, 0.0),
-//             );
-
-//             vec![frame.into_geometry()]
-//         }
-//     }
-
-//     Canvas(Square).width(size).height(size).into()
-// }
