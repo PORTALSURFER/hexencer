@@ -6,8 +6,13 @@
 //! the main entry point for the application
 use std::borrow::Cow;
 
+/// contains styling for the application
 mod style;
+
+/// contains the theme for the application
 mod theme;
+
+/// custom widgets for the application
 mod widgets;
 
 use iced::advanced::graphics::core::Element;
@@ -60,6 +65,7 @@ pub enum Message {
     },
 }
 
+/// initialize the settings for the application
 fn init_settings<Flags: Default>() -> iced::Settings<Flags> {
     let fonts = vec![Cow::from(include_bytes!(
         "../../assets/fonts/5squared-pixel.ttf"
@@ -72,11 +78,15 @@ fn init_settings<Flags: Default>() -> iced::Settings<Flags> {
     }
 }
 
+/// contains the main application state
 struct Hexencer {
+    /// the storage interface for the application
     storage: StorageInterface,
+    /// the clip id of the clip that was dropped
     dropped_clip: Option<ClipId>,
 }
 impl Hexencer {
+    /// initialize the application
     fn init() -> Self {
         let storage = StorageInterface::new();
         let midi_engine_sender = start_midi_engine();
@@ -146,7 +156,7 @@ impl iced::Application for Hexencer {
             let mut clip_elements = Vec::new();
 
             for (clip_id, _clip) in clips {
-                let clip_id = clip_id.clone();
+                let clip_id = *clip_id;
                 let clip_element = Clip::new(clip_id, &self.storage, text("Test"))
                     .on_drag(move |_| {
                         println!("dragging");

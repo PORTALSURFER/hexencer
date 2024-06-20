@@ -1,44 +1,70 @@
 use iced::{color, Color};
 
+/// The theme of the application.
 #[derive(Default, Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Theme {
+    /// Lupin Theme
     #[default]
     Lupin,
+    /// dark theme
     Dark,
+    /// light theme
     Light,
 }
 
+/// The color palette of the application.
 #[derive(Debug, Clone, Copy)]
 pub struct BaseColors {
+    /// The background color of the application.
     pub background: Color,
+    /// The foreground color of the application.
     pub foreground: Color,
 }
 
+/// normal color
 #[derive(Debug, Clone, Copy)]
 pub struct NormalColors {
+    /// primary color
     pub primary: Color,
+    /// secondary color
     pub secondary: Color,
+    /// surface color
     pub surface: Color,
+    /// error color
     pub error: Color,
 }
 
+/// bright color
 #[derive(Debug, Clone, Copy)]
 pub struct BrightColors {
+    /// primary color
     pub primary: Color,
+
+    /// secondary color
     pub secondary: Color,
+    /// surface color
     pub surface: Color,
+    /// error color
     pub error: Color,
 }
 
+/// The color palette of the application.
 #[derive(Debug, Clone, Copy)]
 pub struct ColorPalette {
+    /// The base colors of the application.
     pub base: BaseColors,
+    /// The normal colors of the application.
     pub normal: NormalColors,
+    /// The bright colors of the application.
     pub bright: BrightColors,
 }
 
+/// The color palette of the application.
 impl Theme {
+    /// All available themes.
     pub const ALL: [Self; 3] = [Self::Lupin, Self::Dark, Self::Light];
+
+    /// Returns the color palette of the theme.
     pub fn palette(self) -> ColorPalette {
         match self {
             Self::Dark => ColorPalette {

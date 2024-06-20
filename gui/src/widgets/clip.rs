@@ -11,23 +11,41 @@ use iced::{
     },
     Background, Border, Color, Element, Event, Length, Point, Rectangle, Shadow, Size,
 };
+
+/// drag events
 #[derive(Debug, Clone, Copy)]
 pub enum DragEvent {
+    /// drag has started
     DragStarted {},
-    Dropped { clip_id: ClipId },
+    /// clip was dropped
+    Dropped {
+        /// id of the clip which was dropped
+        clip_id: ClipId,
+    },
+
+    /// drag was canceled
     Canceled {},
 }
+
+/// A widget that represents a clip in the gui
 pub struct Clip<'a, Message, Theme = crate::Theme, Renderer = crate::Renderer>
 where
     Theme: StyleSheet,
     Renderer: renderer::Renderer,
 {
+    /// inner element of the clip
     content: Element<'a, Message, Theme, Renderer>,
+    /// link to the hexencer storage interface
     storage: &'a StorageInterface,
+    /// id of the clip, identifier in the storage
     clip_id: ClipId,
+    /// style of the clip
     style: Theme::Style,
+    /// is the clip hovered
     hovered: bool,
+    /// on drag event
     on_drag: Option<Box<dyn Fn(DragEvent) -> Message + 'a>>,
+    /// on drop event
     on_drop: Option<Box<dyn Fn(DragEvent) -> Message + 'a>>,
 }
 
@@ -36,6 +54,7 @@ where
     Theme: StyleSheet,
     Renderer: renderer::Renderer,
 {
+    /// creates a new clip widget
     pub fn new(
         clip_id: ClipId,
         storage: &'a StorageInterface,
@@ -53,6 +72,7 @@ where
         }
     }
 
+    /// bind an on drag event
     pub fn on_drag<F>(mut self, f: F) -> Self
     where
         F: 'a + Fn(DragEvent) -> Message,
@@ -60,6 +80,8 @@ where
         self.on_drag = Some(Box::new(f));
         self
     }
+
+    /// bind an on drop event
     pub fn on_drop<F>(mut self, f: F) -> Self
     where
         F: 'a + Fn(DragEvent) -> Message,
@@ -69,12 +91,22 @@ where
     }
 }
 
+/// The state of the [`Clip`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum State {
+    /// idle
     Idle,
+    /// pressed
     Pressed,
+    /// hovered
     Hovered,
-    Dragged { origin: Point, clip_id: ClipId },
+    /// dragged
+    Dragged {
+        /// origin of the drag
+        origin: Point,
+        /// id of the clip being dragged
+        clip_id: ClipId,
+    },
 }
 
 impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
@@ -109,8 +141,8 @@ where
 
     fn layout(
         &self,
-        tree: &mut iced::advanced::widget::Tree,
-        renderer: &Renderer,
+        _tree: &mut iced::advanced::widget::Tree,
+        _renderer: &Renderer,
         limits: &iced::advanced::layout::Limits,
     ) -> iced::advanced::layout::Node {
         let mut out_node =
@@ -135,11 +167,11 @@ where
         &self,
         tree: &Tree,
         renderer: &mut Renderer,
-        theme: &Theme,
-        style: &iced::advanced::renderer::Style,
+        _theme: &Theme,
+        _style: &iced::advanced::renderer::Style,
         layout: iced::advanced::Layout<'_>,
         cursor: iced::advanced::mouse::Cursor,
-        viewport: &iced::Rectangle,
+        _viewport: &iced::Rectangle,
     ) {
         let bounds = layout.bounds();
         let quad = Quad {
@@ -150,9 +182,9 @@ where
 
         let state = tree.state.downcast_ref::<State>();
         if let Ok(storage) = self.storage.read() {
-            if let Some(clip) = storage.project_manager.find_clip(self.clip_id) {
+            if let Some(_clip) = storage.project_manager.find_clip(self.clip_id) {
                 match state {
-                    State::Dragged { origin, clip_id } => {
+                    State::Dragged { origin, clip_id: _ } => {
                         if let Some(cursor_position) = cursor.position() {
                             let bounds = layout.bounds();
 
@@ -207,7 +239,7 @@ where
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 let state = tree.state.downcast_mut::<State>();
 
-                if let State::Dragged { origin, clip_id } = *state {
+                if let State::Dragged { .. } = *state {
                     let state = tree.state.downcast_mut::<State>();
                     if let Some(on_drop) = &self.on_drop {
                         shell.publish(on_drop(DragEvent::Dropped {
@@ -219,7 +251,9 @@ where
 
                 return event::Status::Captured;
             }
-            Event::Mouse(mouse::Event::CursorMoved { position }) => {
+            Event::Mouse(mouse::Event::CursorMoved {
+                position: _position,
+            }) => {
                 let state = tree.state.downcast_mut::<State>();
                 if let Some(cursor_position) = cursor.position_over(bounds) {
                     if *state == State::Pressed {
@@ -240,16 +274,23 @@ where
     }
 }
 
+/// The appearance of a [`Clip`].
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Appearance {
+    /// The background color of the [`Clip`].
     pub background_color: Color,
+    /// The border of the [`Clip`].
     pub border_radius: f32,
+    /// The border of the [`Clip`].
     pub color: Color,
 }
 
+/// stylesheet of the clip
 pub trait StyleSheet {
+    /// default style of the clip
     type Style: Default;
 
+    /// appearance of the clip
     fn appearance(&self, style: &Self::Style) -> Appearance;
 }
 

@@ -4,33 +4,45 @@ use iced::advanced::overlay::from_children;
 use iced::advanced::renderer::{self, Quad};
 use iced::advanced::widget::{self, Operation, Tree, Widget};
 use iced::advanced::{layout, Layout};
-use iced::widget::text;
-use iced::{
-    alignment, mouse, overlay, Alignment, Background, Event, Padding, Point, Shadow, Vector,
-};
+use iced::{alignment, mouse, overlay, Background, Event, Padding, Shadow, Vector};
 use iced::{Border, Color, Element, Length, Rectangle, Size};
 use tracing::info;
 
 /// The identifier of a [`Container`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Id(widget::Id);
+
+/// Represents a track widget.
 pub struct Track<'a, Message, Theme = crate::Theme, Renderer = crate::Renderer>
 where
     Theme: Catalog,
     Renderer: renderer::Renderer,
 {
+    /// The unique identifier for the track.
     id: Option<Id>,
+    /// The padding of the track.
     padding: Padding,
+    /// The width of the track.
     width: Length,
+    /// The height of the track.
     height: Length,
+    /// The maximum width of the track.
     max_width: f32,
+    /// The maximum height of the track.
     max_height: f32,
+    /// The horizontal alignment of the track.
     horizontal_alignment: alignment::Horizontal,
+    /// The vertical alignment of the track.
     vertical_alignment: alignment::Vertical,
+    /// The style of the track.
     style: Theme::Style,
+    /// Is the track hovered?
     hovered: bool,
+    /// The storage interface for the track.
     storage: &'a StorageInterface,
+    /// The index of the track.
     track_index: usize,
+    /// The children of the track.
     children: Vec<Element<'a, Message, Theme, Renderer>>,
 }
 
@@ -39,6 +51,7 @@ where
     Theme: Catalog,
     Renderer: renderer::Renderer,
 {
+    /// Creates a new [`Track`] widget.
     pub fn new(
         storage: &'s StorageInterface,
         track_index: usize,
@@ -62,8 +75,10 @@ where
     }
 }
 
+/// The state of a [`Track`].
 #[derive(Debug, Clone, Copy)]
 struct State {
+    /// Is the track currently being dragged?
     is_dragging: bool,
 }
 
@@ -236,12 +251,12 @@ where
     /// draws the track background    
     fn draw_background(
         &self,
-        storage: std::sync::RwLockReadGuard<hexencer_core::data::DataLayer>,
-        tree: &widget::Tree,
+        _storage: std::sync::RwLockReadGuard<hexencer_core::data::DataLayer>,
+        _tree: &widget::Tree,
         theme: &Theme,
         renderer: &mut Renderer,
         layout: Layout,
-        cursor: mouse::Cursor,
+        _cursor: mouse::Cursor,
     ) {
         let size = layout.bounds().size();
 
@@ -260,7 +275,7 @@ where
         let appearance = theme.appearance(&self.style);
 
         if self.hovered {
-            renderer.fill_quad(quad, Background::Color(appearance.background_hoovered));
+            renderer.fill_quad(quad, Background::Color(appearance.background_hovered));
         } else {
             renderer.fill_quad(
                 renderer::Quad {
@@ -296,7 +311,7 @@ pub struct Appearance {
     /// The [`Background`] of the button.
     pub clip_color: Color,
     /// The hovered color
-    pub background_hoovered: Color,
+    pub background_hovered: Color,
 }
 
 /// Theme catalog of a ['Track'].

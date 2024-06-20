@@ -1,3 +1,16 @@
+/// This module defines the style for the GUI components in the application.
+/// It provides style implementations for containers, text widgets, scrollables, tracks, clips, and buttons.
+/// The styles are defined based on the `Theme` struct, which contains the color palette for the application.
+/// Each GUI component has its own style enum, which defines different appearances for the component.
+/// The `StyleSheet` trait is implemented for each style enum, providing methods to customize the appearance of the component based on the current theme.
+/// The `Theme` struct implements the `application::StyleSheet` trait, which defines the overall appearance of the application.
+/// It sets the background color and text color based on the palette defined in the theme.
+/// The `container::StyleSheet`, `text::StyleSheet`, `scrollable::StyleSheet`, `track::Catalog`, and `clip::StyleSheet` traits are implemented for the `Theme` struct, providing methods to customize the appearance of containers, text widgets, scrollables, tracks, and clips respectively.
+/// The `button::StyleSheet` trait is also implemented for the `Theme` struct, providing methods to customize the appearance of buttons.
+/// Each style enum has variants that represent different appearances for the component.
+/// The `Default` variant is used as the default appearance for the component.
+/// The other variants define specific appearances based on the theme's color palette.
+/// The `appearance` method is implemented for each style enum, which returns the appearance of the component based on the current theme and style variant.
 use iced::{
     application,
     widget::{button, container, scrollable, text},
@@ -9,17 +22,23 @@ use crate::{
     widgets::{self, clip, track},
 };
 
+/// The appearance of a container.
 #[derive(Default, Debug, Clone, Copy)]
 pub enum Container {
+    /// The header container
     #[default]
     Header,
+    /// The sidebar container
     Sidebar,
+    /// The main content container
     Content,
+    /// The bottom container
     Bottom,
 }
-
+/// The appearance of of the application
 #[derive(Default, Debug, Clone, Copy)]
 pub enum Application {
+    /// The default appearance
     #[default]
     Default,
 }
@@ -57,13 +76,22 @@ impl container::StyleSheet for Theme {
     }
 }
 
+/// The appearance of a text widets
 #[derive(Default, Clone, Copy)]
 pub enum Text {
+    /// defalut text appearance
     #[default]
     Default,
+    /// ok menus
     Ok,
+    /// danger
     Danger,
+    /// for any commentary
     Commentary,
+    /// Represents a color.
+    ///
+    /// This struct is used to store and manipulate colors in the application.
+    /// It can be used to set the color of various UI elements.
     Color(Color),
 }
 
@@ -93,11 +121,12 @@ impl text::StyleSheet for Theme {
     }
 }
 
+/// The appearance of a scrollable widget.
 #[derive(Default, Debug, Clone, Copy)]
 pub enum Scrollable {
+    /// The default scrollable
     #[default]
-    Description,
-    Packages,
+    Default,
 }
 
 impl scrollable::StyleSheet for Theme {
@@ -123,8 +152,7 @@ impl scrollable::StyleSheet for Theme {
         };
 
         match style {
-            Scrollable::Description => from_appearance(Color::from_rgb(0.07, 0.51, 0.67)),
-            Scrollable::Packages => from_appearance(self.palette().base.foreground),
+            Scrollable::Default => from_appearance(Color::from_rgb(0.07, 0.51, 0.67)),
         }
     }
 
@@ -141,11 +169,12 @@ impl scrollable::StyleSheet for Theme {
     }
 }
 
+/// The appearance of a track widget.
 #[derive(Default, Debug, Clone, Copy)]
 pub enum Track {
+    /// The default track appearance
     #[default]
     Description,
-    Packages,
 }
 
 impl widgets::track::Catalog for Theme {
@@ -156,18 +185,24 @@ impl widgets::track::Catalog for Theme {
             background: Some(Background::Color(Color::from_rgb(0.04, 0.27, 0.47))),
             text_color: Color::WHITE,
             clip_color: Color::from_rgb(0.34, 0.87, 0.97),
-            background_hoovered: Color::from_rgb(0.07, 0.30, 0.50),
+            background_hovered: Color::from_rgb(0.07, 0.30, 0.50),
         }
     }
 }
 
+/// The appearance of a clip widget.
 #[derive(Default, Debug, Clone, Copy)]
 pub enum Clip {
+    /// Active Clip
     #[default]
     Active,
+    /// Inactive Clip
     Inactive,
+    /// when the clip is hovered
     Hovered,
+    /// when the clip is being dragged
     Dragging,
+    /// when the clip is selected
     Selected,
 }
 
@@ -205,17 +240,12 @@ impl clip::StyleSheet for Theme {
     }
 }
 
+/// The appearance of a button.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Button {
+    /// The primary button
     #[default]
-    Primary,
-    Unavailable,
-    SelfUpdate,
-    Refresh,
-    UninstallPackage,
-    RestorePackage,
-    NormalPackage,
-    SelectedPackage,
+    Default,
 }
 
 impl button::StyleSheet for Theme {
@@ -234,19 +264,7 @@ impl button::StyleSheet for Theme {
         };
 
         match style {
-            Button::Primary | Button::SelfUpdate | Button::Refresh => {
-                active_appearance(None, p.bright.primary)
-            }
-            Button::RestorePackage => active_appearance(None, p.bright.secondary),
-            Button::NormalPackage => button::Appearance {
-                background: Some(Background::Color(p.base.foreground)),
-                text_color: p.bright.surface,
-                ..appearance
-            },
-            Button::SelectedPackage => button::Appearance { ..appearance },
-            Button::Unavailable | Button::UninstallPackage => {
-                active_appearance(None, p.bright.error)
-            }
+            Button::Default => active_appearance(None, p.bright.primary),
         }
     }
 
@@ -261,15 +279,7 @@ impl button::StyleSheet for Theme {
         };
 
         match style {
-            Button::Primary | Button::SelfUpdate | Button::Refresh => {
-                hover_appearance(p.bright.primary, None)
-            }
-            Button::NormalPackage => hover_appearance(p.normal.primary, Some(p.bright.surface)),
-            Button::SelectedPackage => hover_appearance(p.normal.primary, None),
-            Button::RestorePackage => hover_appearance(p.bright.secondary, None),
-            Button::Unavailable | Button::UninstallPackage => {
-                hover_appearance(p.bright.error, None)
-            }
+            Button::Default => hover_appearance(p.bright.primary, None),
         }
     }
 
@@ -291,10 +301,7 @@ impl button::StyleSheet for Theme {
         };
 
         match style {
-            Button::RestorePackage => disabled_appearance(p.normal.primary, Some(p.bright.primary)),
-            Button::UninstallPackage => disabled_appearance(p.bright.error, None),
-            Button::Primary => disabled_appearance(p.bright.primary, Some(p.bright.primary)),
-            _ => active,
+            Button::Default => disabled_appearance(p.bright.primary, Some(p.bright.primary)),
         }
     }
 }
