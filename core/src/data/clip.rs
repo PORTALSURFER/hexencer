@@ -1,7 +1,7 @@
 use std::{
     collections::{
-        hash_map::{IntoIter, Iter},
-        HashMap,
+        btree_map::{IntoIter, Iter},
+        BTreeMap,
     },
     fmt::Display,
     ops::Deref,
@@ -14,33 +14,115 @@ use super::{
 };
 use crate::{event::EventType, Tick};
 
+/// key type used in clip collections
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub struct ClipKey {
+    /// start tick of the clip
+    pub start: Tick,
+    /// id of the clip
+    pub id: ClipId,
+}
+
+impl From<&Clip> for ClipKey {
+    fn from(value: &Clip) -> Self {
+        Self {
+            start: value.start,
+            id: value.id,
+        }
+    }
+}
+
 /// a collection of clips, used on tracks
 #[derive(Default, Debug)]
 pub struct ClipCollection {
     /// inner object housing the clips
-    inner: HashMap<ClipId, Clip>,
+    inner: BTreeMap<ClipKey, Clip>,
 }
 
 impl ClipCollection {
     /// interst a new clip to the collection
-    pub fn insert(&mut self, clip: Clip) {
-        self.inner.insert(clip.id(), clip);
+    pub fn insert(&mut self, new_clip: Clip) {
+        //TODO figure out what is happening here
+
+        // calculate end tick of the new clip
+        let new_end = new_clip.start + new_clip.duration;
+
+        // create a new clip key from the new clip
+        let overlapped_clip_key = ClipKey::from(&new_clip);
+
+        let new_clip_key = ClipKey::from(&new_clip);
+        let end_clip_key = ClipKey {
+            start: new_clip_key.start + new_clip.duration,
+            id: new_clip.id(),
+        };
+
+        //get inner clip
+        let inner_clip: Vec<_> = self
+            .inner
+            .range(new_clip_key..=end_clip_key)
+            .map(|(&k, v)| (k, v.clone()))
+            .collect();
+        println!("inner clip {:?}", inner_clip);
+        for (key, clip) in inner_clip {
+            if clip.start > new_clip.start && clip.end() < new_clip.end() {
+                self.inner.remove(&key);
+            }
+        }
+
+        // get the overlapping clip
+        let overlapping: Vec<_> = self
+            .inner
+            .range(..=overlapped_clip_key)
+            .filter(|(_, clip)| clip.start + clip.duration > new_clip.start)
+            .map(|(&k, v)| (k, v.clone()))
+            .collect();
+
+        for (start, mut overlap_clip) in overlapping {
+            if overlap_clip.start < new_clip.start {
+                // Split the beginning part
+                let left_duration = new_clip.start - overlap_clip.start;
+                let mut left_clip = overlap_clip.clone();
+                left_clip.id = ClipId::new();
+                left_clip.duration = left_duration;
+                self.inner.insert(ClipKey::from(&left_clip), left_clip);
+
+                overlap_clip.start = new_clip.start;
+                overlap_clip.duration -= left_duration;
+            }
+            if overlap_clip.start + overlap_clip.duration > new_end {
+                // Split the end part
+                let right_start = new_end;
+                let right_duration = overlap_clip.start + overlap_clip.duration - new_end;
+                let mut right_clip = overlap_clip.clone();
+                right_clip.id = ClipId::new();
+                right_clip.start = right_start;
+                right_clip.duration = right_duration;
+                self.inner.insert(ClipKey::from(&right_clip), right_clip);
+                overlap_clip.duration = new_end - overlap_clip.start;
+            }
+
+            // Remove the original clip
+            self.inner.remove(&start);
+        }
+
+        // Insert the new clip
+        self.inner.insert(ClipKey::from(&new_clip), new_clip);
     }
 
     /// returns an iterator over the clips in this collection
-    pub fn iter(&self) -> Iter<'_, ClipId, Clip> {
+    pub fn iter(&self) -> Iter<'_, ClipKey, Clip> {
         self.inner.iter()
     }
 
     /// returns an iterator over the clips in this collection
-    pub fn into_iter(self) -> IntoIter<ClipId, Clip> {
+    pub fn into_iter(self) -> IntoIter<ClipKey, Clip> {
         self.inner.into_iter()
     }
 
     /// creates a new, empty, 'ClipCollection'
     pub fn new() -> ClipCollection {
         ClipCollection {
-            inner: HashMap::new(),
+            inner: BTreeMap::new(),
         }
     }
 
@@ -59,7 +141,7 @@ impl ClipCollection {
 }
 
 impl Deref for ClipCollection {
-    type Target = HashMap<ClipId, Clip>;
+    type Target = BTreeMap<ClipKey, Clip>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -67,8 +149,8 @@ impl Deref for ClipCollection {
 }
 
 impl<'a> IntoIterator for &'a ClipCollection {
-    type Item = (&'a ClipId, &'a Clip);
-    type IntoIter = Iter<'a, ClipId, Clip>;
+    type Item = (&'a ClipKey, &'a Clip);
+    type IntoIter = Iter<'a, ClipKey, Clip>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.iter()
@@ -76,9 +158,9 @@ impl<'a> IntoIterator for &'a ClipCollection {
 }
 
 impl IntoIterator for ClipCollection {
-    type Item = (ClipId, Clip);
+    type Item = (ClipKey, Clip);
 
-    type IntoIter = IntoIter<ClipId, Clip>;
+    type IntoIter = IntoIter<ClipKey, Clip>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.into_iter()
@@ -98,14 +180,12 @@ pub struct Clip {
     /// notes in this clip
     pub events: EventCollection,
     /// length of the clip
-    pub length: Tick,
-    /// tick at which the clip ends
-    pub end: Tick,
+    pub duration: Tick,
 }
 
 impl Clip {
     /// Create a new clip
-    pub fn new(start: Tick, name: &str, length: Tick) -> Self {
+    pub fn new(start: Tick, name: &str, duration: Tick) -> Self {
         let mut test_events = EventCollection::new();
 
         let event1 = EventSegment::new(
@@ -147,16 +227,8 @@ impl Clip {
             id: ClipId::new(),
             name: Box::new(String::from(name)),
             events: test_events,
-            length,
-            end: start + length,
+            duration,
         }
-
-        // Self {
-        //     id: ClipId::new(),
-        //     name: String::from(name),
-        //     events: EventList::new(),
-        //     end: 1920,
-        // }
     }
     /// get this clip's id as a string
     pub fn id_as_string(&self) -> String {
@@ -167,10 +239,15 @@ impl Clip {
     pub fn id(&self) -> ClipId {
         self.id
     }
+
+    /// get the end tick of the clip
+    pub fn end(&self) -> Tick {
+        self.start + self.duration
+    }
 }
 
 /// data identifier of a clip
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ClipId(DataId);
 
 impl Deref for ClipId {
@@ -197,86 +274,6 @@ impl ClipId {
 impl PartialEq<ClipId> for &ClipId {
     fn eq(&self, other: &ClipId) -> bool {
         self.0 == other.0
-    }
-}
-
-/// Note of the track interval tree housing clips
-struct Node {
-    /// clip in this node
-    clip: Clip,
-    /// maximum end time of the clips in this node
-    max_end: u32,
-    /// left child node
-    left: Option<Box<Node>>,
-    /// right child node
-    right: Option<Box<Node>>,
-}
-
-/// Interval tree for track clips
-struct IntervalTree {
-    /// root node of the tree
-    root: Option<Box<Node>>,
-}
-
-impl IntervalTree {
-    /// Create a new interval tree
-    fn new() -> Self {
-        IntervalTree { root: None }
-    }
-
-    /// Insert a clip into the tree
-    fn insert(&mut self, clip: Clip) {
-        self.root = Self::insert_rec(self.root.take(), clip);
-    }
-
-    /// Recursive insert function
-    fn insert_rec(node: Option<Box<Node>>, clip: Clip) -> Option<Box<Node>> {
-        if let Some(mut current_node) = node {
-            if clip.start < current_node.clip.start {
-                current_node.left = Self::insert_rec(current_node.left.take(), clip.clone());
-            } else {
-                current_node.right = Self::insert_rec(current_node.right.take(), clip.clone());
-            }
-            current_node.max_end = std::cmp::max(current_node.max_end, clip.clone().end.as_u32());
-            Some(current_node)
-        } else {
-            Some(Box::new(Node {
-                clip: clip.clone(),
-                max_end: clip.clone().end.as_u32(),
-                left: None,
-                right: None,
-            }))
-        }
-    }
-
-    /// Split a clip at a specific point
-    fn split(&mut self, split_point: u32) {
-        self.root = Self::split_rec(self.root.take(), Tick::from(split_point));
-    }
-
-    /// Recursive split function
-    fn split_rec(node: Option<Box<Node>>, split_point: Tick) -> Option<Box<Node>> {
-        if let Some(mut current_node) = node {
-            if split_point > current_node.clip.start && split_point < current_node.clip.end {
-                let original_end = current_node.clip.end;
-                current_node.clip.end = split_point;
-
-                let new_clip = Clip {
-                    start: split_point,
-                    end: original_end,
-                    ..Default::default()
-                };
-
-                current_node.right = Self::insert_rec(current_node.right.take(), new_clip);
-            } else if split_point <= current_node.clip.start {
-                current_node.left = Self::split_rec(current_node.left.take(), split_point);
-            } else {
-                current_node.right = Self::split_rec(current_node.right.take(), split_point);
-            }
-            Some(current_node)
-        } else {
-            None
-        }
     }
 }
 
