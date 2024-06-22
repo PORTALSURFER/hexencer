@@ -7,6 +7,8 @@ use std::{
     ops::Deref,
 };
 
+use tracing::info;
+
 use super::{
     common::DataId,
     event_list::{EventCollection, EventSegment},
@@ -40,44 +42,21 @@ pub struct ClipCollection {
 }
 
 impl ClipCollection {
-    /// interst a new clip to the collection
+    /// insert a new clip to the collection
     pub fn insert(&mut self, new_clip: Clip) {
-        //TODO figure out what is happening here
-
-        // calculate end tick of the new clip
-        let new_end = new_clip.start + new_clip.duration;
-
         // create a new clip key from the new clip
         let overlapped_clip_key = ClipKey::from(&new_clip);
 
-        let new_clip_key = ClipKey::from(&new_clip);
-        let end_clip_key = ClipKey {
-            start: new_clip_key.start + new_clip.duration,
-            id: new_clip.id(),
-        };
+        let inner_clip = self.get_overlapped_inner(&new_clip);
 
-        //get inner clip
-        let inner_clip: Vec<_> = self
-            .inner
-            .range(new_clip_key..=end_clip_key)
-            .map(|(&k, v)| (k, v.clone()))
-            .collect();
-        println!("inner clip {:?}", inner_clip);
         for (key, clip) in inner_clip {
-            if clip.start > new_clip.start && clip.end() < new_clip.end() {
-                self.inner.remove(&key);
-            }
+            self.remove_overlapped(&clip, &new_clip, key);
+            self.split_right_clip(clip, &new_clip, key);
         }
 
-        // get the overlapping clip
-        let overlapping: Vec<_> = self
-            .inner
-            .range(..=overlapped_clip_key)
-            .filter(|(_, clip)| clip.start + clip.duration > new_clip.start)
-            .map(|(&k, v)| (k, v.clone()))
-            .collect();
+        let overlapped_outer = self.get_overlapped_outer(overlapped_clip_key, &new_clip);
 
-        for (start, mut overlap_clip) in overlapping {
+        for (overlap_clip_key, mut overlap_clip) in overlapped_outer {
             if overlap_clip.start < new_clip.start {
                 // Split the beginning part
                 let left_duration = new_clip.start - overlap_clip.start;
@@ -89,24 +68,81 @@ impl ClipCollection {
                 overlap_clip.start = new_clip.start;
                 overlap_clip.duration -= left_duration;
             }
-            if overlap_clip.start + overlap_clip.duration > new_end {
+            if overlap_clip.start + overlap_clip.duration > new_clip.end() {
                 // Split the end part
-                let right_start = new_end;
-                let right_duration = overlap_clip.start + overlap_clip.duration - new_end;
+                let right_start = new_clip.end();
+                let right_duration = overlap_clip.start + overlap_clip.duration - new_clip.end();
                 let mut right_clip = overlap_clip.clone();
                 right_clip.id = ClipId::new();
                 right_clip.start = right_start;
                 right_clip.duration = right_duration;
                 self.inner.insert(ClipKey::from(&right_clip), right_clip);
-                overlap_clip.duration = new_end - overlap_clip.start;
+                overlap_clip.duration = new_clip.end() - overlap_clip.start;
             }
 
             // Remove the original clip
-            self.inner.remove(&start);
+            self.inner.remove(&overlap_clip_key);
         }
 
         // Insert the new clip
         self.inner.insert(ClipKey::from(&new_clip), new_clip);
+    }
+
+    /// get overlapping clips surrounding the sample
+    fn get_overlapped_outer(
+        &mut self,
+        overlapped_clip_key: ClipKey,
+        sample: &Clip,
+    ) -> Vec<(ClipKey, Clip)> {
+        // get the overlapping clip
+        let overlapping: Vec<_> = self
+            .inner
+            .range(..=overlapped_clip_key)
+            .filter(|(_, clip)| clip.start + clip.duration > sample.start)
+            .map(|(&k, v)| (k, v.clone()))
+            .collect();
+        overlapping
+    }
+
+    fn split_right_clip(&mut self, mut clip: Clip, new_clip: &Clip, key: ClipKey) {
+        // handle partial overlapped clip on the right side
+        if clip.start > new_clip.start && clip.end() > new_clip.end() {
+            // cut the clip on the left side
+            // clip.start = new_clip.end();
+            info!("new_clip.end() {}", new_clip.end());
+            info!("clip.start {}", clip.start);
+            let test = new_clip.end() - clip.start;
+            info!("test {}", test);
+            clip.duration -= test;
+            clip.start = new_clip.end();
+            // clip.duration = new_clip.end() - clip.start;
+            self.inner.remove(&key);
+            self.insert(clip);
+        }
+    }
+
+    fn remove_overlapped(&mut self, clip: &Clip, new_clip: &Clip, key: ClipKey) {
+        // handle full overlap
+        if clip.start > new_clip.start && clip.end() < new_clip.end() {
+            self.inner.remove(&key);
+        }
+    }
+
+    /// founds clips which find themselves inside of the sample
+    fn get_overlapped_inner(&mut self, sample: &Clip) -> Vec<(ClipKey, Clip)> {
+        let new_clip_key = ClipKey::from(sample);
+        let end_clip_key = ClipKey {
+            start: new_clip_key.start + sample.duration,
+            id: sample.id(),
+        };
+
+        // handle partial and full overlapping
+        let inner_clip: Vec<_> = self
+            .inner
+            .range(new_clip_key..=end_clip_key)
+            .map(|(&k, v)| (k, v.clone()))
+            .collect();
+        inner_clip
     }
 
     /// returns an iterator over the clips in this collection
@@ -278,4 +314,15 @@ impl PartialEq<ClipId> for &ClipId {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+
+    #[test]
+    fn create_clipkey_from_clip() {
+        let clip = Clip::new(Tick::from(999), "test_clip", Tick::from(2000));
+        let clip_key = ClipKey::from(&clip);
+
+        assert_eq!(clip_key.start, Tick::from(999));
+        assert_eq!(clip_key.id, clip.id);
+    }
+}

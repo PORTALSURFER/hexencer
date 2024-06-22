@@ -185,7 +185,7 @@ impl iced::Application for Hexencer {
             let clips = &track.clips;
             let mut clip_elements = Vec::new();
 
-            for (clip_id, clip) in clips.iter() {
+            for (clip_id, _clip) in clips.iter() {
                 let clip_key = clip_id.clone();
                 let clip_element = Clip::new(
                     clip_key.id,

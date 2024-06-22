@@ -22,3 +22,4 @@ thiserror = {workspace=true}
 ## internal libs
 hexencer-core={path="../core"}
 hexencer-engine={path="../engine"}
+mockall = "0.12.1"
