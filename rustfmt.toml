@@ -1,9 +1,1 @@
-max_width = 90
-reorder_imports = true
-format_strings = true
-imports_granularity = "Module"
-remove_nested_parens = true
-reorder_impl_items = true
-reorder_modules = true
-report_todo = "Unnumbered"
-use_field_init_shorthand = true;
+

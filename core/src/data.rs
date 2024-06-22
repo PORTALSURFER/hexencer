@@ -69,7 +69,7 @@ pub enum DataLayerError {
 }
 
 /// object which holds all the persistent data objects used by the application
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct DataLayer {
     /// interface for loading and storing projects
     pub project_manager: Project,
@@ -77,11 +77,38 @@ pub struct DataLayer {
     pub editor_state: EditorState,
     /// current tick passed to data layer to give the gui access to it, originally in the sequencer
     tick: Tick,
+    /// bpm of the project
+    bpm: f64,
+}
+
+impl Default for DataLayer {
+    fn default() -> Self {
+        Self {
+            bpm: 120.0,
+            project_manager: Project::default(),
+            editor_state: EditorState::default(),
+            tick: Tick::default(),
+        }
+    }
 }
 
 impl DataLayer {
+    /// get the bpm of the project
+    pub fn bpm(&self) -> f64 {
+        self.bpm
+    }
+
+    /// get the bpm of the project as a string
+    pub fn bpm_str(&self) -> String {
+        self.bpm.to_string()
+    }
+
     /// add a new clip to the track specified by 'track_id'
-    pub fn add_clip(&mut self, track_id: TrackId, clip: Clip) -> Result<(), DataLayerError> {
+    pub fn add_clip(
+        &mut self,
+        track_id: TrackId,
+        clip: Clip,
+    ) -> Result<(), DataLayerError> {
         if let Some(track) = self.project_manager.tracks.get_mut(track_id) {
             track.add_clip(clip);
         } else {
@@ -126,6 +153,7 @@ impl DataLayer {
             project_manager,
             editor_state: EditorState::default(),
             tick: Tick::zero(),
+            bpm: 160.66,
         }
     }
 }
