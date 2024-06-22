@@ -185,8 +185,7 @@ where
         if let Some(cursor_position) = cursor.position_in(bounds) {
             if let Some(on_drop) = &self.on_drop {
                 if let Some(clip_id) = self.dropped_clip {
-                    info!("dropped - {}", clip_id);
-                    println!("track release");
+                    info!("clip {} was dropped on {:?}", clip_id, self.track_id);
                     self.dropped_clip = None;
 
                     let pos = bounds.position();

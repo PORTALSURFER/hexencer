@@ -45,11 +45,15 @@ pub struct Sequencer {
 
 impl Sequencer {
     /// creates a new 'Sequencer'
-    pub fn new(data_layer: StorageInterface, midi_engine_sender: MidiEngineSender) -> Self {
+    pub fn new(
+        data_layer: StorageInterface,
+        midi_engine_sender: MidiEngineSender,
+    ) -> Self {
+        let bpm = data_layer.read().unwrap().bpm();
         Self {
             data: data_layer,
             midi_engine_sender: Some(midi_engine_sender),
-            bpm: 150.0,
+            bpm,
             ppqn: 480,
             current_tick: Tick::zero(),
             running: Arc::new(Mutex::new(false)),
@@ -64,7 +68,7 @@ impl Sequencer {
     }
 
     /// starts listening for and processing commands
-    pub async fn listen(mut self, mut command_receiver: SequencerReceiver) -> ! {
+    pub async fn listen(mut self, mut command_receiver: SequencerReceiver) {
         tracing::info!("sequencer listening for commands");
         let mut interval = time::interval(Duration::from_micros(self.tick_duration()));
         loop {
@@ -121,7 +125,7 @@ impl Sequencer {
         // TODO fix this to load from clips instead
 
         // for track in tracks.iter() {
-        //     if let Some(event_entry) = track.event_list.get(&self.current_tick) {
+        //     if let Some(event_entry) = track.event_ooolist.get(&self.current_tick) {
         //         for event in event_entry.iter() {
         //             let event_type = event.event_type;
         //             tracing::info!("{} - {}", track, event_type);
