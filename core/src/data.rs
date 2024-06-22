@@ -59,6 +59,7 @@ impl StorageInterface {
         }
     }
 }
+
 /// error type for data_layer
 #[derive(Error, Debug)]
 pub enum DataLayerError {
@@ -163,6 +164,7 @@ mod tests {
 
         {
             let clips = data.project_manager.tracks.get_clips(0).unwrap();
+            assert_eq!(clips.len(), 0);
         }
 
         let clip = Clip::new(0.into(), "test", 120.into());
@@ -170,15 +172,25 @@ mod tests {
 
         {
             let clips = data.project_manager.tracks.get_clips(0).unwrap();
+            assert_eq!(clips.len(), 1);
         }
     }
 
     #[test]
-    fn sets_and_gets_tick() {
+    fn can_set_tick() {
         let mut data = DataLayer::default();
         data.set_tick(Tick::from(100));
         assert_eq!(data.get_tick(), Tick::from(100));
         data.set_tick(Tick::from(999));
         assert_eq!(data.get_tick(), Tick::from(999));
+    }
+
+    #[test]
+    fn deref_should_return_inner() {
+        let storage = StorageInterface::new();
+        assert_eq!(
+            storage.inner.read().unwrap().tick,
+            storage.read().unwrap().tick
+        );
     }
 }

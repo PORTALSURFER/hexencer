@@ -3,14 +3,13 @@ use hexencer_core::data::{ClipId, StorageInterface};
 use iced::{
     advanced::{
         graphics::core::event,
-        layout,
-        mouse,
+        layout, mouse,
         renderer::{self, Quad},
         widget::tree::{self, Tree},
         Widget,
-    }, border::Radius, Background, Border, Color, Element, Event, Length, Point, Rectangle, Shadow, Size
+    },
+    Background, Border, Color, Element, Event, Length, Point, Rectangle, Shadow, Size,
 };
-use tracing::info;
 
 /// drag events
 #[derive(Debug, Clone, Copy)]
@@ -177,7 +176,7 @@ where
         let bounds = layout.bounds();
         let quad = Quad {
             bounds,
-            border: Border{
+            border: Border {
                 color: Color::from_rgb(0.0, 0.0, 0.0),
                 width: 1.0,
                 radius: 2.into(),
@@ -185,8 +184,6 @@ where
             shadow: Shadow::default(),
         };
 
-        
-            
         let state = tree.state.downcast_ref::<State>();
         if let Ok(storage) = self.storage.read() {
             if let Some(_clip) = storage.project_manager.find_clip(self.clip_id) {
@@ -222,10 +219,7 @@ where
             }
         }
 
-        renderer.with_layer(bounds, |renderer| {
-            
-        });
-        
+        renderer.with_layer(bounds, |_renderer| {});
     }
 
     fn on_event(
@@ -252,9 +246,7 @@ where
                 let state = tree.state.downcast_mut::<State>();
                 if let State::Dragged { .. } = *state {
                     if let Some(on_drop) = &self.on_drop {
-                        if let Some(cursor_position) = cursor.position() {
-                            let relative_mouse = cursor_position.x - bounds.position().x;
-                            let tick = cursor_position.x - relative_mouse;
+                        if let Some(_cursor_position) = cursor.position() {
                             shell.publish(on_drop(DragEvent::Dropped {
                                 clip_id: self.clip_id,
                             }));
@@ -270,7 +262,6 @@ where
                 let state = tree.state.downcast_mut::<State>();
                 if let Some(cursor_position) = cursor.position_over(bounds) {
                     let relative_mouse = cursor_position.x - bounds.position().x;
-                    let tick = cursor_position.x - relative_mouse;
                     if *state == State::Pressed {
                         *state = State::Dragged {
                             origin: cursor_position,
