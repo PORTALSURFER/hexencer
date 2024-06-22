@@ -50,6 +50,14 @@ impl EventCollection {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Tick, &mut Vec<EventSegment>)> {
         self.0.iter_mut()
     }
+
+    // pub(crate) fn split_off(&self, left_duration: _) -> EventCollection {
+    //     todo!()
+    // }
+
+    // pub(crate) fn partition_point(&self, left_duration: impl Fn(_) -> bool) {
+    //     todo!()
+    // }
 }
 
 #[derive(Debug, Clone, Copy)]

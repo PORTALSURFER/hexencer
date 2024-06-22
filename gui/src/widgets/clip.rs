@@ -3,13 +3,12 @@ use hexencer_core::data::{ClipId, StorageInterface};
 use iced::{
     advanced::{
         graphics::core::event,
-        layout::{self},
+        layout,
         mouse,
         renderer::{self, Quad},
         widget::tree::{self, Tree},
         Widget,
-    },
-    Background, Border, Color, Element, Event, Length, Point, Rectangle, Shadow, Size,
+    }, border::Radius, Background, Border, Color, Element, Event, Length, Point, Rectangle, Shadow, Size
 };
 use tracing::info;
 
@@ -154,12 +153,10 @@ where
         // todo: move to outside of the function when reading the clip, just store in the clip struct on creation
         if let Ok(storage) = self.storage.read() {
             if let Some(clip) = storage.project_manager.find_clip(self.clip_id) {
-                let width = Length::Fixed(clip.length.as_f32());
+                let width = Length::Fixed(clip.duration.as_f32());
                 let height = Length::Fixed(18.0);
-
                 let size = limits.resolve(width, height, Size::ZERO);
                 let node = layout::Node::new(size);
-
                 let position = Point::new(clip.start.as_f32(), 0.0);
                 out_node = node.move_to(position);
             }
@@ -180,10 +177,16 @@ where
         let bounds = layout.bounds();
         let quad = Quad {
             bounds,
-            border: Border::default(),
+            border: Border{
+                color: Color::from_rgb(0.0, 0.0, 0.0),
+                width: 1.0,
+                radius: 2.into(),
+            },
             shadow: Shadow::default(),
         };
 
+        
+            
         let state = tree.state.downcast_ref::<State>();
         if let Ok(storage) = self.storage.read() {
             if let Some(_clip) = storage.project_manager.find_clip(self.clip_id) {
@@ -218,6 +221,11 @@ where
                 }
             }
         }
+
+        renderer.with_layer(bounds, |renderer| {
+            
+        });
+        
     }
 
     fn on_event(
@@ -247,8 +255,6 @@ where
                         if let Some(cursor_position) = cursor.position() {
                             let relative_mouse = cursor_position.x - bounds.position().x;
                             let tick = cursor_position.x - relative_mouse;
-                            println!("drop {}", relative_mouse);
-                            println!("drop {}", tick);
                             shell.publish(on_drop(DragEvent::Dropped {
                                 clip_id: self.clip_id,
                             }));
@@ -261,13 +267,10 @@ where
             Event::Mouse(mouse::Event::CursorMoved {
                 position: _position,
             }) => {
-                info!("cursor moved, {:?}", cursor.position());
                 let state = tree.state.downcast_mut::<State>();
                 if let Some(cursor_position) = cursor.position_over(bounds) {
                     let relative_mouse = cursor_position.x - bounds.position().x;
                     let tick = cursor_position.x - relative_mouse;
-                    println!("grab {}", relative_mouse);
-                    println!("grab {}", tick);
                     if *state == State::Pressed {
                         *state = State::Dragged {
                             origin: cursor_position,

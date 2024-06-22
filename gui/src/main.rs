@@ -185,10 +185,10 @@ impl iced::Application for Hexencer {
             let clips = &track.clips;
             let mut clip_elements = Vec::new();
 
-            for (clip_id, _clip) in clips {
-                let clip_id = *clip_id;
+            for (clip_id, clip) in clips.iter() {
+                let clip_key = clip_id.clone();
                 let clip_element = Clip::new(
-                    clip_id,
+                    clip_key.id,
                     &self.storage,
                     text("drag drop system in place...yay"),
                 )
@@ -198,9 +198,14 @@ impl iced::Application for Hexencer {
                         println!("start drag at {:?}", grab_position);
                         origin = grab_position;
                     }
-                    Message::DragClip { clip_id, origin }
+                    Message::DragClip {
+                        clip_id: clip_key.id,
+                        origin,
+                    }
                 })
-                .on_drop(move |_| Message::DroppedClip { clip_id });
+                .on_drop(move |_| Message::DroppedClip {
+                    clip_id: clip_key.id,
+                });
                 clip_elements.push(clip_element.into());
             }
             let track_id = track.id;

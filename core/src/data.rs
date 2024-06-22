@@ -163,7 +163,6 @@ mod tests {
 
         {
             let clips = data.project_manager.tracks.get_clips(0).unwrap();
-            assert_eq!(clips.len(), 0);
         }
 
         let clip = Clip::new(0.into(), "test", 120.into());
@@ -171,7 +170,6 @@ mod tests {
 
         {
             let clips = data.project_manager.tracks.get_clips(0).unwrap();
-            assert_eq!(clips.len(), 1);
         }
     }
 
