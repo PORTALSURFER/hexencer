@@ -5,14 +5,22 @@
 
 mod widget;
 
+use std::time::Instant;
+
 use hexencer_core::data::{ClipId, StorageInterface};
 use hexencer_core::{Tick, TrackId};
-use iced::widget::horizontal_space;
+use iced::advanced::graphics::{color, geometry};
+use iced::advanced::widget::Tree;
+use iced::advanced::{layout, mouse, renderer, Layout, Widget};
+use iced::widget::canvas::{stroke, Path, Program, Stroke};
+use iced::widget::{canvas, horizontal_space};
 use iced::widget::{center, text};
 use iced::widget::{column, container, row, scrollable};
-use iced::Alignment;
-use iced::Font;
+use iced::{
+    color, window, Alignment, Color, Point, Renderer, Size, Subscription, Transformation, Vector,
+};
 use iced::{Element, Length, Theme};
+use iced::{Font, Rectangle};
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 use widget::{Clip, DragEvent, Track};
@@ -23,6 +31,7 @@ fn main() {
     iced::application("Hexencer", Hexencer::update, Hexencer::view)
         .theme(Hexencer::theme)
         .font(include_bytes!("../../assets/fonts/5squared-pixel.ttf"))
+        .subscription(Hexencer::subscription)
         .default_font(Font::with_name("5squared pixel"))
         .run();
 }
@@ -35,6 +44,144 @@ pub fn init_logger() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
     tracing::info!("hexencer started");
+}
+
+/// test for sequencer line widget
+pub struct SequencerLine {
+    width: f32,
+    height: f32,
+}
+
+impl<Message> Widget<Message, Theme, Renderer> for SequencerLine {
+    fn size(&self) -> Size<Length> {
+        Size {
+            width: Length::Fixed(50.0),
+            height: Length::Fixed(50.0),
+        }
+    }
+
+    fn layout(
+        &self,
+        _tree: &mut Tree,
+        _renderer: &Renderer,
+        limits: &layout::Limits,
+    ) -> layout::Node {
+        let size = limits.resolve(self.width, self.height, Size::ZERO);
+
+        layout::Node::new(size)
+    }
+
+    fn draw(
+        &self,
+        _tree: &Tree,
+        renderer: &mut Renderer,
+        _theme: &Theme,
+        _style: &renderer::Style,
+        layout: Layout<'_>,
+        cursor: mouse::Cursor,
+        _viewport: &Rectangle,
+    ) {
+        use iced::advanced::graphics::geometry::Renderer as _;
+        use iced::advanced::graphics::geometry::{Path, Stroke};
+        use iced::advanced::graphics::mesh::{self, Mesh, Renderer as _, SolidVertex2D};
+        use iced::advanced::Renderer as _;
+
+        let bounds = layout.bounds();
+
+        // R O Y G B I V
+        let color_r = [1.0, 0.0, 0.0, 1.0];
+        let color_o = [1.0, 0.5, 0.0, 1.0];
+        let color_y = [1.0, 1.0, 0.0, 1.0];
+        let color_g = [0.0, 1.0, 0.0, 1.0];
+        let color_gb = [0.0, 1.0, 0.5, 1.0];
+        let color_b = [0.0, 0.2, 1.0, 1.0];
+        let color_i = [0.5, 0.0, 1.0, 1.0];
+        let color_v = [0.75, 0.0, 0.5, 1.0];
+
+        let posn_center = {
+            if let Some(cursor_position) = cursor.position_in(bounds) {
+                [cursor_position.x, cursor_position.y]
+            } else {
+                [bounds.width / 2.0, bounds.height / 2.0]
+            }
+        };
+
+        let posn_tl = [0.0, 0.0];
+        let posn_t = [bounds.width / 2.0, 0.0];
+        let posn_tr = [bounds.width, 0.0];
+        let posn_r = [bounds.width, bounds.height / 2.0];
+        let posn_br = [bounds.width, bounds.height];
+        let posn_b = [(bounds.width / 2.0), bounds.height];
+        let posn_bl = [0.0, bounds.height];
+        let posn_l = [0.0, bounds.height / 2.0];
+
+        let mesh = Mesh::Solid {
+            buffers: mesh::Indexed {
+                vertices: vec![
+                    SolidVertex2D {
+                        position: posn_center,
+                        color: color::pack([1.0, 1.0, 1.0, 1.0]),
+                    },
+                    SolidVertex2D {
+                        position: posn_tl,
+                        color: color::pack(color_r),
+                    },
+                    SolidVertex2D {
+                        position: posn_t,
+                        color: color::pack(color_o),
+                    },
+                    SolidVertex2D {
+                        position: posn_tr,
+                        color: color::pack(color_y),
+                    },
+                    SolidVertex2D {
+                        position: posn_r,
+                        color: color::pack(color_g),
+                    },
+                    SolidVertex2D {
+                        position: posn_br,
+                        color: color::pack(color_gb),
+                    },
+                    SolidVertex2D {
+                        position: posn_b,
+                        color: color::pack(color_b),
+                    },
+                    SolidVertex2D {
+                        position: posn_bl,
+                        color: color::pack(color_i),
+                    },
+                    SolidVertex2D {
+                        position: posn_l,
+                        color: color::pack(color_v),
+                    },
+                ],
+                indices: vec![
+                    0, 1, 2, // TL
+                    0, 2, 3, // T
+                    0, 3, 4, // TR
+                    0, 4, 5, // R
+                    0, 5, 6, // BR
+                    0, 6, 7, // B
+                    0, 7, 8, // BL
+                    0, 8, 1, // L
+                ],
+            },
+            transformation: Transformation::IDENTITY,
+            clip_bounds: Rectangle::INFINITE,
+        };
+        let a = Point::new(0.0, 0.0);
+        let b = Point::new(200.0, 200.0);
+        let path = Path::line(a, b);
+
+        renderer.with_translation(Vector::new(bounds.x, bounds.y), |renderer| {
+            renderer.draw_mesh(mesh);
+        });
+    }
+}
+impl<'a, Message> From<SequencerLine> for Element<'a, Message> {
+    fn from(line: SequencerLine) -> Self {
+        Self::new(line)
+    }
 }
 
 /// Message enum for the application
@@ -63,14 +210,77 @@ pub enum Message {
         /// tick where the clip should be placed
         cursor_position: f32,
     },
+
+    /// tick message for updating the system
+    Tick(Instant),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct Hexencer {
     theme: Theme,
     storage: StorageInterface,
     dropped_clip: Option<ClipId>, // TODO move this elsewhere
     drag_origin: f32,
+    state: State,
+}
+
+#[derive(Debug)]
+struct State {
+    now: Instant,
+    system_cache: canvas::Cache,
+}
+impl State {
+    fn new() -> State {
+        let now = Instant::now();
+        Self {
+            now,
+            system_cache: canvas::Cache::default(),
+        }
+    }
+
+    pub fn update2(&mut self, now: Instant) {
+        self.now = now;
+        self.system_cache.clear();
+    }
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<Message> canvas::Program<Message> for State {
+    type State = ();
+
+    fn draw(
+        &self,
+        state: &Self::State,
+        renderer: &Renderer,
+        theme: &Theme,
+        bounds: Rectangle,
+        cursor: mouse::Cursor,
+    ) -> Vec<canvas::Geometry<Renderer>> {
+        info!("drawing canvas");
+
+        let mut mouse_point = Point::new(200.0, 200.0);
+        if let Some(cursor_position) = cursor.position_in(bounds) {
+            mouse_point = cursor_position;
+        };
+        let line_cache = self.system_cache.draw(renderer, bounds.size(), |frame| {
+            let line = Path::line(Point::new(0.0, 0.0), mouse_point);
+            frame.stroke(
+                &line,
+                Stroke {
+                    style: stroke::Style::Solid(Color::from_rgba8(0, 153, 255, 0.1)),
+                    width: 5.0,
+                    ..Stroke::default()
+                },
+            );
+        });
+
+        vec![line_cache]
+    }
 }
 
 impl Default for Hexencer {
@@ -80,6 +290,7 @@ impl Default for Hexencer {
             storage: StorageInterface::default(),
             dropped_clip: None,
             drag_origin: 0.0,
+            state: State::default(),
         }
     }
 }
@@ -112,10 +323,18 @@ impl Hexencer {
                     .project_manager
                     .move_clip(clip_id, track_id, tick);
             }
+            Message::Tick(instant) => {
+                self.state.update2(instant);
+            }
         }
     }
 
     fn view(&self) -> Element<Message> {
+        let wgpu_box = SequencerLine {
+            width: 50.0,
+            height: 50.0,
+        };
+
         let header = container(
             row![horizontal_space(), "Header!", horizontal_space(),]
                 .padding(10)
@@ -182,12 +401,16 @@ impl Hexencer {
             elements.push(track.into());
         }
 
+        // TODO draw this in an overlay?
+        let line_canvas = canvas(&self.state)
+            .width(Length::Fill)
+            .height(Length::Fixed(200.0));
         // let tracks = load_tracks(&self.storage);
         let tracks_column = column(elements).spacing(1);
 
         let arranger = container(
             scrollable(
-                column!["Track list", tracks_column]
+                column![line_canvas, "Track list", tracks_column, wgpu_box]
                     .spacing(40)
                     .align_items(Alignment::Center)
                     .width(Length::Fill),
@@ -202,5 +425,9 @@ impl Hexencer {
 
     fn theme(&self) -> Theme {
         self.theme.clone()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        window::frames().map(Message::Tick)
     }
 }
