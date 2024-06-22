@@ -37,10 +37,18 @@ pub struct EditorState {
 }
 
 /// interface for talking with main hexencer data object
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct StorageInterface {
     /// inner object actually holding data
     inner: Arc<std::sync::RwLock<DataLayer>>,
+}
+
+impl Default for StorageInterface {
+    fn default() -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(DataLayer::fake_data())), // TODO replace this after testing is complete
+        }
+    }
 }
 
 impl Deref for StorageInterface {
@@ -104,11 +112,7 @@ impl DataLayer {
     }
 
     /// add a new clip to the track specified by 'track_id'
-    pub fn add_clip(
-        &mut self,
-        track_id: TrackId,
-        clip: Clip,
-    ) -> Result<(), DataLayerError> {
+    pub fn add_clip(&mut self, track_id: TrackId, clip: Clip) -> Result<(), DataLayerError> {
         if let Some(track) = self.project_manager.tracks.get_mut(track_id) {
             track.add_clip(clip);
         } else {
