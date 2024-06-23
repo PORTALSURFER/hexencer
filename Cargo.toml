@@ -2,8 +2,10 @@
 resolver="2"
 members= [
   "engine",
-  "gui"
-, "core"]
+  "gui", 
+  "core"
+]
+  
 default-run = "gui"
 
 [workspace.dependencies]

@@ -13,14 +13,53 @@ pub mod event;
 pub mod instrument;
 
 pub use data::DataId;
+pub use data::TrackId;
 
 use std::fmt::Display;
+use std::ops::Bound;
+use std::ops::RangeBounds;
+use std::ops::Sub;
+use std::ops::SubAssign;
 use std::time::Duration;
 
 /// represents a moment in time
 /// events are sent every tick
 #[derive(Default, PartialEq, PartialOrd, Ord, Eq, Clone, Debug, Copy)]
 pub struct Tick(u64);
+
+impl RangeBounds<Tick> for Tick {
+    fn start_bound(&self) -> Bound<&Tick> {
+        Bound::Included(self)
+    }
+
+    fn end_bound(&self) -> Bound<&Tick> {
+        Bound::Excluded(self)
+    }
+}
+
+impl RangeBounds<Tick> for &Tick {
+    fn start_bound(&self) -> Bound<&Tick> {
+        Bound::Included(self)
+    }
+
+    fn end_bound(&self) -> Bound<&Tick> {
+        Bound::Excluded(self)
+    }
+}
+
+impl Sub for Tick {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0 - rhs.0)
+    }
+}
+
+impl SubAssign for Tick {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
+    }
+}
 
 impl Tick {
     /// convert tick to a time string
@@ -71,6 +110,11 @@ impl Tick {
     pub fn as_f32(&self) -> f32 {
         self.0 as f32
     }
+
+    /// returns this 'Tick' as an 'u32'
+    fn as_u32(&self) -> u32 {
+        self.0 as u32
+    }
 }
 
 impl Display for Tick {
@@ -106,5 +150,13 @@ impl From<u64> for Tick {
 impl From<u32> for Tick {
     fn from(tick: u32) -> Self {
         Self(tick as u64)
+    }
+}
+
+impl std::ops::Add for Tick {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
     }
 }

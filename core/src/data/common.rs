@@ -9,7 +9,7 @@ pub const ALL_NOTE_ON_MSG: u8 = 0xB0;
 pub const NOTE_OFF_MSG: u8 = 0x80;
 
 /// id used to identify persistant objects like those stored in a project
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[allow(dead_code)]
 pub struct DataId(uuid::Uuid);
 impl DataId {
@@ -27,11 +27,5 @@ impl DataId {
 impl Display for DataId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0.to_string())
-    }
-}
-
-impl PartialEq for DataId {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
     }
 }
