@@ -4,7 +4,7 @@ use std::{
         BTreeMap,
     },
     fmt::Display,
-    ops::Deref,
+    ops::{Deref, DerefMut},
 };
 
 use tracing::info;
@@ -53,11 +53,7 @@ impl ClipCollection {
         self.inner.insert(ClipKey::from(&new_clip), new_clip);
     }
 
-    fn split_overlapped_clip(
-        &mut self,
-        overlapped_outer: Vec<(ClipKey, Clip)>,
-        new_clip: &Clip,
-    ) {
+    fn split_overlapped_clip(&mut self, overlapped_outer: Vec<(ClipKey, Clip)>, new_clip: &Clip) {
         for (overlap_clip_key, mut overlap_clip) in overlapped_outer {
             self.insert_left_of_tick(&mut overlap_clip, &new_clip.start);
             self.insert_right_of_tick(overlap_clip, &new_clip.end());
@@ -187,6 +183,12 @@ impl Deref for ClipCollection {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
+    }
+}
+
+impl DerefMut for ClipCollection {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }
 

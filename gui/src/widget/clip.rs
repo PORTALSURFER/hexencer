@@ -10,6 +10,7 @@ use iced::{
     theme::palette,
     Background, Border, Color, Element, Event, Length, Point, Rectangle, Shadow, Size, Theme,
 };
+use tracing::info;
 
 /// drag events
 #[derive(Debug, Clone, Copy)]
@@ -233,37 +234,30 @@ where
         };
 
         let state = tree.state.downcast_ref::<State>();
-        if let Ok(storage) = self.storage.read() {
-            if let Some(_clip) = storage.project_manager.find_clip(self.clip_id) {
-                match state {
-                    State::Dragged { origin, clip_id: _ } => {
-                        if let Some(cursor_position) = cursor.position() {
-                            let bounds = layout.bounds();
+        match state {
+            State::Dragged { origin, clip_id: _ } => {
+                if let Some(cursor_position) = cursor.position() {
+                    let bounds = layout.bounds();
 
-                            let translation = cursor_position - Point::new(origin.x, origin.y);
-                            renderer.with_translation(translation, |renderer| {
-                                renderer.with_layer(bounds, |renderer| {
-                                    renderer.fill_quad(
-                                        quad,
-                                        Background::Color(Color::from_rgb(0.82, 0.44, 0.92)),
-                                    );
-                                });
-                            });
-                        }
-                    }
-                    State::Hovered => {
-                        renderer
-                            .fill_quad(quad, Background::Color(Color::from_rgb(0.92, 0.74, 0.98)));
-                    }
-                    State::Idle => {
-                        renderer
-                            .fill_quad(quad, Background::Color(Color::from_rgb(1.00, 0.74, 0.98)));
-                    }
-                    State::Pressed => {
-                        renderer
-                            .fill_quad(quad, Background::Color(Color::from_rgb(0.52, 0.84, 1.0)));
-                    }
+                    let translation = cursor_position - Point::new(origin.x, origin.y);
+                    renderer.with_translation(translation, |renderer| {
+                        renderer.with_layer(bounds, |renderer| {
+                            renderer.fill_quad(
+                                quad,
+                                Background::Color(Color::from_rgb(0.82, 0.44, 0.92)),
+                            );
+                        });
+                    });
                 }
+            }
+            State::Hovered => {
+                renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.92, 0.74, 0.98)));
+            }
+            State::Idle => {
+                renderer.fill_quad(quad, Background::Color(Color::from_rgb(1.00, 0.74, 0.98)));
+            }
+            State::Pressed => {
+                renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.52, 0.84, 1.0)));
             }
         }
 
@@ -295,6 +289,7 @@ where
                 if let State::Dragged { .. } = *state {
                     if let Some(on_drop) = &self.on_drop {
                         if let Some(_cursor_position) = cursor.position() {
+                            info!("dropped clip {}", self.clip_id);
                             shell.publish(on_drop(DragEvent::Dropped {
                                 clip_id: self.clip_id,
                             }));

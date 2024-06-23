@@ -28,10 +28,12 @@ use widget::{Clip, DragEvent, Track};
 fn main() {
     info!("start gui");
 
+    init_logger();
+
     iced::application("Hexencer", Hexencer::update, Hexencer::view)
         .theme(Hexencer::theme)
         .font(include_bytes!("../../assets/fonts/5squared-pixel.ttf"))
-        .subscription(Hexencer::subscription)
+        // .subscription(Hexencer::subscription)
         .default_font(Font::with_name("5squared pixel"))
         .run();
 }
@@ -303,7 +305,7 @@ impl Hexencer {
         }
         match message {
             Message::Exit => std::process::exit(0),
-            Message::DragClip { origin, .. } => {
+            Message::DragClip { origin, clip_id } => {
                 self.drag_origin = origin;
                 self.dropped_clip = None;
             }
@@ -325,6 +327,31 @@ impl Hexencer {
             }
             Message::Tick(instant) => {
                 self.state.update2(instant);
+            }
+        }
+    }
+
+    fn remove_clip(&mut self, clip_id: ClipId) {
+        let mut to_remove = None;
+
+        let mut data = self.storage.write().unwrap();
+        let track_collection = &mut data.project_manager.track_collection;
+        for track in track_collection.tracks() {
+            for (clip_key, clip) in track.clips.iter() {
+                if clip.id() == clip_id {
+                    info!("clip found: {:?} in track {:?}", clip_id, track.id);
+                    to_remove = Some((track.id, clip_key.clone()));
+                    break;
+                }
+            }
+            if to_remove.is_some() {
+                break;
+            }
+        }
+
+        if let Some((track_id, clip_key)) = to_remove {
+            if let Some(track) = track_collection.get_mut(track_id) {
+                track.clips.remove(&clip_key).unwrap();
             }
         }
     }
@@ -352,7 +379,7 @@ impl Hexencer {
 
         let mut elements = Vec::new();
         let data = self.storage.read().unwrap();
-        let track_list = &data.project_manager.tracks;
+        let track_list = &data.project_manager.track_collection;
 
         for (index, track) in track_list.iter().enumerate() {
             let clips = &track.clips;

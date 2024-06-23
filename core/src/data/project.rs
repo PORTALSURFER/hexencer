@@ -10,7 +10,7 @@ use super::{
 #[derive(Default, Debug)]
 pub struct Project {
     /// collection of tracks for this project
-    pub tracks: TrackCollection,
+    pub track_collection: TrackCollection,
     /// collection of instruments for this project
     pub instrument_manager: InstrumentManager,
 }
@@ -19,19 +19,19 @@ impl Project {
     /// create a new project mananger
     pub fn new() -> Self {
         Self {
-            tracks: TrackCollection::default(),
+            track_collection: TrackCollection::default(),
             instrument_manager: InstrumentManager::default(),
         }
     }
 
     /// get the current track count
     pub fn track_count(&self) -> usize {
-        self.tracks.len()
+        self.track_collection.len()
     }
 
     /// add a new track to the collection
     pub fn add_track(&mut self, track: Track) {
-        self.tracks.push(track);
+        self.track_collection.push(track);
     }
 
     // pub fn get_all_event_entries(&self) -> Vec<(Tick, EventEntry)> {
@@ -40,12 +40,12 @@ impl Project {
 
     /// remove a track from the collection
     pub fn remove_track(&mut self) {
-        self.tracks.pop();
+        self.track_collection.pop();
     }
 
     /// returns reference to the clip if found, else 'None'
     pub fn find_clip(&self, target_clip_id: ClipId) -> Option<Clip> {
-        for track in self.tracks.iter() {
+        for track in self.track_collection.iter() {
             for (clip_key, clip) in track.clips.iter() {
                 if clip_key.id == target_clip_id {
                     let clip = clip.to_owned();
@@ -65,10 +65,10 @@ impl Project {
     /// moved a clip from one track to another
     pub fn move_clip(&mut self, clip_id: ClipId, track_id: TrackId, tick: Tick) {
         let _ = track_id;
-        let clip = self.tracks.take_clip(clip_id);
+        let clip = self.track_collection.take_clip(clip_id);
         if let Some(mut clip) = clip {
             clip.start = tick;
-            if let Some(track) = self.tracks.get_mut(track_id) {
+            if let Some(track) = self.track_collection.get_mut(track_id) {
                 track.add_clip(clip);
             }
         } else {
