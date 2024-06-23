@@ -113,7 +113,7 @@ impl DataLayer {
 
     /// add a new clip to the track specified by 'track_id'
     pub fn add_clip(&mut self, track_id: TrackId, clip: Clip) -> Result<(), DataLayerError> {
-        if let Some(track) = self.project_manager.tracks.get_mut(track_id) {
+        if let Some(track) = self.project_manager.track_collection.get_mut(track_id) {
             track.add_clip(clip);
         } else {
             return Err(DataLayerError::NoTrack(track_id));
@@ -195,7 +195,7 @@ mod tests {
         data.project_manager.add_track(track);
 
         {
-            let clips = data.project_manager.tracks.get_clips(0).unwrap();
+            let clips = data.project_manager.track_collection.get_clips(0).unwrap();
             assert_eq!(clips.len(), 0);
         }
 
@@ -203,7 +203,7 @@ mod tests {
         data.add_clip(track_id, clip).unwrap();
 
         {
-            let clips = data.project_manager.tracks.get_clips(0).unwrap();
+            let clips = data.project_manager.track_collection.get_clips(0).unwrap();
             assert_eq!(clips.len(), 1);
         }
     }

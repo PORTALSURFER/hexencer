@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-use super::clip::{Clip, ClipCollection, ClipId};
+use super::clip::{Clip, ClipCollection, ClipId, ClipKey};
 use crate::{instrument::Instrument, DataId};
 use std::{fmt::Display, ops::Deref};
 use thiserror::Error;
@@ -157,5 +157,10 @@ impl Track {
     /// add a new clip to the track
     pub fn add_clip(&mut self, clip: Clip) {
         self.clips.insert(clip);
+    }
+
+    /// removes a clip from the track by its key
+    pub fn remove_clip(&mut self, key: &ClipKey) {
+        self.clips.remove(key);
     }
 }
