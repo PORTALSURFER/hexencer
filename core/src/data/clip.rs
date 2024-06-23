@@ -53,6 +53,7 @@ impl ClipCollection {
         self.inner.insert(ClipKey::from(&new_clip), new_clip);
     }
 
+    /// splits a clip if it is overlapped by another clip
     fn split_overlapped_clip(&mut self, overlapped_outer: Vec<(ClipKey, Clip)>, new_clip: &Clip) {
         for (overlap_clip_key, mut overlap_clip) in overlapped_outer {
             self.insert_left_of_tick(&mut overlap_clip, &new_clip.start);
@@ -115,6 +116,7 @@ impl ClipCollection {
         overlapping
     }
 
+    /// splits a clip on the right side
     fn split_right_clip(&mut self, clip: Clip, new_clip: &Clip, key: ClipKey) {
         // handle partial overlapped clip on the right side
         if clip.start > new_clip.start && clip.end() > new_clip.end() {
@@ -123,6 +125,7 @@ impl ClipCollection {
         }
     }
 
+    /// removes a clip if it is fully overlapped
     fn remove_overlapped(&mut self, clip: &Clip, new_clip: &Clip, key: ClipKey) {
         // handle full overlap
         if clip.start >= new_clip.start && clip.end() < new_clip.end() {

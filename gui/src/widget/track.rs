@@ -20,6 +20,7 @@ use tracing::info;
 /// handler for on track drop events
 type DropHandler<'a, Message> = Option<Box<dyn Fn(ClipId, TrackId, f32) -> Message + 'a>>;
 
+/// A track widget
 pub struct Track<'a, Message, Theme, Renderer>
 where
     Theme: Catalog,
@@ -62,6 +63,7 @@ where
     Renderer: renderer::Renderer,
     Theme: Catalog,
 {
+    /// Creates a new [`Track`] with the given [`StorageInterface`], index, track id, children, and dropped clip.
     pub(crate) fn new(
         storage: &'a hexencer_core::data::StorageInterface,
         index: usize,

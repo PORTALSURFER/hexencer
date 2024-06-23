@@ -1,36 +1,37 @@
 //! the main entry point for the application
 
-#![deny(missing_docs)]
-#![deny(clippy::missing_docs_in_private_items)]
+#![warn(missing_docs)]
+#![warn(clippy::missing_docs_in_private_items)]
 
+/// contains custom widgets for hexencer
 mod widget;
 
 use std::time::Instant;
 
 use hexencer_core::data::{ClipId, StorageInterface};
 use hexencer_core::{Tick, TrackId};
-use iced::advanced::graphics::{color, geometry};
+use iced::advanced::graphics::color;
 use iced::advanced::widget::Tree;
 use iced::advanced::{layout, mouse, renderer, Layout, Widget};
-use iced::widget::canvas::{stroke, Path, Program, Stroke};
+use iced::widget::canvas::Program;
+use iced::widget::canvas::{stroke, Path, Stroke};
+use iced::widget::scrollable::Properties;
 use iced::widget::{canvas, horizontal_space};
 use iced::widget::{center, text};
-use iced::widget::{column, container, row, scrollable};
-use iced::{
-    color, window, Alignment, Color, Point, Renderer, Size, Subscription, Transformation, Vector,
-};
+use iced::widget::{column, container, row};
+use iced::{window, Alignment, Color, Point, Renderer, Size, Subscription, Transformation, Vector};
 use iced::{Element, Length, Theme};
 use iced::{Font, Rectangle};
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
-use widget::{Clip, DragEvent, Track};
+use widget::{Arranger, Clip, DragEvent, Track};
 
 fn main() {
     info!("start gui");
 
     init_logger();
 
-    iced::application("Hexencer", Hexencer::update, Hexencer::view)
+    let _ = iced::application("Hexencer", Hexencer::update, Hexencer::view)
         .theme(Hexencer::theme)
         .font(include_bytes!("../../assets/fonts/5squared-pixel.ttf"))
         // .subscription(Hexencer::subscription)
@@ -50,7 +51,9 @@ pub fn init_logger() {
 
 /// test for sequencer line widget
 pub struct SequencerLine {
+    /// width of the line
     width: f32,
+    /// height of the line
     height: f32,
 }
 
@@ -83,8 +86,6 @@ impl<Message> Widget<Message, Theme, Renderer> for SequencerLine {
         cursor: mouse::Cursor,
         _viewport: &Rectangle,
     ) {
-        use iced::advanced::graphics::geometry::Renderer as _;
-        use iced::advanced::graphics::geometry::{Path, Stroke};
         use iced::advanced::graphics::mesh::{self, Mesh, Renderer as _, SolidVertex2D};
         use iced::advanced::Renderer as _;
 
@@ -171,9 +172,6 @@ impl<Message> Widget<Message, Theme, Renderer> for SequencerLine {
             transformation: Transformation::IDENTITY,
             clip_bounds: Rectangle::INFINITE,
         };
-        let a = Point::new(0.0, 0.0);
-        let b = Point::new(200.0, 200.0);
-        let path = Path::line(a, b);
 
         renderer.with_translation(Vector::new(bounds.x, bounds.y), |renderer| {
             renderer.draw_mesh(mesh);
@@ -219,19 +217,29 @@ pub enum Message {
 
 #[derive(Debug)]
 struct Hexencer {
+    /// the theme for the application
     theme: Theme,
+
+    /// the storage interface for the application
     storage: StorageInterface,
+    /// a clip that was dropped
     dropped_clip: Option<ClipId>, // TODO move this elsewhere
+    /// the origin of the drag for the clip that was dropped
     drag_origin: f32,
+    /// state used for drawing a canvas, used for the transport line drawing
     state: State,
 }
 
+/// state type used for canvas drawing of the transport line
 #[derive(Debug)]
 struct State {
+    /// unused clock taken from example
     now: Instant,
+    /// cache which stores the canvas drawing elements
     system_cache: canvas::Cache,
 }
 impl State {
+    /// create a new state
     fn new() -> State {
         let now = Instant::now();
         Self {
@@ -240,6 +248,7 @@ impl State {
         }
     }
 
+    /// update the canvas state
     pub fn update2(&mut self, now: Instant) {
         self.now = now;
         self.system_cache.clear();
@@ -257,14 +266,12 @@ impl<Message> canvas::Program<Message> for State {
 
     fn draw(
         &self,
-        state: &Self::State,
+        _state: &Self::State,
         renderer: &Renderer,
-        theme: &Theme,
+        _theme: &Theme,
         bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry<Renderer>> {
-        info!("drawing canvas");
-
         let mut mouse_point = Point::new(200.0, 200.0);
         if let Some(cursor_position) = cursor.position_in(bounds) {
             mouse_point = cursor_position;
@@ -298,6 +305,7 @@ impl Default for Hexencer {
 }
 
 impl Hexencer {
+    /// update the application state
     fn update(&mut self, message: Message) {
         if let Some(dropped_clip) = self.dropped_clip {
             tracing::info!("dropped clip: {:?}", dropped_clip);
@@ -305,7 +313,7 @@ impl Hexencer {
         }
         match message {
             Message::Exit => std::process::exit(0),
-            Message::DragClip { origin, clip_id } => {
+            Message::DragClip { origin, clip_id: _ } => {
                 self.drag_origin = origin;
                 self.dropped_clip = None;
             }
@@ -330,8 +338,8 @@ impl Hexencer {
             }
         }
     }
-
-    fn remove_clip(&mut self, clip_id: ClipId) {
+    /// remove a clip from the storage
+    pub fn remove_clip(&mut self, clip_id: ClipId) {
         let mut to_remove = None;
 
         let mut data = self.storage.write().unwrap();
@@ -340,7 +348,7 @@ impl Hexencer {
             for (clip_key, clip) in track.clips.iter() {
                 if clip.id() == clip_id {
                     info!("clip found: {:?} in track {:?}", clip_id, track.id);
-                    to_remove = Some((track.id, clip_key.clone()));
+                    to_remove = Some((track.id, *clip_key));
                     break;
                 }
             }
@@ -356,6 +364,7 @@ impl Hexencer {
         }
     }
 
+    /// draw the view
     fn view(&self) -> Element<Message> {
         let wgpu_box = SequencerLine {
             width: 50.0,
@@ -435,12 +444,14 @@ impl Hexencer {
         // let tracks = load_tracks(&self.storage);
         let tracks_column = column(elements).spacing(1);
 
+        let _scroll_properties = Properties::default();
+
         let arranger = container(
-            scrollable(
+            Arranger::new(
                 column![line_canvas, "Track list", tracks_column, wgpu_box]
                     .spacing(40)
                     .align_items(Alignment::Center)
-                    .width(Length::Fill),
+                    .width(Length::Fixed(5000.0)),
             )
             .height(Length::Fill),
         )
@@ -450,11 +461,13 @@ impl Hexencer {
         center(content).into()
     }
 
+    /// get the theme for the application
     fn theme(&self) -> Theme {
         self.theme.clone()
     }
 
-    fn subscription(&self) -> Subscription<Message> {
+    /// get the subscription for the application
+    fn _subscription(&self) -> Subscription<Message> {
         window::frames().map(Message::Tick)
     }
 }
