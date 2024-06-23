@@ -1,5 +1,6 @@
 use hexencer_core::data::MidiMessage;
 use midir::MidiOutput;
+use tokio::task;
 
 /// sender type used to send commands to the midi engine
 pub type MidiEngineSender = tokio::sync::mpsc::UnboundedSender<(MidiMessage, u8, u8)>;
@@ -86,4 +87,12 @@ impl MidiEngine {
             self.play(&midi_message, port, channel).await;
         }
     }
+}
+
+/// starts up the midi engine and listens for commands, return the sender to send commands to the midi engine
+pub fn start_midi_engine() -> MidiEngineSender {
+    let (midi_sender, midi_receiver) = tokio::sync::mpsc::unbounded_channel();
+    let midi_engine = MidiEngine::new();
+    task::spawn(midi_engine.listen(midi_receiver));
+    midi_sender
 }

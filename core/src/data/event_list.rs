@@ -7,23 +7,23 @@ use super::{midi_message::MidiMessage, DataId};
 type EventListType = BTreeMap<Tick, Vec<EventSegment>>;
 
 /// a list of events, keyed by their `Tick`
-#[derive(Default, Debug)]
-pub struct EventList(EventListType);
+#[derive(Default, Debug, Clone)]
+pub struct EventCollection(Box<EventListType>);
 
-impl FromIterator<(Tick, Vec<EventSegment>)> for EventList {
+impl FromIterator<(Tick, Vec<EventSegment>)> for EventCollection {
     fn from_iter<T: IntoIterator<Item = (Tick, Vec<EventSegment>)>>(iter: T) -> Self {
         let mut map = BTreeMap::new();
         for (tick, trig) in iter {
             map.insert(tick, trig);
         }
-        EventList(map)
+        EventCollection(Box::new(map))
     }
 }
 
-impl EventList {
+impl EventCollection {
     /// creates an empty `EventList`
-    pub fn new() -> EventList {
-        EventList(BTreeMap::new())
+    pub fn new() -> EventCollection {
+        EventCollection(Box::default())
     }
 
     /// adds a new event to the 'EventList'
@@ -50,6 +50,14 @@ impl EventList {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Tick, &mut Vec<EventSegment>)> {
         self.0.iter_mut()
     }
+
+    // pub(crate) fn split_off(&self, left_duration: _) -> EventCollection {
+    //     todo!()
+    // }
+
+    // pub(crate) fn partition_point(&self, left_duration: impl Fn(_) -> bool) {
+    //     todo!()
+    // }
 }
 
 #[derive(Debug, Clone, Copy)]

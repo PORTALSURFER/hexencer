@@ -11,9 +11,17 @@ mod project;
 /// the track data object
 mod track;
 
+use std::ops::Deref;
+use std::sync::Arc;
+use std::sync::RwLock;
+
 pub use clip::Clip;
+pub use clip::ClipId;
 pub use common::DataId;
 pub use midi_message::MidiMessage;
+pub use track::Track;
+pub use track::TrackId;
+
 /// event list
 pub mod event_list;
 
@@ -28,36 +36,85 @@ pub struct EditorState {
     selected_clip: DataId,
 }
 
+/// interface for talking with main hexencer data object
+#[derive(Debug, Clone)]
+pub struct StorageInterface {
+    /// inner object actually holding data
+    inner: Arc<std::sync::RwLock<DataLayer>>,
+}
+
+impl Default for StorageInterface {
+    fn default() -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(DataLayer::fake_data())), // TODO replace this after testing is complete
+        }
+    }
+}
+
+impl Deref for StorageInterface {
+    type Target = Arc<RwLock<DataLayer>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl StorageInterface {
+    /// creates a new interface for data
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(DataLayer::fake_data())),
+        }
+    }
+}
+
 /// error type for data_layer
 #[derive(Error, Debug)]
 pub enum DataLayerError {
     /// when an action on a track is attempted, but no track with that id exists
     #[error("No track with id {0}")]
-    NoTrack(usize),
+    NoTrack(TrackId),
 }
 
 /// object which holds all the persistent data objects used by the application
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct DataLayer {
     /// interface for loading and storing projects
     pub project_manager: Project,
     /// represents the current state of the editor, like note editor or automation editor modes.
     pub editor_state: EditorState,
     /// current tick passed to data layer to give the gui access to it, originally in the sequencer
-    /// TODO needs cleanup
     tick: Tick,
+    /// bpm of the project
+    bpm: f64,
+}
+
+impl Default for DataLayer {
+    fn default() -> Self {
+        Self {
+            bpm: 120.0,
+            project_manager: Project::default(),
+            editor_state: EditorState::default(),
+            tick: Tick::default(),
+        }
+    }
 }
 
 impl DataLayer {
+    /// get the bpm of the project
+    pub fn bpm(&self) -> f64 {
+        self.bpm
+    }
+
+    /// get the bpm of the project as a string
+    pub fn bpm_str(&self) -> String {
+        self.bpm.to_string()
+    }
+
     /// add a new clip to the track specified by 'track_id'
-    pub fn add_clip(
-        &mut self,
-        track_id: usize,
-        tick: Tick,
-        clip: Clip,
-    ) -> Result<(), DataLayerError> {
-        if let Some(track) = self.project_manager.tracks.get_mut(track_id) {
-            track.add_clip(tick, clip);
+    pub fn add_clip(&mut self, track_id: TrackId, clip: Clip) -> Result<(), DataLayerError> {
+        if let Some(track) = self.project_manager.track_collection.get_mut(track_id) {
+            track.add_clip(clip);
         } else {
             return Err(DataLayerError::NoTrack(track_id));
         }
@@ -73,6 +130,36 @@ impl DataLayer {
     pub fn get_tick(&self) -> Tick {
         self.tick
     }
+
+    /// generates DataLayer with fake data for testing
+    fn fake_data() -> DataLayer {
+        let mut project_manager = Project::default();
+
+        let track_0 = Track::new(TrackId::new(), "track_0");
+        project_manager.add_track(track_0);
+
+        let mut track_1 = Track::new(TrackId::new(), "track_1");
+        track_1.add_clip(clip::Clip::new(0.into(), "clip_0", 240.into()));
+        project_manager.add_track(track_1);
+
+        let mut track_2 = Track::new(TrackId::new(), "track_2");
+        track_2.add_clip(clip::Clip::new(120.into(), "clip_1", 10.into()));
+        track_2.add_clip(clip::Clip::new(480.into(), "clip_2", 120.into()));
+        project_manager.add_track(track_2);
+
+        let mut track_3 = Track::new(TrackId::new(), "track_2");
+        track_3.add_clip(clip::Clip::new(0.into(), "clip_3", 10.into()));
+        track_3.add_clip(clip::Clip::new(120.into(), "clip_4", 20.into()));
+        track_3.add_clip(clip::Clip::new(240.into(), "clip_5", 420.into()));
+        project_manager.add_track(track_3);
+
+        Self {
+            project_manager,
+            editor_state: EditorState::default(),
+            tick: Tick::zero(),
+            bpm: 160.66,
+        }
+    }
 }
 
 /// keeps track and manages all instruments
@@ -84,36 +171,58 @@ pub struct InstrumentManager {
 
 #[cfg(test)]
 mod tests {
-    use self::track::Track;
+    use self::track::{Track, TrackId};
 
     use super::*;
     use coverage_helper::test;
 
     #[test]
-    fn test_add_clip() {
+    #[should_panic]
+    fn cant_add_when_track_not_found() {
         let mut data = DataLayer::default();
-        let track = Track::new(0, "test");
+        let track = Track::new(TrackId::new(), "test");
+        data.project_manager.add_track(track);
+
+        let clip = Clip::new(0.into(), "test", 120.into());
+        data.add_clip(TrackId::new(), clip).unwrap();
+    }
+
+    #[test]
+    fn can_add_track() {
+        let mut data = DataLayer::default();
+        let track_id = TrackId::new();
+        let track = Track::new(track_id, "test");
         data.project_manager.add_track(track);
 
         {
-            let clips = data.project_manager.tracks.get_clips(0).unwrap();
-            assert!(clips.len() == 0);
+            let clips = data.project_manager.track_collection.get_clips(0).unwrap();
+            assert_eq!(clips.len(), 0);
         }
-        let clip = Clip::new("test", 120);
-        data.add_clip(0, Tick::from(0), clip);
+
+        let clip = Clip::new(0.into(), "test", 120.into());
+        data.add_clip(track_id, clip).unwrap();
 
         {
-            let clips = data.project_manager.tracks.get_clips(0).unwrap();
-            assert!(clips.len() > 0);
+            let clips = data.project_manager.track_collection.get_clips(0).unwrap();
+            assert_eq!(clips.len(), 1);
         }
     }
 
     #[test]
-    fn sets_and_gets_tick() {
+    fn can_set_tick() {
         let mut data = DataLayer::default();
         data.set_tick(Tick::from(100));
         assert_eq!(data.get_tick(), Tick::from(100));
         data.set_tick(Tick::from(999));
         assert_eq!(data.get_tick(), Tick::from(999));
+    }
+
+    #[test]
+    fn deref_should_return_inner() {
+        let storage = StorageInterface::new();
+        assert_eq!(
+            storage.inner.read().unwrap().tick,
+            storage.read().unwrap().tick
+        );
     }
 }
