@@ -3,6 +3,8 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
 
+// test
+
 /// contains custom widgets for hexencer
 mod widget;
 
