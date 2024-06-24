@@ -115,10 +115,15 @@ where
 /// The state of a [`Arranger`].
 #[derive(Debug, Clone, Copy)]
 struct State {
+    /// The position where the scroll area was last touched.
     scroll_area_touched_at: Option<Point>,
+    /// The current offset of the [`Viewport`].
     offset: Offset,
+    /// The position where the scroller was last grabbed.
     scroller_grabbed_at: Option<f32>,
+    /// The current keyboard modifiers.
     keyboard_modifiers: keyboard::Modifiers,
+    /// The last [`Viewport`] that was notified.
     last_notified: Option<Viewport>,
 }
 
@@ -145,8 +150,8 @@ impl State {
         self.unsnap(bounds, content_bounds);
     }
 
-    // /// Apply a scrolling offset to the current [`State`], given the bounds of
-    // /// the [`Scrollable`] and its contents.
+    /// Apply a scrolling offset to the current [`State`], given the bounds of
+    /// the [`Scrollable`] and its contents.
     pub fn scroll(&mut self, delta: Vector<f32>, bounds: Rectangle, content_bounds: Rectangle) {
         //     let horizontal_alignment = direction
         //         .horizontal()
@@ -358,7 +363,7 @@ where
         })
     }
 
-    // TODO figure out how this works
+    // TODO #57 figure out how this works
     fn draw(
         &self,
         tree: &iced::advanced::widget::Tree,
@@ -542,7 +547,7 @@ where
         };
         if let Some(cursor_over_right_scroll_block) = cursor.position_over(right_scroll_block) {
             info!("mouse over scroll block");
-            state.scroller_grabbed_at = Some(cursor_over_right_scroll_block.x);
+            state.scroller_grabbed_at = Some(0.2);
         }
 
         // detect if the cursor is insize of the scrollable area
@@ -556,58 +561,56 @@ where
         // create a scrollbar
         let scrollbars = ScrollbarWrapper::new(state, bounds, content_bounds);
 
+        // check if the mouse is over the scrollbar
         let mouse_over_scrollbar = scrollbars.is_mouse_over(cursor);
 
+        // if the scroller was grabbed
         if let Some(scroller_grabbed_at) = state.scroller_grabbed_at {
-            match event {
-                Event::Mouse(mouse::Event::CursorMoved { .. })
-                | Event::Touch(touch::Event::FingerMoved { .. }) => {
-                    let Some(cursor_position) = cursor.position() else {
-                        return event::Status::Ignored;
-                    };
-                    // info!("cursor_over_scrollable {:?}", cursor_over_scrollable);
+            info!("scroller grabbed at: {:?}", scroller_grabbed_at);
+            // and mouse it moved
+            if let Event::Mouse(mouse::Event::CursorMoved { .. }) = event {
+                // get the cursor position
+                let Some(cursor_position) = cursor.position() else {
+                    return event::Status::Ignored;
+                };
 
-                    if let Some(scrollbar) = scrollbars.inner {
-                        state.scroll_x_to(
-                            scrollbar.scroll_percentage(scroller_grabbed_at, cursor_position),
-                            bounds,
-                            content_bounds,
-                        );
-                        let _ =
-                            notify_on_scroll(state, &self.on_scroll, bounds, content_bounds, shell);
-                    }
+                // if there is a scrollbar
+                if let Some(scrollbar) = scrollbars.inner {
+                    info!("scrollbar found");
+                    // scroll the scrollbar
+                    state.scroll_x_to(
+                        scrollbar.scroll_percentage(scroller_grabbed_at, cursor_position),
+                        bounds,
+                        content_bounds,
+                    );
+                    let _ = notify_on_scroll(state, &self.on_scroll, bounds, content_bounds, shell);
+                }
+
+                return event::Status::Captured;
+            }
+        } else if mouse_over_scrollbar {
+            info!("mouse over scrollbar");
+            if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) = event {
+                let Some(cursor_position) = cursor.position() else {
+                    return event::Status::Ignored;
+                };
+
+                if let (Some(scroller_grabbed_at), Some(scrollbar)) = (
+                    scrollbars.grab_scroll_handle(cursor_position),
+                    scrollbars.inner,
+                ) {
+                    state.scroll_x_to(
+                        scrollbar.scroll_percentage(scroller_grabbed_at, cursor_position),
+                        bounds,
+                        content_bounds,
+                    );
+
+                    state.scroller_grabbed_at = Some(scroller_grabbed_at);
+
+                    let _ = notify_on_scroll(state, &self.on_scroll, bounds, content_bounds, shell);
 
                     return event::Status::Captured;
                 }
-                _ => {}
-            }
-        } else if mouse_over_scrollbar {
-            match event {
-                Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
-                | Event::Touch(touch::Event::FingerPressed { .. }) => {
-                    let Some(cursor_position) = cursor.position() else {
-                        return event::Status::Ignored;
-                    };
-
-                    if let (Some(scroller_grabbed_at), Some(scrollbar)) = (
-                        scrollbars.grab_scroll_handle(cursor_position),
-                        scrollbars.inner,
-                    ) {
-                        state.scroll_x_to(
-                            scrollbar.scroll_percentage(scroller_grabbed_at, cursor_position),
-                            bounds,
-                            content_bounds,
-                        );
-
-                        state.scroller_grabbed_at = Some(scroller_grabbed_at);
-
-                        let _ =
-                            notify_on_scroll(state, &self.on_scroll, bounds, content_bounds, shell);
-
-                        return event::Status::Captured;
-                    }
-                }
-                _ => {}
             }
         }
 
@@ -640,7 +643,6 @@ where
         if matches!(
             event,
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
-                | Event::Touch(touch::Event::FingerLifted { .. } | touch::Event::FingerLost { .. })
         ) {
             state.scroll_area_touched_at = None;
             state.scroller_grabbed_at = None;
@@ -658,79 +660,35 @@ where
             return event::Status::Ignored;
         }
 
-        match event {
-            Event::Mouse(mouse::Event::WheelScrolled { delta }) => {
-                if cursor_over_scrollable.is_none() {
-                    return event::Status::Ignored;
-                }
+        if let Event::Mouse(mouse::Event::WheelScrolled { delta }) = event {
+            if cursor_over_scrollable.is_none() {
+                return event::Status::Ignored;
+            }
 
-                let delta = match delta {
-                    mouse::ScrollDelta::Lines { x, y } => {
-                        // TODO: Configurable speed/friction (?)
-                        let movement = if !cfg!(target_os = "macos") // macOS automatically inverts the axes when Shift is pressed
-                            && state.keyboard_modifiers.shift()
-                        {
-                            Vector::new(y, x)
-                        } else {
-                            Vector::new(x, y)
-                        };
-
-                        movement * 60.0
-                    }
-                    mouse::ScrollDelta::Pixels { x, y } => Vector::new(x, y),
-                };
-
-                state.scroll(delta, bounds, content_bounds);
-
-                event_status =
-                    if notify_on_scroll(state, &self.on_scroll, bounds, content_bounds, shell) {
-                        event::Status::Captured
+            let delta = match delta {
+                mouse::ScrollDelta::Lines { x, y } => {
+                    // TODO: #58 Configurable speed/friction (?)
+                    let movement = if !cfg!(target_os = "macos") // macOS automatically inverts the axes when Shift is pressed
+                        && state.keyboard_modifiers.shift()
+                    {
+                        Vector::new(y, x)
                     } else {
-                        event::Status::Ignored
+                        Vector::new(x, y)
                     };
-            }
-            Event::Touch(event)
-                if state.scroll_area_touched_at.is_some() || !mouse_over_scrollbar =>
-            {
-                match event {
-                    touch::Event::FingerPressed { .. } => {
-                        let Some(cursor_position) = cursor.position() else {
-                            return event::Status::Ignored;
-                        };
 
-                        state.scroll_area_touched_at = Some(cursor_position);
-                    }
-                    touch::Event::FingerMoved { .. } => {
-                        if let Some(scroll_box_touched_at) = state.scroll_area_touched_at {
-                            let Some(cursor_position) = cursor.position() else {
-                                return event::Status::Ignored;
-                            };
-
-                            let delta = Vector::new(
-                                cursor_position.x - scroll_box_touched_at.x,
-                                cursor_position.y - scroll_box_touched_at.y,
-                            );
-
-                            state.scroll(delta, bounds, content_bounds);
-
-                            state.scroll_area_touched_at = Some(cursor_position);
-
-                            // TODO: bubble up touch movements if not consumed.
-                            let _ = notify_on_scroll(
-                                state,
-                                &self.on_scroll,
-                                bounds,
-                                content_bounds,
-                                shell,
-                            );
-                        }
-                    }
-                    _ => {}
+                    movement * 60.0
                 }
+                mouse::ScrollDelta::Pixels { x, y } => Vector::new(x, y),
+            };
 
-                event_status = event::Status::Captured;
-            }
-            _ => {}
+            state.scroll(delta, bounds, content_bounds);
+
+            event_status =
+                if notify_on_scroll(state, &self.on_scroll, bounds, content_bounds, shell) {
+                    event::Status::Captured
+                } else {
+                    event::Status::Ignored
+                };
         }
 
         event_status
