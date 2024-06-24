@@ -54,8 +54,7 @@ pub fn init_logger() {
         .with_max_level(Level::INFO)
         .finish();
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("setting default subscriber failed");
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
     tracing::info!("hexencer started");
 }
 
@@ -107,15 +106,14 @@ struct Hexencer {
     /// the clip id of the clip that was dropped
     dropped_clip: Option<ClipId>,
     /// relative origin of the latest clip drag
-    drag_origin: f32, //TODO store this in the clip state instead?
+    drag_origin: f32, //TODO #51 store this in the clip state instead?
 }
 impl Hexencer {
     /// initialize the application
     fn init() -> Self {
         let storage = StorageInterface::new();
         let midi_engine_sender = start_midi_engine();
-        let _sequencer_sender =
-            start_sequencer_engine(midi_engine_sender, storage.clone());
+        let _sequencer_sender = start_sequencer_engine(midi_engine_sender, storage.clone());
 
         // let sequencer = Sequencer::new(storage, midi_engine_sender);
 
@@ -189,10 +187,7 @@ where
         cursor: iced::advanced::mouse::Cursor,
         viewport: &iced::Rectangle,
     ) {
-        let path = graphics::geometry::Path::line(
-            Point::new(0.0, 0.0),
-            Point::new(100.0, 100.0),
-        );
+        let path = graphics::geometry::Path::line(Point::new(0.0, 0.0), Point::new(100.0, 100.0));
 
         let bounds = layout.bounds();
         let state = tree.state.downcast_ref::<P::State>();
