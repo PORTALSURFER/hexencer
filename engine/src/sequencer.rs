@@ -118,7 +118,6 @@ impl Sequencer {
     /// process events at the current tick, sending them to the midi engine
     fn process_events(&mut self) {
         // let tracks = &self.data_layer.lock().unwrap().project_manager.tracks;
-
         // for track in tracks.iter() {
         //     if let Some(event_entry) = track.event_ooolist.get(&self.current_tick) {
         //         for event in event_entry.iter() {
