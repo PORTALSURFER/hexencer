@@ -391,6 +391,7 @@ fn styled(pair: palette::Pair) -> Style {
     }
 }
 
+/// disabled style
 fn disabled(style: Style) -> Style {
     Style {
         background: style
