@@ -45,10 +45,7 @@ pub struct Sequencer {
 
 impl Sequencer {
     /// creates a new 'Sequencer'
-    pub fn new(
-        data_layer: StorageInterface,
-        midi_engine_sender: MidiEngineSender,
-    ) -> Self {
+    pub fn new(data_layer: StorageInterface, midi_engine_sender: MidiEngineSender) -> Self {
         let bpm = data_layer.read().unwrap().bpm();
         Self {
             data: data_layer,
@@ -121,9 +118,6 @@ impl Sequencer {
     /// process events at the current tick, sending them to the midi engine
     fn process_events(&mut self) {
         // let tracks = &self.data_layer.lock().unwrap().project_manager.tracks;
-
-        // TODO fix this to load from clips instead
-
         // for track in tracks.iter() {
         //     if let Some(event_entry) = track.event_ooolist.get(&self.current_tick) {
         //         for event in event_entry.iter() {
