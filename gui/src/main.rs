@@ -223,7 +223,7 @@ struct Hexencer {
     /// the storage interface for the application
     storage: StorageInterface,
     /// a clip that was dropped
-    dropped_clip: Option<ClipId>, // TODO move this elsewhere
+    dropped_clip: Option<ClipId>, // TODO #53 move this elsewhere
     /// the origin of the drag for the clip that was dropped
     drag_origin: f32,
     /// state used for drawing a canvas, used for the transport line drawing
@@ -437,7 +437,7 @@ impl Hexencer {
             elements.push(track.into());
         }
 
-        // TODO draw this in an overlay?
+        // TODO #52 draw this in an overlay?
         let line_canvas = canvas(&self.state)
             .width(Length::Fill)
             .height(Length::Fixed(200.0));
