@@ -68,7 +68,7 @@ where
             clip_id,
             storage,
             class: Theme::default(),
-            hovered: false, //TODO is this used at all?
+            hovered: false, //TODO #55 is this used at all?
             content,
             on_drag: None,
             on_drop: None,
@@ -338,7 +338,7 @@ pub struct Style {
     pub shadow: Shadow,
 }
 
-// TODO make my own palette
+// TODO #54 make my own palette
 fn styled(pair: palette::Pair) -> Style {
     Style {
         background: Some(Background::Color(pair.color)),
