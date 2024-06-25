@@ -1,3 +1,7 @@
+mod cursor;
+
+pub use cursor::TickCursor;
+
 use iced::{
     advanced::{
         graphics::{core::touch, text::cosmic_text::rustybuzz::ttf_parser::Rect},

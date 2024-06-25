@@ -15,7 +15,6 @@ use hexencer_core::{Tick, TrackId};
 use iced::advanced::graphics::color;
 use iced::advanced::widget::Tree;
 use iced::advanced::{layout, mouse, renderer, Layout, Widget};
-use iced::widget::canvas::Program;
 use iced::widget::canvas::{stroke, Path, Stroke};
 use iced::widget::scrollable::Properties;
 use iced::widget::{canvas, horizontal_space};
@@ -274,17 +273,19 @@ impl<Message> canvas::Program<Message> for State {
         bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry<Renderer>> {
-        let mut mouse_point = Point::new(200.0, 200.0);
+        let start_point = Point::new(100.0, 0.0);
+        let line_length = 500.0;
+        let mut target = Point::new(start_point.x, start_point.y + line_length);
         if let Some(cursor_position) = cursor.position_in(bounds) {
-            mouse_point = cursor_position;
+            target = cursor_position;
         };
         let line_cache = self.system_cache.draw(renderer, bounds.size(), |frame| {
-            let line = Path::line(Point::new(0.0, 0.0), mouse_point);
+            let line = Path::line(start_point, target);
             frame.stroke(
                 &line,
                 Stroke {
-                    style: stroke::Style::Solid(Color::from_rgba8(0, 153, 255, 0.1)),
-                    width: 5.0,
+                    style: stroke::Style::Solid(Color::from_rgba8(200, 240, 255, 0.5)),
+                    width: 1.0,
                     ..Stroke::default()
                 },
             );
@@ -392,6 +393,12 @@ impl Hexencer {
         let data = self.storage.read().unwrap();
         let track_list = &data.project_manager.track_collection;
 
+        // let ooverlay = overlay::Element::new(
+        //     canvas(&self.state)
+        //         .width(Length::Fill)
+        //         .height(Length::Fixed(200.0)),
+        // );
+
         for (index, track) in track_list.iter().enumerate() {
             let clips = &track.clips;
             let mut clip_elements = Vec::new();
@@ -419,7 +426,10 @@ impl Hexencer {
                 });
                 clip_elements.push(clip_element.into());
             }
+
             let track_id = track.id;
+
+            let cursor = TickCursor::new();
 
             let track = Track::new(
                 &self.storage,
@@ -429,20 +439,21 @@ impl Hexencer {
                 self.dropped_clip,
             )
             .on_drop(move |clip_id, track_id, cursor_position| {
-                info!("dropped clip: {:?} onto track {}", clip_id, index);
+                info!("dropped clip: {:?} onto trarg``ck {}", clip_id, index);
                 Message::MoveClipRequest {
                     clip_id,
                     track_id,
                     cursor_position,
                 }
             });
+
             elements.push(track.into());
         }
 
-        // TODO #52 draw this in an overlay?
-        let line_canvas = canvas(&self.state)
-            .width(Length::Fill)
-            .height(Length::Fixed(200.0));
+        // // TODO #52 draw this in an overlay?
+        // let line_canvas = canvas(&self.state)
+        //     .width(Length::Fill)
+        //     .height(Length::Fixed(200.0));
         // let tracks = load_tracks(&self.storage);
         let tracks_column = column(elements).spacing(1);
 
@@ -450,7 +461,7 @@ impl Hexencer {
 
         let arranger = container(
             Arranger::new(
-                column![line_canvas, "Track list", tracks_column, wgpu_box]
+                column!["Track list", tracks_column, wgpu_box]
                     .spacing(40)
                     .align_items(Alignment::Center)
                     .width(Length::Fixed(5000.0)),
