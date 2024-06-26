@@ -1,62 +1,72 @@
-use iced::{
-    advanced::{renderer, Overlay},
-    widget::container,
-};
+// use iced::{
+//     advanced::{layout::Node, renderer, Overlay},
+//     widget::container,
+//     Element, Rectangle, Size,
+// };
 
-pub struct TickCursor<Message, Theme, Renderer> {}
+// use crate::widget;
 
-impl<Message, Theme, Renderer> Overlay<Message, Theme, Renderer>
-    for TickCursor<Message, Theme, Renderer>
-where
-    Message: Clone,
-    Theme: Catalog,
-    Renderer: renderer::Renderer,
-{
-    fn layout(&mut self, renderer: &Renderer, bounds: iced::Size) -> iced::advanced::layout::Node {}
+// pub struct TickCursor<'a, 'b, Message, Theme, Renderer>
+// where
+//     Theme: container::Catalog,
+//     Renderer: renderer::Renderer,
+// {
+//     tooltip: &'b Element<'a, Message, Theme, Renderer>,
+//     state: &'b mut widget::Tree,
+//     class: &'b Theme::Class<'a>,
+// }
 
-    fn draw(
-        &self,
-        renderer: &mut Renderer,
-        theme: &Theme,
-        style: &iced::advanced::renderer::Style,
-        layout: iced::advanced::Layout<'_>,
-        cursor: iced::advanced::mouse::Cursor,
-    ) {
-        let style = theme.style(self.class);
+// impl<'a, Message, Theme, Renderer> TickCursor<'a, 'b, Message, Theme, Renderer>
+// where
+//     Theme: container::Catalog,
+//     Renderer: renderer::Renderer,
+// {
+//     pub fn new(
+//         content: impl Into<Element<'a, Message, Theme, Renderer>>,
+//         tooltip: impl Into<Element<'a, Message, Theme, Renderer>>,
+//     ) -> Self {
+//         Self {
+//             tooltip: tooltip.into(),
+//             class: Theme::default(),
+//         }
+//     }
+// }
 
-        container::draw_background(renderer, &style, layout.bounds());
+// impl<'a, Message, Theme, Renderer> Overlay<Message, Theme, Renderer>
+//     for TickCursor<'a, Message, Theme, Renderer>
+// where
+//     Theme: container::Catalog,
+//     Renderer: renderer::Renderer,
+// {
+//     fn layout(&mut self, renderer: &Renderer, bounds: iced::Size) -> iced::advanced::layout::Node {
+//         let size = iced::Size::new(100.0, 100.0);
+//         Node::new(size)
+//     }
 
-        let defaults = renderer::Style {
-            text_color: style.text_color.unwrap_or(inherited_style.text_color),
-        };
+//     fn draw(
+//         &self,
+//         renderer: &mut Renderer,
+//         theme: &Theme,
+//         inherited_style: &iced::advanced::renderer::Style,
+//         layout: iced::advanced::Layout<'_>,
+//         cursor: iced::advanced::mouse::Cursor,
+//     ) {
+//         let style = theme.style(self.class);
 
-        self.tooltip.as_widget().draw(
-            self.state,
-            renderer,
-            theme,
-            &defaults,
-            layout.children().next().unwrap(),
-            cursor_position,
-            &Rectangle::with_size(Size::INFINITY),
-        );
-    }
+//         container::draw_background(renderer, &style, layout.bounds());
 
-    fn overlay<'a>(
-        &'a mut self,
-        _layout: iced::advanced::Layout<'_>,
-        _renderer: &Renderer,
-    ) -> Option<iced::advanced::overlay::Element<'a, Message, Theme, Renderer>> {
-    }
+//         let defaults = renderer::Style {
+//             text_color: style.text_color.unwrap_or(inherited_style.text_color),
+//         };
 
-    fn on_event(
-        &mut self,
-        _event: iced::Event,
-        _layout: iced::advanced::Layout<'_>,
-        _cursor: iced::advanced::mouse::Cursor,
-        _renderer: &Renderer,
-        _clipboard: &mut dyn iced::Clipboard,
-        _shell: &mut iced::Shell<'_, Message>,
-    ) -> iced::event::Status {
-        iced::event::Status::Ignored
-    }
-}
+//         self.tooltip.as_widget().draw(
+//             self.state,
+//             renderer,
+//             theme,
+//             &defaults,
+//             layout.children().next().unwrap(),
+//             cursor,
+//             &Rectangle::with_size(Size::INFINITY),
+//         );
+//     }
+// }

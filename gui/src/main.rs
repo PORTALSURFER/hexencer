@@ -17,10 +17,13 @@ use iced::advanced::widget::Tree;
 use iced::advanced::{layout, mouse, renderer, Layout, Widget};
 use iced::widget::canvas::{stroke, Path, Stroke};
 use iced::widget::scrollable::Properties;
-use iced::widget::{canvas, horizontal_space};
+use iced::widget::{button, canvas, horizontal_space, stack};
 use iced::widget::{center, text};
 use iced::widget::{column, container, row};
-use iced::{window, Alignment, Color, Point, Renderer, Size, Subscription, Transformation, Vector};
+use iced::{
+    alignment, window, Alignment, Color, Point, Renderer, Size, Subscription, Transformation,
+    Vector,
+};
 use iced::{Element, Length, Theme};
 use iced::{Font, Rectangle};
 use tracing::{info, Level};
@@ -276,9 +279,6 @@ impl<Message> canvas::Program<Message> for State {
         let start_point = Point::new(100.0, 0.0);
         let line_length = 500.0;
         let mut target = Point::new(start_point.x, start_point.y + line_length);
-        if let Some(cursor_position) = cursor.position_in(bounds) {
-            target = cursor_position;
-        };
         let line_cache = self.system_cache.draw(renderer, bounds.size(), |frame| {
             let line = Path::line(start_point, target);
             frame.stroke(
@@ -380,14 +380,7 @@ impl Hexencer {
                 .align_items(Alignment::Center),
         );
 
-        let bpm = self.storage.read().unwrap().bpm();
-        let bpm_widget = text(bpm.to_string()).size(60);
-
-        let bottom = container(
-            row![horizontal_space(), bpm_widget, horizontal_space()]
-                .padding(10)
-                .align_items(Alignment::Center),
-        );
+        let bottom = status_bar(&self.storage);
 
         let mut elements = Vec::new();
         let data = self.storage.read().unwrap();
@@ -429,8 +422,6 @@ impl Hexencer {
 
             let track_id = track.id;
 
-            let cursor = TickCursor::new();
-
             let track = Track::new(
                 &self.storage,
                 index,
@@ -447,29 +438,31 @@ impl Hexencer {
                 }
             });
 
-            elements.push(track.into());
+            elements.push(track.into())
         }
 
-        // // TODO #52 draw this in an overlay?
-        // let line_canvas = canvas(&self.state)
-        //     .width(Length::Fill)
-        //     .height(Length::Fixed(200.0));
+        // TODO #52 draw this in an overlay?
+        let line_canvas = canvas(&self.state)
+            .width(Length::Fill)
+            .height(Length::Fixed(500.0));
         // let tracks = load_tracks(&self.storage);
         let tracks_column = column(elements).spacing(1);
 
         let _scroll_properties = Properties::default();
 
-        let arranger = container(
+        let arranger_background = container(
             Arranger::new(
                 column!["Track list", tracks_column, wgpu_box]
                     .spacing(40)
                     .align_items(Alignment::Center)
-                    .width(Length::Fixed(5000.0)),
+                    .width(Length::Fixed(5000.0))
+                    .height(Length::Fill),
             )
             .height(Length::Fill),
         )
         .padding(10);
 
+        let arranger = stack![arranger_background, line_canvas];
         let content = column![header, arranger, bottom];
         center(content).into()
     }
@@ -483,4 +476,28 @@ impl Hexencer {
     fn _subscription(&self) -> Subscription<Message> {
         window::frames().map(Message::Tick)
     }
+}
+
+/// create the status bar ui
+fn status_bar(storage: &StorageInterface) -> Element<Message> {
+    let play_button = button("play").on_press(Message::Exit);
+    let pause_button = button("pause").on_press(Message::Exit);
+    let reset_button = button("reset").on_press(Message::Exit);
+
+    let bpm = storage.read().unwrap().bpm();
+    let bpm_widget = text(bpm.to_string()).size(60);
+
+    let bottom = container(
+        row![
+            play_button,
+            pause_button,
+            reset_button,
+            horizontal_space(),
+            bpm_widget,
+            horizontal_space()
+        ]
+        .padding(10)
+        .align_items(Alignment::Center),
+    );
+    bottom.into()
 }

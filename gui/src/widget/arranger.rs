@@ -1,16 +1,13 @@
 mod cursor;
 
-pub use cursor::TickCursor;
-
 use iced::{
     advanced::{
-        graphics::{core::touch, text::cosmic_text::rustybuzz::ttf_parser::Rect},
-        layout, mouse, renderer,
+        layout, mouse, overlay, renderer,
         widget::{tree, Tree},
         Clipboard, Layout, Shell, Widget,
     },
     event, keyboard,
-    widget::container,
+    widget::{container, text},
     Background, Border, Color, Element, Event, Length, Point, Rectangle, Size, Theme, Vector,
 };
 use tracing::info;
@@ -550,7 +547,7 @@ where
             height: bounds.height,
         };
         if let Some(cursor_over_right_scroll_block) = cursor.position_over(right_scroll_block) {
-            info!("mouse over scroll block");
+            // info!("mouse over scroll block");
             state.scroller_grabbed_at = Some(0.2);
         }
 
@@ -570,7 +567,7 @@ where
 
         // if the scroller was grabbed
         if let Some(scroller_grabbed_at) = state.scroller_grabbed_at {
-            info!("scroller grabbed at: {:?}", scroller_grabbed_at);
+            // info!("scroller grabbed at: {:?}", scroller_grabbed_at);
             // and mouse it moved
             if let Event::Mouse(mouse::Event::CursorMoved { .. }) = event {
                 // get the cursor position
@@ -580,7 +577,7 @@ where
 
                 // if there is a scrollbar
                 if let Some(scrollbar) = scrollbars.inner {
-                    info!("scrollbar found");
+                    // info!("scrollbar found");
                     // scroll the scrollbar
                     state.scroll_x_to(
                         scrollbar.scroll_percentage(scroller_grabbed_at, cursor_position),
