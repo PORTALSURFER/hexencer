@@ -28,13 +28,11 @@ pub enum SequencerCommand {
 
 /// the 'Sequencer' keep track of the tick and processes events ensuring they are sent to the right engine
 #[derive(Default, Debug)]
-pub struct Sequencer {
+pub struct Sequencer<'a> {
     /// the data layer, used to store and retreive projects, etc
-    data: StorageInterface,
+    storage: Option<&'a StorageInterface>,
     /// use this to send commands to the midi engine, like playing a note
     midi_engine_sender: Option<MidiEngineSender>,
-    /// current bpm of the sequencer
-    bpm: f64,
     /// parts per quarter note, how many ticks per beat
     ppqn: u32,
     /// true if the sequencer is running
@@ -43,14 +41,12 @@ pub struct Sequencer {
     current_tick: Tick,
 }
 
-impl Sequencer {
+impl<'a> Sequencer<'a> {
     /// creates a new 'Sequencer'
-    pub fn new(data_layer: StorageInterface, midi_engine_sender: MidiEngineSender) -> Self {
-        let bpm = data_layer.read().unwrap().bpm();
+    pub fn new(storage: &'a StorageInterface, midi_engine_sender: MidiEngineSender) -> Self {
         Self {
-            data: data_layer,
+            storage: Some(storage),
             midi_engine_sender: Some(midi_engine_sender),
-            bpm,
             ppqn: 480,
             current_tick: Tick::zero(),
             running: Arc::new(Mutex::new(false)),
@@ -59,7 +55,8 @@ impl Sequencer {
 
     /// calculate the duration of a tick
     fn tick_duration(&self) -> u64 {
-        let beat_duration = 60.0 / self.bpm;
+        let bpm = self.storage.unwrap().read().unwrap().bpm();
+        let beat_duration = 60.0 / bpm;
         let tick_duration = (beat_duration / self.ppqn as f64) * 1000.0;
         (tick_duration * 1000.0) as u64
     }
@@ -74,7 +71,7 @@ impl Sequencer {
                     if *self.running.lock().unwrap() {
                         self.process_events();
                         self.current_tick.tick();
-                        if let Ok(mut data) = self.data.write() { data.set_tick(self.current_tick) }
+                        if let Ok(mut storage) = self.storage.unwrap().write() { storage.set_tick(self.current_tick) }
                     }
                 }
                 Some(command) = command_receiver.recv() => {
@@ -137,13 +134,13 @@ impl Sequencer {
     }
 }
 
-/// starts up the sequencer engine and listens for commands, returns the sender to send commands to the sequencer
-pub fn start_sequencer_engine(
-    midi_sender: MidiEngineSender,
-    data_layer: StorageInterface,
-) -> SequencerSender {
-    let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();
-    let sequencer = Sequencer::new(data_layer, midi_sender);
-    task::spawn(sequencer.listen(sequencer_receiver));
-    sequencer_sender
-}
+// /// starts up the sequencer engine and listens for commands, returns the sender to send commands to the sequencer
+// pub fn start_sequencer_engine(
+//     midi_sender: MidiEngineSender,
+//     data_layer: StorageInterface,
+// ) -> SequencerSender {
+//     let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();
+//     let sequencer = Sequencer::new(data_layer, midi_sender);
+//     task::spawn(sequencer.listen(sequencer_receiver));
+//     sequencer_sender
+// }

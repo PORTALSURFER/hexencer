@@ -12,7 +12,7 @@ use std::time::Instant;
 
 use hexencer_core::data::{ClipId, StorageInterface};
 use hexencer_core::{Tick, TrackId};
-use hexencer_engine::Sequencer;
+use hexencer_engine::{midi_engine, Sequencer};
 use iced::advanced::graphics::color;
 use iced::advanced::widget::Tree;
 use iced::advanced::{layout, mouse, renderer, Layout, Widget};
@@ -31,7 +31,8 @@ use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 use widget::{Arranger, Clip, DragEvent, Track};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     info!("start gui");
 
     init_logger();
@@ -228,7 +229,7 @@ struct Hexencer {
     /// the storage interface for the application
     storage: StorageInterface,
     /// sequencer
-    sequencer: Sequencer,
+    sequencer: Option<Sequencer<'static>>,
     /// a clip that was dropped
     dropped_clip: Option<ClipId>, // TODO #53 move this elsewhere
     /// the origin of the drag for the clip that was dropped
@@ -300,12 +301,16 @@ impl<Message> canvas::Program<Message> for State {
 
 impl Default for Hexencer {
     fn default() -> Self {
+        let storage = StorageInterface::new();
+        let midi_sender = midi_engine::start_midi_engine();
+        let sequencer = Sequencer::new(&storage, midi_sender);
         Self {
             theme: Theme::KanagawaDragon,
-            storage: StorageInterface::default(),
+            storage: storage,
             dropped_clip: None,
             drag_origin: 0.0,
             state: State::default(),
+            sequencer: None,
         }
     }
 }
