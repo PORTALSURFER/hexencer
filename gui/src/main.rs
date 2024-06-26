@@ -12,6 +12,7 @@ use std::time::Instant;
 
 use hexencer_core::data::{ClipId, StorageInterface};
 use hexencer_core::{Tick, TrackId};
+use hexencer_engine::Sequencer;
 use iced::advanced::graphics::color;
 use iced::advanced::widget::Tree;
 use iced::advanced::{layout, mouse, renderer, Layout, Widget};
@@ -217,15 +218,17 @@ pub enum Message {
 
     /// tick message for updating the system
     Tick(Instant),
+    PlaySequencer,
 }
 
 #[derive(Debug)]
 struct Hexencer {
     /// the theme for the application
     theme: Theme,
-
     /// the storage interface for the application
     storage: StorageInterface,
+    /// sequencer
+    sequencer: Sequencer,
     /// a clip that was dropped
     dropped_clip: Option<ClipId>, // TODO #53 move this elsewhere
     /// the origin of the drag for the clip that was dropped
@@ -339,8 +342,10 @@ impl Hexencer {
             Message::Tick(instant) => {
                 self.state.update2(instant);
             }
+            Message::PlaySequencer => info!("play sequencer"),
         }
     }
+
     /// remove a clip from the storage
     pub fn remove_clip(&mut self, clip_id: ClipId) {
         let mut to_remove = None;
@@ -480,9 +485,11 @@ impl Hexencer {
 
 /// create the status bar ui
 fn status_bar(storage: &StorageInterface) -> Element<Message> {
-    let play_button = button("play").on_press(Message::Exit);
+    let play_button = button("play").on_press(Message::PlaySequencer);
     let pause_button = button("pause").on_press(Message::Exit);
     let reset_button = button("reset").on_press(Message::Exit);
+
+    // let current_tick = sequencer.read().unwrap()
 
     let bpm = storage.read().unwrap().bpm();
     let bpm_widget = text(bpm.to_string()).size(60);

@@ -27,7 +27,7 @@ pub enum SequencerCommand {
 }
 
 /// the 'Sequencer' keep track of the tick and processes events ensuring they are sent to the right engine
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Sequencer {
     /// the data layer, used to store and retreive projects, etc
     data: StorageInterface,

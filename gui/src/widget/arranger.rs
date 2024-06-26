@@ -590,7 +590,6 @@ where
                 return event::Status::Captured;
             }
         } else if mouse_over_scrollbar {
-            info!("mouse over scrollbar");
             if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) = event {
                 let Some(cursor_position) = cursor.position() else {
                     return event::Status::Ignored;
