@@ -2,16 +2,14 @@ mod cursor;
 
 use iced::{
     advanced::{
-        layout, mouse, overlay, renderer,
+        layout, mouse, renderer,
         widget::{tree, Tree},
         Clipboard, Layout, Shell, Widget,
     },
     event, keyboard,
-    widget::{container, text},
+    widget::container,
     Background, Border, Color, Element, Event, Length, Point, Rectangle, Size, Theme, Vector,
 };
-use tracing::info;
-
 mod internals;
 
 /// Alignment of the scrollable's content relative to it's [`Viewport`] in one direction.
@@ -21,8 +19,9 @@ pub enum Alignment {
     #[default]
     Start,
     /// Content is aligned to the end of the [`Viewport`]
-    End,
+    _End,
 }
+
 /// offset of the [`Viewport`].
 #[derive(Debug, Clone, Copy)]
 enum Offset {
@@ -42,17 +41,17 @@ impl Offset {
 
         match alignment {
             Alignment::Start => offset,
-            Alignment::End => ((content - viewport).max(0.0) - offset).max(0.0),
+            Alignment::_End => ((content - viewport).max(0.0) - offset).max(0.0),
         }
     }
 }
 /// The current [`Viewport`] of the [`Scrollable`].
 #[derive(Debug, Clone, Copy)]
 pub struct Viewport {
-    offset_x: Offset,
-    offset_y: Offset,
-    bounds: Rectangle,
-    content_bounds: Rectangle,
+    _bounds: Rectangle,
+    _content_bounds: Rectangle,
+    _offset_x: Offset,
+    _offset_y: Offset,
 }
 
 /// Arranger widget type, houses tracks and clips
@@ -125,7 +124,7 @@ struct State {
     /// The current keyboard modifiers.
     keyboard_modifiers: keyboard::Modifiers,
     /// The last [`Viewport`] that was notified.
-    last_notified: Option<Viewport>,
+    _last_notified: Option<Viewport>,
 }
 
 /// The state of a [`Arranger`].
@@ -153,7 +152,7 @@ impl State {
 
     /// Apply a scrolling offset to the current [`State`], given the bounds of
     /// the [`Scrollable`] and its contents.
-    pub fn scroll(&mut self, delta: Vector<f32>, bounds: Rectangle, content_bounds: Rectangle) {
+    pub fn scroll(&mut self, _delta: Vector<f32>, _bounds: Rectangle, _content_bounds: Rectangle) {
         //     let horizontal_alignment = direction
         //         .horizontal()
         //         .map(|p| p.alignment)
@@ -183,7 +182,7 @@ impl State {
         //         );
     }
 
-    fn unsnap(&self, bounds: Rectangle, content_bounds: Rectangle) {}
+    fn unsnap(&self, _bounds: Rectangle, _content_bounds: Rectangle) {}
 }
 
 impl Default for State {
@@ -193,7 +192,7 @@ impl Default for State {
             offset: Offset::Absolute(0.0),
             scroller_grabbed_at: None,
             keyboard_modifiers: keyboard::Modifiers::default(),
-            last_notified: None,
+            _last_notified: None,
         }
     }
 }
@@ -546,7 +545,7 @@ where
             width: block_width,
             height: bounds.height,
         };
-        if let Some(cursor_over_right_scroll_block) = cursor.position_over(right_scroll_block) {
+        if let Some(_cursor_over_right_scroll_block) = cursor.position_over(right_scroll_block) {
             // info!("mouse over scroll block");
             state.scroller_grabbed_at = Some(0.2);
         }
@@ -696,11 +695,11 @@ where
 }
 
 fn notify_on_scroll<Message>(
-    state: &mut State,
-    on_scroll: &Option<Box<dyn Fn(Viewport) -> Message + '_>>,
-    bounds: Rectangle,
-    content_bounds: Rectangle,
-    shell: &mut Shell<Message>,
+    _state: &mut State,
+    _on_scroll: &Option<Box<dyn Fn(Viewport) -> Message + '_>>,
+    _bounds: Rectangle,
+    _content_bounds: Rectangle,
+    _shell: &mut Shell<Message>,
 ) -> bool {
     false
 }

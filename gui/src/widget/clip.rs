@@ -43,9 +43,9 @@ where
     /// id of the clip, identifier in the storage
     clip_id: ClipId,
     /// style of the clip
-    class: Theme::Class<'a>,
+    _class: Theme::Class<'a>,
     /// is the clip hovered
-    hovered: bool,
+    _hovered: bool,
     /// on drag event
     on_drag: Option<Box<dyn Fn(DragEvent) -> Message + 'a>>,
     /// on drop event
@@ -67,8 +67,8 @@ where
         Self {
             clip_id,
             storage,
-            class: Theme::default(),
-            hovered: false, //TODO #55 is this used at all?
+            _class: Theme::default(),
+            _hovered: false, //TODO #55 is this used at all?
             content,
             on_drag: None,
             on_drop: None,
@@ -150,7 +150,7 @@ enum State {
     /// pressed
     Pressed,
     /// hovered
-    Hovered,
+    _Hovered,
     /// dragged
     Dragged {
         /// origin of the drag
@@ -250,7 +250,7 @@ where
                     });
                 }
             }
-            State::Hovered => {
+            State::_Hovered => {
                 renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.92, 0.74, 0.98)));
             }
             State::Idle => {

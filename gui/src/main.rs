@@ -8,23 +8,22 @@
 /// contains custom widgets for hexencer
 mod widget;
 
+use std::sync::Arc;
 use std::time::Instant;
 
 use hexencer_core::data::{ClipId, StorageInterface};
 use hexencer_core::{Tick, TrackId};
-use hexencer_engine::{midi_engine, Sequencer};
+use hexencer_engine::{midi_engine, Sequencer, SequencerCommand, SequencerHandle};
 use iced::advanced::graphics::color;
 use iced::advanced::widget::Tree;
 use iced::advanced::{layout, mouse, renderer, Layout, Widget};
+use iced::mouse::Cursor;
 use iced::widget::canvas::{stroke, Path, Stroke};
 use iced::widget::scrollable::Properties;
 use iced::widget::{button, canvas, horizontal_space, stack};
 use iced::widget::{center, text};
 use iced::widget::{column, container, row};
-use iced::{
-    alignment, window, Alignment, Color, Point, Renderer, Size, Subscription, Transformation,
-    Vector,
-};
+use iced::{window, Alignment, Color, Point, Renderer, Size, Subscription, Transformation, Vector};
 use iced::{Element, Length, Theme};
 use iced::{Font, Rectangle};
 use tracing::{info, Level};
@@ -219,6 +218,7 @@ pub enum Message {
 
     /// tick message for updating the system
     Tick(Instant),
+    /// play the sequencer
     PlaySequencer,
 }
 
@@ -229,7 +229,7 @@ struct Hexencer {
     /// the storage interface for the application
     storage: StorageInterface,
     /// sequencer
-    sequencer: Option<Sequencer<'static>>,
+    sequencer_handle: SequencerHandle,
     /// a clip that was dropped
     dropped_clip: Option<ClipId>, // TODO #53 move this elsewhere
     /// the origin of the drag for the clip that was dropped
@@ -278,11 +278,11 @@ impl<Message> canvas::Program<Message> for State {
         renderer: &Renderer,
         _theme: &Theme,
         bounds: Rectangle,
-        cursor: mouse::Cursor,
+        _cursor: Cursor,
     ) -> Vec<canvas::Geometry<Renderer>> {
         let start_point = Point::new(100.0, 0.0);
         let line_length = 500.0;
-        let mut target = Point::new(start_point.x, start_point.y + line_length);
+        let target = Point::new(start_point.x, start_point.y + line_length);
         let line_cache = self.system_cache.draw(renderer, bounds.size(), |frame| {
             let line = Path::line(start_point, target);
             frame.stroke(
@@ -303,14 +303,25 @@ impl Default for Hexencer {
     fn default() -> Self {
         let storage = StorageInterface::new();
         let midi_sender = midi_engine::start_midi_engine();
-        let sequencer = Sequencer::new(&storage, midi_sender);
+        let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();
+        let sequencer = Sequencer::new(storage.clone(), midi_sender, sequencer_receiver);
+
+        let sequencer_handle = SequencerHandle {
+            state: Arc::clone(&sequencer.state),
+            command_sender: sequencer_sender,
+        };
+
+        tokio::spawn(sequencer.run());
+
+        // let sequencer_sender = start_sequencer_engine(midi_sender, storage.clone());
+        // let sequencer_handle =
         Self {
             theme: Theme::KanagawaDragon,
-            storage: storage,
+            storage,
             dropped_clip: None,
             drag_origin: 0.0,
             state: State::default(),
-            sequencer: None,
+            sequencer_handle,
         }
     }
 }
@@ -347,12 +358,18 @@ impl Hexencer {
             Message::Tick(instant) => {
                 self.state.update2(instant);
             }
-            Message::PlaySequencer => info!("play sequencer"),
+            Message::PlaySequencer => {
+                self.sequencer_handle
+                    .command_sender
+                    .send(SequencerCommand::Play)
+                    .expect("unable to send sequencer command, perhaps the channel was dropped?");
+                info!("play sequencer");
+            }
         }
     }
 
     /// remove a clip from the storage
-    pub fn remove_clip(&mut self, clip_id: ClipId) {
+    pub fn _remove_clip(&mut self, clip_id: ClipId) {
         let mut to_remove = None;
 
         let mut data = self.storage.write().unwrap();
@@ -390,7 +407,7 @@ impl Hexencer {
                 .align_items(Alignment::Center),
         );
 
-        let bottom = status_bar(&self.storage);
+        let bottom = status_bar(self.storage.clone(), &self.sequencer_handle);
 
         let mut elements = Vec::new();
         let data = self.storage.read().unwrap();
@@ -489,12 +506,19 @@ impl Hexencer {
 }
 
 /// create the status bar ui
-fn status_bar(storage: &StorageInterface) -> Element<Message> {
+fn status_bar<'a>(
+    storage: StorageInterface,
+    sequencer: &'a SequencerHandle,
+) -> Element<'a, Message> {
     let play_button = button("play").on_press(Message::PlaySequencer);
     let pause_button = button("pause").on_press(Message::Exit);
     let reset_button = button("reset").on_press(Message::Exit);
 
-    // let current_tick = sequencer.read().unwrap()
+    let state = sequencer.state.read().unwrap();
+    let test = state.current_tick;
+    let current_tick = test.clone();
+    info!("current tick: {:?}", current_tick);
+    let tick_widget = text(current_tick.to_string());
 
     let bpm = storage.read().unwrap().bpm();
     let bpm_widget = text(bpm.to_string()).size(60);
@@ -506,7 +530,8 @@ fn status_bar(storage: &StorageInterface) -> Element<Message> {
             reset_button,
             horizontal_space(),
             bpm_widget,
-            horizontal_space()
+            horizontal_space(),
+            tick_widget,
         ]
         .padding(10)
         .align_items(Alignment::Center),

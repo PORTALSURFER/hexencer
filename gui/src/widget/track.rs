@@ -29,19 +29,19 @@ where
     /// track id this widget represents
     track_id: TrackId,
     /// The padding of the track.
-    padding: Padding,
+    _padding: Padding,
     /// The width of the track.
     width: Length,
     /// The height of the track.
     height: Length,
     /// The maximum width of the track.
-    max_width: f32,
+    _max_width: f32,
     /// The maximum height of the track.
-    max_height: f32,
+    _max_height: f32,
     /// The horizontal alignment of the track.
-    horizontal_alignment: alignment::Horizontal,
+    _horizontal_alignment: alignment::Horizontal,
     /// The vertical alignment of the track.
-    vertical_alignment: alignment::Vertical,
+    _vertical_alignment: alignment::Vertical,
     /// The style of the track.
     class: Theme::Class<'a>,
     /// Is the track hovered?
@@ -49,7 +49,7 @@ where
     /// The storage interface for the track.
     storage: &'a StorageInterface,
     /// The index of the track.
-    track_index: usize,
+    _track_index: usize,
     /// The children of the track.
     children: Vec<Element<'a, Message, Theme, Renderer>>,
     /// The dropped clip.
@@ -73,17 +73,17 @@ where
     ) -> Self {
         Self {
             storage,
-            track_index: index,
+            _track_index: index,
             track_id,
             dropped_clip,
             on_drop: None,
-            padding: Padding::ZERO,
+            _padding: Padding::ZERO,
             width: Length::Fill,
             height: Length::Fixed(18.0),
-            max_width: f32::INFINITY,
-            max_height: f32::INFINITY,
-            horizontal_alignment: alignment::Horizontal::Center,
-            vertical_alignment: alignment::Vertical::Top,
+            _max_width: f32::INFINITY,
+            _max_height: f32::INFINITY,
+            _horizontal_alignment: alignment::Horizontal::Center,
+            _vertical_alignment: alignment::Vertical::Top,
             class: Theme::default(),
             hovered: false,
             children,

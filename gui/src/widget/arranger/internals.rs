@@ -24,7 +24,7 @@ impl Scrollbar {
 
         match self.alignment {
             Alignment::Start => percentage,
-            Alignment::End => 1.0 - percentage,
+            Alignment::_End => 1.0 - percentage,
         }
     }
 }
