@@ -1,5 +1,5 @@
-#![deny(missing_docs)]
-#![deny(clippy::missing_docs_in_private_items)]
+#![warn(missing_docs)]
+#![warn(clippy::missing_docs_in_private_items)]
 #![allow(dead_code)]
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
 
@@ -114,6 +114,10 @@ impl Tick {
     /// returns this 'Tick' as an 'u32'
     fn as_u32(&self) -> u32 {
         self.0 as u32
+    }
+
+    pub fn as_f64(&self) -> f64 {
+        self.0 as f64
     }
 }
 

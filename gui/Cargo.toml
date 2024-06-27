@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 
-iced = {git="https://github.com/iced-rs/iced", features=["canvas", "advanced", "wgpu"]}
+iced = {git="https://github.com/iced-rs/iced", features=["canvas", "advanced", "wgpu", "debug"]}
 image = "0.25.1"
 winit = "0.30.0"
 

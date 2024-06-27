@@ -3,20 +3,24 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
 
+// test
+
 /// contains custom widgets for hexencer
 mod widget;
 
+use std::sync::Arc;
 use std::time::Instant;
 
 use hexencer_core::data::{ClipId, StorageInterface};
 use hexencer_core::{Tick, TrackId};
+use hexencer_engine::{midi_engine, Sequencer, SequencerCommand, SequencerHandle};
 use iced::advanced::graphics::color;
 use iced::advanced::widget::Tree;
 use iced::advanced::{layout, mouse, renderer, Layout, Widget};
-use iced::widget::canvas::Program;
+use iced::mouse::Cursor;
 use iced::widget::canvas::{stroke, Path, Stroke};
 use iced::widget::scrollable::Properties;
-use iced::widget::{canvas, horizontal_space};
+use iced::widget::{button, canvas, horizontal_space, stack};
 use iced::widget::{center, text};
 use iced::widget::{column, container, row};
 use iced::{window, Alignment, Color, Point, Renderer, Size, Subscription, Transformation, Vector};
@@ -26,7 +30,8 @@ use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 use widget::{Arranger, Clip, DragEvent, Track};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     info!("start gui");
 
     init_logger();
@@ -34,8 +39,9 @@ fn main() {
     let _ = iced::application("Hexencer", Hexencer::update, Hexencer::view)
         .theme(Hexencer::theme)
         .font(include_bytes!("../../assets/fonts/5squared-pixel.ttf"))
-        // .subscription(Hexencer::subscription)
+        .subscription(Hexencer::subscription)
         .default_font(Font::with_name("5squared pixel"))
+        .antialiasing(true)
         .run();
 }
 
@@ -213,15 +219,20 @@ pub enum Message {
 
     /// tick message for updating the system
     Tick(Instant),
+    /// play the sequencer
+    PlaySequencer,
+    ResetSequencer,
+    PauseSequencer,
 }
 
 #[derive(Debug)]
 struct Hexencer {
     /// the theme for the application
     theme: Theme,
-
     /// the storage interface for the application
     storage: StorageInterface,
+    /// sequencer
+    sequencer_handle: SequencerHandle,
     /// a clip that was dropped
     dropped_clip: Option<ClipId>, // TODO #53 move this elsewhere
     /// the origin of the drag for the clip that was dropped
@@ -237,6 +248,7 @@ struct State {
     now: Instant,
     /// cache which stores the canvas drawing elements
     system_cache: canvas::Cache,
+    tick: f64,
 }
 impl State {
     /// create a new state
@@ -245,19 +257,15 @@ impl State {
         Self {
             now,
             system_cache: canvas::Cache::default(),
+            tick: 0.0,
         }
     }
 
     /// update the canvas state
-    pub fn update2(&mut self, now: Instant) {
+    pub fn update2(&mut self, now: Instant, tick: f64) {
         self.now = now;
         self.system_cache.clear();
-    }
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self::new()
+        self.tick = tick;
     }
 }
 
@@ -270,19 +278,18 @@ impl<Message> canvas::Program<Message> for State {
         renderer: &Renderer,
         _theme: &Theme,
         bounds: Rectangle,
-        cursor: mouse::Cursor,
+        _cursor: Cursor,
     ) -> Vec<canvas::Geometry<Renderer>> {
-        let mut mouse_point = Point::new(200.0, 200.0);
-        if let Some(cursor_position) = cursor.position_in(bounds) {
-            mouse_point = cursor_position;
-        };
+        let start_point = Point::new(self.tick as f32 * 240.0, 0.0);
+        let line_length = 500.0;
+        let target = Point::new(start_point.x, start_point.y + line_length);
         let line_cache = self.system_cache.draw(renderer, bounds.size(), |frame| {
-            let line = Path::line(Point::new(0.0, 0.0), mouse_point);
+            let line = Path::line(start_point, target);
             frame.stroke(
                 &line,
                 Stroke {
-                    style: stroke::Style::Solid(Color::from_rgba8(0, 153, 255, 0.1)),
-                    width: 5.0,
+                    style: stroke::Style::Solid(Color::from_rgba8(200, 240, 255, 0.5)),
+                    width: 1.0,
                     ..Stroke::default()
                 },
             );
@@ -294,12 +301,27 @@ impl<Message> canvas::Program<Message> for State {
 
 impl Default for Hexencer {
     fn default() -> Self {
+        let storage = StorageInterface::new();
+        let midi_sender = midi_engine::start_midi_engine();
+        let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();
+        let sequencer = Sequencer::new(storage.clone(), midi_sender, sequencer_receiver);
+
+        let sequencer_handle = SequencerHandle {
+            state: Arc::clone(&sequencer.state),
+            command_sender: sequencer_sender,
+        };
+
+        tokio::spawn(sequencer.run());
+
+        // let sequencer_sender = start_sequencer_engine(midi_sender, storage.clone());
+        // let sequencer_handle =
         Self {
             theme: Theme::KanagawaDragon,
-            storage: StorageInterface::default(),
+            storage,
             dropped_clip: None,
             drag_origin: 0.0,
-            state: State::default(),
+            state: State::new(),
+            sequencer_handle,
         }
     }
 }
@@ -334,12 +356,36 @@ impl Hexencer {
                     .move_clip(clip_id, track_id, tick);
             }
             Message::Tick(instant) => {
-                self.state.update2(instant);
+                let tick = self
+                    .sequencer_handle
+                    .state
+                    .read()
+                    .unwrap()
+                    .current_tick
+                    .as_f64()
+                    / 480.0;
+                self.state.update2(instant, tick);
             }
+            Message::PlaySequencer => {
+                self.sequencer_handle
+                    .command_sender
+                    .send(SequencerCommand::Play)
+                    .expect("unable to send sequencer command, perhaps the channel was dropped?");
+                info!("play sequencer");
+            }
+            Message::ResetSequencer => {
+                self.sequencer_handle
+                    .command_sender
+                    .send(SequencerCommand::Reset)
+                    .expect("unable to send sequencer command, perhaps the channel was dropped?");
+                info!("play sequencer");
+            }
+            Message::PauseSequencer => todo!(),
         }
     }
+
     /// remove a clip from the storage
-    pub fn remove_clip(&mut self, clip_id: ClipId) {
+    pub fn _remove_clip(&mut self, clip_id: ClipId) {
         let mut to_remove = None;
 
         let mut data = self.storage.write().unwrap();
@@ -377,18 +423,17 @@ impl Hexencer {
                 .align_items(Alignment::Center),
         );
 
-        let bpm = self.storage.read().unwrap().bpm();
-        let bpm_widget = text(bpm.to_string()).size(60);
-
-        let bottom = container(
-            row![horizontal_space(), bpm_widget, horizontal_space()]
-                .padding(10)
-                .align_items(Alignment::Center),
-        );
+        let bottom = status_bar(self.storage.clone(), &self.sequencer_handle);
 
         let mut elements = Vec::new();
         let data = self.storage.read().unwrap();
         let track_list = &data.project_manager.track_collection;
+
+        // let ooverlay = overlay::Element::new(
+        //     canvas(&self.state)
+        //         .width(Length::Fill)
+        //         .height(Length::Fixed(200.0)),
+        // );
 
         for (index, track) in track_list.iter().enumerate() {
             let clips = &track.clips;
@@ -417,6 +462,7 @@ impl Hexencer {
                 });
                 clip_elements.push(clip_element.into());
             }
+
             let track_id = track.id;
 
             let track = Track::new(
@@ -427,36 +473,37 @@ impl Hexencer {
                 self.dropped_clip,
             )
             .on_drop(move |clip_id, track_id, cursor_position| {
-                info!("dropped clip: {:?} onto track {}", clip_id, index);
+                info!("dropped clip: {:?} onto trarg``ck {}", clip_id, index);
                 Message::MoveClipRequest {
                     clip_id,
                     track_id,
                     cursor_position,
                 }
             });
-            elements.push(track.into());
+
+            elements.push(track.into())
         }
 
-        // TODO #52 draw this in an overlay?
         let line_canvas = canvas(&self.state)
             .width(Length::Fill)
-            .height(Length::Fixed(200.0));
-        // let tracks = load_tracks(&self.storage);
+            .height(Length::Fixed(500.0));
         let tracks_column = column(elements).spacing(1);
 
         let _scroll_properties = Properties::default();
 
-        let arranger = container(
+        let arranger_background = container(
             Arranger::new(
-                column![line_canvas, "Track list", tracks_column, wgpu_box]
+                column!["Track list", tracks_column, wgpu_box]
                     .spacing(40)
                     .align_items(Alignment::Center)
-                    .width(Length::Fixed(5000.0)),
+                    .width(Length::Fixed(5000.0))
+                    .height(Length::Fill),
             )
             .height(Length::Fill),
         )
         .padding(10);
 
+        let arranger = stack![arranger_background, line_canvas];
         let content = column![header, arranger, bottom];
         center(content).into()
     }
@@ -467,7 +514,40 @@ impl Hexencer {
     }
 
     /// get the subscription for the application
-    fn _subscription(&self) -> Subscription<Message> {
+    fn subscription(&self) -> Subscription<Message> {
         window::frames().map(Message::Tick)
     }
+}
+
+/// create the status bar ui
+fn status_bar<'a>(
+    storage: StorageInterface,
+    sequencer: &'a SequencerHandle,
+) -> Element<'a, Message> {
+    let play_button = button("play").on_press(Message::PlaySequencer);
+    let pause_button = button("pause").on_press(Message::PauseSequencer);
+    let reset_button = button("reset").on_press(Message::ResetSequencer);
+
+    let state = sequencer.state.read().unwrap();
+    let test = state.current_tick;
+    let current_tick = test.clone();
+    let tick_widget = text(current_tick.to_string());
+
+    let bpm = storage.read().unwrap().bpm();
+    let bpm_widget = text(bpm.to_string()).size(60);
+
+    let bottom = container(
+        row![
+            play_button,
+            pause_button,
+            reset_button,
+            horizontal_space(),
+            bpm_widget,
+            horizontal_space(),
+            tick_widget,
+        ]
+        .padding(10)
+        .align_items(Alignment::Center),
+    );
+    bottom.into()
 }
