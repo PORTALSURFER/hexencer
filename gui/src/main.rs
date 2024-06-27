@@ -39,8 +39,9 @@ async fn main() {
     let _ = iced::application("Hexencer", Hexencer::update, Hexencer::view)
         .theme(Hexencer::theme)
         .font(include_bytes!("../../assets/fonts/5squared-pixel.ttf"))
-        // .subscription(Hexencer::subscription)
+        .subscription(Hexencer::subscription)
         .default_font(Font::with_name("5squared pixel"))
+        .antialiasing(true)
         .run();
 }
 
@@ -220,6 +221,8 @@ pub enum Message {
     Tick(Instant),
     /// play the sequencer
     PlaySequencer,
+    ResetSequencer,
+    PauseSequencer,
 }
 
 #[derive(Debug)]
@@ -245,6 +248,7 @@ struct State {
     now: Instant,
     /// cache which stores the canvas drawing elements
     system_cache: canvas::Cache,
+    tick: f64,
 }
 impl State {
     /// create a new state
@@ -253,19 +257,15 @@ impl State {
         Self {
             now,
             system_cache: canvas::Cache::default(),
+            tick: 0.0,
         }
     }
 
     /// update the canvas state
-    pub fn update2(&mut self, now: Instant) {
+    pub fn update2(&mut self, now: Instant, tick: f64) {
         self.now = now;
         self.system_cache.clear();
-    }
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self::new()
+        self.tick = tick;
     }
 }
 
@@ -280,7 +280,7 @@ impl<Message> canvas::Program<Message> for State {
         bounds: Rectangle,
         _cursor: Cursor,
     ) -> Vec<canvas::Geometry<Renderer>> {
-        let start_point = Point::new(100.0, 0.0);
+        let start_point = Point::new(self.tick as f32 * 240.0, 0.0);
         let line_length = 500.0;
         let target = Point::new(start_point.x, start_point.y + line_length);
         let line_cache = self.system_cache.draw(renderer, bounds.size(), |frame| {
@@ -320,7 +320,7 @@ impl Default for Hexencer {
             storage,
             dropped_clip: None,
             drag_origin: 0.0,
-            state: State::default(),
+            state: State::new(),
             sequencer_handle,
         }
     }
@@ -356,7 +356,15 @@ impl Hexencer {
                     .move_clip(clip_id, track_id, tick);
             }
             Message::Tick(instant) => {
-                self.state.update2(instant);
+                let tick = self
+                    .sequencer_handle
+                    .state
+                    .read()
+                    .unwrap()
+                    .current_tick
+                    .as_f64()
+                    / 480.0;
+                self.state.update2(instant, tick);
             }
             Message::PlaySequencer => {
                 self.sequencer_handle
@@ -365,6 +373,14 @@ impl Hexencer {
                     .expect("unable to send sequencer command, perhaps the channel was dropped?");
                 info!("play sequencer");
             }
+            Message::ResetSequencer => {
+                self.sequencer_handle
+                    .command_sender
+                    .send(SequencerCommand::Reset)
+                    .expect("unable to send sequencer command, perhaps the channel was dropped?");
+                info!("play sequencer");
+            }
+            Message::PauseSequencer => todo!(),
         }
     }
 
@@ -468,11 +484,9 @@ impl Hexencer {
             elements.push(track.into())
         }
 
-        // TODO #52 draw this in an overlay?
         let line_canvas = canvas(&self.state)
             .width(Length::Fill)
             .height(Length::Fixed(500.0));
-        // let tracks = load_tracks(&self.storage);
         let tracks_column = column(elements).spacing(1);
 
         let _scroll_properties = Properties::default();
@@ -500,7 +514,7 @@ impl Hexencer {
     }
 
     /// get the subscription for the application
-    fn _subscription(&self) -> Subscription<Message> {
+    fn subscription(&self) -> Subscription<Message> {
         window::frames().map(Message::Tick)
     }
 }
@@ -511,13 +525,12 @@ fn status_bar<'a>(
     sequencer: &'a SequencerHandle,
 ) -> Element<'a, Message> {
     let play_button = button("play").on_press(Message::PlaySequencer);
-    let pause_button = button("pause").on_press(Message::Exit);
-    let reset_button = button("reset").on_press(Message::Exit);
+    let pause_button = button("pause").on_press(Message::PauseSequencer);
+    let reset_button = button("reset").on_press(Message::ResetSequencer);
 
     let state = sequencer.state.read().unwrap();
     let test = state.current_tick;
     let current_tick = test.clone();
-    info!("current tick: {:?}", current_tick);
     let tick_widget = text(current_tick.to_string());
 
     let bpm = storage.read().unwrap().bpm();

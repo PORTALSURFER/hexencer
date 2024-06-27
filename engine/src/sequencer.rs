@@ -102,7 +102,6 @@ impl Sequencer {
     async fn tick(&mut self) {
         if self.state.read().unwrap().running {
             let mut state = self.state.write().unwrap();
-            info!("ticking {}", state.current_tick);
             state.current_tick.tick();
         }
     }
@@ -200,7 +199,9 @@ impl Sequencer {
     }
 
     async fn reset(&self) {
-        info!("resetting sequencer");
+        let mut state = self.state.write().unwrap();
+        state.current_tick = 0.into();
+        state.running = false;
     }
 }
 

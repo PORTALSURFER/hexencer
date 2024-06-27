@@ -115,6 +115,10 @@ impl Tick {
     fn as_u32(&self) -> u32 {
         self.0 as u32
     }
+
+    pub fn as_f64(&self) -> f64 {
+        self.0 as f64
+    }
 }
 
 impl Display for Tick {
