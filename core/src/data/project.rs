@@ -46,7 +46,7 @@ impl Project {
     /// returns reference to the clip if found, else 'None'
     pub fn find_clip(&self, target_clip_id: ClipId) -> Option<Clip> {
         for track in self.track_collection.iter() {
-            for (clip_key, clip) in track.clips.iter() {
+            for (clip_key, clip) in track.clip_collection.iter() {
                 if clip_key.id == target_clip_id {
                     let clip = clip.to_owned();
                     return Some(clip);

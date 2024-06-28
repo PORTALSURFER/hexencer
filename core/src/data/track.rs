@@ -23,7 +23,7 @@ impl TrackCollection {
     /// gets slice of clips at a given track index
     pub fn get_clips(&self, index: usize) -> Result<&ClipCollection, TrackCollectionError> {
         match self.inner.get(index) {
-            Some(track) => Ok(&track.clips),
+            Some(track) => Ok(&track.clip_collection),
             _ => Err(TrackCollectionError::NoTrack(index)),
         }
     }
@@ -81,7 +81,7 @@ impl TrackCollection {
     /// take the clip out of any track if found, removing it from the track
     pub fn take_clip(&mut self, clip_id: ClipId) -> Option<Clip> {
         for track in &mut self.inner {
-            if let result @ Some(_) = track.clips.find_take(clip_id) {
+            if let result @ Some(_) = track.clip_collection.find_take(clip_id) {
                 return result;
             }
         }
@@ -123,7 +123,7 @@ pub struct Track {
     /// instrument assigned to this track
     pub instrument: Instrument,
     /// clips in this track
-    pub clips: ClipCollection,
+    pub clip_collection: ClipCollection,
 }
 
 impl Display for Track {
@@ -140,7 +140,7 @@ impl Track {
             id,
             name: String::from(name),
             instrument: Instrument::new("port0", 0, 0),
-            clips: ClipCollection::new(),
+            clip_collection: ClipCollection::new(),
         }
     }
 
@@ -156,11 +156,11 @@ impl Track {
 
     /// add a new clip to the track
     pub fn add_clip(&mut self, clip: Clip) {
-        self.clips.insert(clip);
+        self.clip_collection.insert(clip);
     }
 
     /// removes a clip from the track by its key
     pub fn remove_clip(&mut self, key: &ClipKey) {
-        self.clips.remove(key);
+        self.clip_collection.remove(key);
     }
 }

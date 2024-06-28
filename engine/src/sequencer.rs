@@ -1,9 +1,12 @@
 use std::{
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, RwLock},
     time::Duration,
 };
 
-use hexencer_core::{data::StorageInterface, Tick};
+use hexencer_core::{
+    data::{ClipId, ClipKey, StorageInterface},
+    Tick,
+};
 use tokio::time;
 use tracing::info;
 
@@ -103,6 +106,7 @@ impl Sequencer {
     /// handles ticking of the sequencer
     async fn tick(&mut self) {
         if self.state.read().unwrap().running {
+            self.process_events();
             let mut state = self.state.write().unwrap();
             state.current_tick.tick();
         }
@@ -188,23 +192,37 @@ impl Sequencer {
 
     /// process events at the current tick, sending them to the midi engine
     fn process_events(&mut self) {
-        // let tracks = &self.data_layer.lock().unwrap().project_manager.tracks;
-        // for track in tracks.iter() {
-        //     if let Some(event_entry) = track.event_ooolist.get(&self.current_tick) {
-        //         for event in event_entry.iter() {
-        //             let event_type = event.event_type;
-        //             tracing::info!("{} - {}", track, event_type);
+        let storage = self.storage.read().unwrap();
+        let state = self.state.read().unwrap();
+        let tracks = &storage.project_manager.track_collection;
+        for track in tracks.iter() {
+            let clip_key = ClipKey {
+                start: state.current_tick,
+                id: ClipId::new(),
+            };
 
-        //             if event.is_active {
-        //                 let message = event_type.get_message();
-        //                 let instrument = &track.instrument;
-        //                 self.midi_engine_sender.as_mut().map(|sender| {
-        //                     sender.send((message, instrument.port, instrument.channel))
-        //                 });
-        //             }
-        //         }
-        //     }
-        // }
+            if let Some(clip) = track.clip_collection.get(&clip_key) {
+                for (tick, event_segments) in clip.events.iter() {
+                    if *tick == state.current_tick {
+                        for segment in event_segments {
+                            info!("process event {:?}", segment);
+                        }
+                    }
+                }
+            }
+            // for event in event_entry.iter() {
+            //     let event_type = event.event_type;
+            //     tracing::info!("{} - {}", track, event_type);
+
+            //     if event.is_active {
+            //         let message = event_type.get_message();
+            //         let instrument = &track.instrument;
+            //         self.midi_engine_sender.as_mut().map(|sender| {
+            //             sender.send((message, instrument.port, instrument.channel))
+            //         });
+            //     }
+            // }
+        }
     }
 
     async fn reset(&self) {

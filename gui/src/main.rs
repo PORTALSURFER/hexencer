@@ -397,7 +397,7 @@ impl Hexencer {
         let mut data = self.storage.write().unwrap();
         let track_collection = &mut data.project_manager.track_collection;
         for track in track_collection.tracks() {
-            for (clip_key, clip) in track.clips.iter() {
+            for (clip_key, clip) in track.clip_collection.iter() {
                 if clip.id() == clip_id {
                     info!("clip found: {:?} in track {:?}", clip_id, track.id);
                     to_remove = Some((track.id, *clip_key));
@@ -411,7 +411,7 @@ impl Hexencer {
 
         if let Some((track_id, clip_key)) = to_remove {
             if let Some(track) = track_collection.get_mut(track_id) {
-                track.clips.remove(&clip_key).unwrap();
+                track.clip_collection.remove(&clip_key).unwrap();
             }
         }
     }
@@ -442,7 +442,7 @@ impl Hexencer {
         // );
 
         for (index, track) in track_list.iter().enumerate() {
-            let clips = &track.clips;
+            let clips = &track.clip_collection;
             let mut clip_elements = Vec::new();
 
             for (clip_id, _clip) in clips.iter() {

@@ -38,7 +38,7 @@ impl From<&Clip> for ClipKey {
 #[derive(Default, Debug)]
 pub struct ClipCollection {
     /// inner object housing the clips
-    inner: BTreeMap<ClipKey, Clip>,
+    inner: BTreeMap<Tick, Clip>,
 }
 
 impl ClipCollection {
