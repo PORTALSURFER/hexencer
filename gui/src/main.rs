@@ -380,7 +380,13 @@ impl Hexencer {
                     .expect("unable to send sequencer command, perhaps the channel was dropped?");
                 info!("play sequencer");
             }
-            Message::PauseSequencer => todo!(),
+            Message::PauseSequencer => {
+                self.sequencer_handle
+                    .command_sender
+                    .send(SequencerCommand::Pause)
+                    .expect("unable to send command");
+                info!("pause sequencer command sent");
+            }
         }
     }
 

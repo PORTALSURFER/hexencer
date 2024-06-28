@@ -22,6 +22,8 @@ pub enum SequencerCommand {
     Stop,
     /// reset the sequencer
     Reset,
+    /// pause the sequencer
+    Pause,
 }
 
 /// hold this to interact with the sequencer
@@ -118,6 +120,9 @@ impl Sequencer {
             SequencerCommand::Reset => {
                 self.reset().await;
             }
+            SequencerCommand::Pause => {
+                self.pause().await;
+            }
         }
     }
 
@@ -131,39 +136,43 @@ impl Sequencer {
         (tick_duration * 1000.0) as u64
     }
 
-    /// starts listening for and processing commands
-    pub async fn listen(mut self, mut command_receiver: SequencerReceiver) {
-        tracing::info!("sequencer listening for commands");
-        let mut interval = time::interval(Duration::from_micros(self.tick_duration()));
-        loop {
-            tokio::select! {
-                _ = interval.tick() => {
-                        let mut state = self.state.write().unwrap();
-                        // self.process_events();
-                        state.current_tick.tick();
-                        if let Ok(mut storage) = self.storage.write() { storage.set_tick(state.current_tick) }
-                },
-                Some(command) = command_receiver.recv() => {
-                    match command {
-                        SequencerCommand::Play => {
-                            tracing::info!("play command received");
-                            self.play().await;
-                        }
-                        SequencerCommand::Stop => {
-                            tracing::info!("stop");
-                            self.stop().await;
-                        }
-                        SequencerCommand::Reset => {
-                            let mut state = self.state.write().unwrap();
-                            tracing::info!("reset");
-                            state.current_tick.reset();
-                            // self.stop();
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // /// starts listening for and processing commands
+    // pub async fn listen(mut self, mut command_receiver: SequencerReceiver) {
+    //     tracing::info!("sequencer listening for commands");
+    //     let mut interval = time::interval(Duration::from_micros(self.tick_duration()));
+    //     loop {
+    //         tokio::select! {
+    //             _ = interval.tick() => {
+    //                     let mut state = self.state.write().unwrap();
+    //                     // self.process_events();
+    //                     state.current_tick.tick();
+    //                     if let Ok(mut storage) = self.storage.write() { storage.set_tick(state.current_tick) }
+    //             },
+    //             Some(command) = command_receiver.recv() => {
+    //                 match command {
+    //                     SequencerCommand::Play => {
+    //                         tracing::info!("play command received");
+    //                         self.play().await;
+    //                     }
+    //                     SequencerCommand::Stop => {
+    //                         tracing::info!("stop");
+    //                         self.stop().await;
+    //                     }
+    //                     SequencerCommand::Reset => {
+    //                         let mut state = self.state.write().unwrap();
+    //                         tracing::info!("reset");
+    //                         state.current_tick.reset();
+    //                     }
+    //                     SequencerCommand::Pause => {
+    //                         let mut state = self.state.write().unwrap();
+    //                         tracing::info!("pause");
+    //                         state.running = false;
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     /// sends stop signals to both midi ports
     async fn stop(&mut self) {
@@ -201,6 +210,11 @@ impl Sequencer {
     async fn reset(&self) {
         let mut state = self.state.write().unwrap();
         state.current_tick = 0.into();
+        state.running = false;
+    }
+
+    async fn pause(&self) {
+        let mut state = self.state.write().unwrap();
         state.running = false;
     }
 }
