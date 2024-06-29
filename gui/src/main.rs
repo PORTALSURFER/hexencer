@@ -3,8 +3,6 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
 
-// test
-
 /// contains custom widgets for hexencer
 mod widget;
 
@@ -221,7 +219,9 @@ pub enum Message {
     Tick(Instant),
     /// play the sequencer
     PlaySequencer,
+    /// reset the sequencer
     ResetSequencer,
+    /// pause the sequencer
     PauseSequencer,
 }
 
@@ -238,21 +238,24 @@ struct Hexencer {
     /// the origin of the drag for the clip that was dropped
     drag_origin: f32,
     /// state used for drawing a canvas, used for the transport line drawing
-    state: State,
+    line_state: LineState,
+    /// selected clip
+    selected_clip: Option<ClipId>,
 }
 
 /// state type used for canvas drawing of the transport line
 #[derive(Debug)]
-struct State {
+struct LineState {
     /// unused clock taken from example
     now: Instant,
     /// cache which stores the canvas drawing elements
     system_cache: canvas::Cache,
+    /// the current tick for the sequencer
     tick: f64,
 }
-impl State {
+impl LineState {
     /// create a new state
-    fn new() -> State {
+    fn new() -> LineState {
         let now = Instant::now();
         Self {
             now,
@@ -269,7 +272,7 @@ impl State {
     }
 }
 
-impl<Message> canvas::Program<Message> for State {
+impl<Message> canvas::Program<Message> for LineState {
     type State = ();
 
     fn draw(
@@ -320,8 +323,9 @@ impl Default for Hexencer {
             storage,
             dropped_clip: None,
             drag_origin: 0.0,
-            state: State::new(),
+            line_state: LineState::new(),
             sequencer_handle,
+            selected_clip: None,
         }
     }
 }
@@ -364,7 +368,7 @@ impl Hexencer {
                     .current_tick
                     .as_f64()
                     / 480.0;
-                self.state.update2(instant, tick);
+                self.line_state.update2(instant, tick);
             }
             Message::PlaySequencer => {
                 self.sequencer_handle
@@ -440,7 +444,7 @@ impl Hexencer {
             let mut clip_elements = Vec::new();
 
             for (clip_id, _clip) in clips.iter() {
-                let clip_key = clip_id.clone();
+                let clip_key = *clip_id;
                 let clip_element = Clip::new(
                     clip_key.id,
                     &self.storage,
@@ -484,7 +488,7 @@ impl Hexencer {
             elements.push(track.into())
         }
 
-        let line_canvas = canvas(&self.state)
+        let line_canvas = canvas(&self.line_state)
             .width(Length::Fill)
             .height(Length::Fixed(500.0));
         let tracks_column = column(elements).spacing(1);
@@ -520,17 +524,14 @@ impl Hexencer {
 }
 
 /// create the status bar ui
-fn status_bar<'a>(
-    storage: StorageInterface,
-    sequencer: &'a SequencerHandle,
-) -> Element<'a, Message> {
+fn status_bar(storage: StorageInterface, sequencer: &SequencerHandle) -> Element<'_, Message> {
     let play_button = button("play").on_press(Message::PlaySequencer);
     let pause_button = button("pause").on_press(Message::PauseSequencer);
     let reset_button = button("reset").on_press(Message::ResetSequencer);
 
     let state = sequencer.state.read().unwrap();
     let test = state.current_tick;
-    let current_tick = test.clone();
+    let current_tick = test;
     let tick_widget = text(current_tick.to_string());
 
     let bpm = storage.read().unwrap().bpm();

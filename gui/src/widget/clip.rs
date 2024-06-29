@@ -109,8 +109,10 @@ pub trait Catalog {
     /// default style of the clip
     type Class<'a>;
 
+    /// default class of the clip
     fn default<'a>() -> Self::Class<'a>;
 
+    /// style the clip
     fn style(&self, class: &Self::Class<'_>, status: Status) -> Style;
 }
 
@@ -129,6 +131,7 @@ impl Catalog for Theme {
     }
 }
 
+/// primary colors
 pub fn primary(theme: &Theme, status: Status) -> Style {
     let palette = theme.extended_palette();
     let base = styled(palette.primary.strong);
@@ -158,6 +161,8 @@ enum State {
         /// id of the clip being dragged
         clip_id: ClipId,
     },
+    /// clip is selected
+    Selected,
 }
 
 impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
@@ -259,6 +264,9 @@ where
             State::Pressed => {
                 renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.52, 0.84, 1.0)));
             }
+            State::Selected => {
+                renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.52, 0.84, 1.0)));
+            }
         }
 
         renderer.with_layer(bounds, |_renderer| {});
@@ -286,19 +294,34 @@ where
             }
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 let state = tree.state.downcast_mut::<State>();
-                if let State::Dragged { .. } = *state {
-                    if let Some(on_drop) = &self.on_drop {
-                        if let Some(_cursor_position) = cursor.position() {
-                            info!("dropped clip {}", self.clip_id);
-                            shell.publish(on_drop(DragEvent::Dropped {
-                                clip_id: self.clip_id,
-                            }));
+
+                match *state {
+                    State::Dragged {
+                        origin: _,
+                        clip_id: _,
+                    } => {
+                        if let Some(on_drop) = &self.on_drop {
+                            if let Some(_cursor_position) = cursor.position() {
+                                info!("dropped clip {}", self.clip_id);
+                                shell.publish(on_drop(DragEvent::Dropped {
+                                    clip_id: self.clip_id,
+                                }));
+                            }
                         }
+                        *state = State::Idle;
+                        return event::Status::Captured;
                     }
-                    *state = State::Idle;
-                    return event::Status::Captured;
+                    State::Pressed => {
+                        *state = State::Selected;
+                        return event::Status::Captured;
+                    }
+                    _ => {
+                        return event::Status::Ignored;
+                    }
                 }
+                // if let State::Dragged { .. } = *state {
             }
+            // }
             Event::Mouse(mouse::Event::CursorMoved {
                 position: _position,
             }) => {

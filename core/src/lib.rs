@@ -116,6 +116,7 @@ impl Tick {
         self.0 as u32
     }
 
+    /// returns this 'Tick' as an 'f64'
     pub fn as_f64(&self) -> f64 {
         self.0 as f64
     }

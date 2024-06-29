@@ -1,11 +1,10 @@
 use std::{
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, RwLock},
     time::Duration,
 };
 
 use hexencer_core::{data::StorageInterface, Tick};
 use tokio::time;
-use tracing::info;
 
 use crate::midi_engine::MidiEngineSender;
 
@@ -64,6 +63,12 @@ impl SequencerState {
             current_tick: Tick::zero(),
             ppqn: 480,
         }
+    }
+}
+
+impl Default for SequencerState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -198,6 +203,7 @@ impl Sequencer {
         // }
     }
 
+    /// reset the sequencer
     async fn reset(&self) {
         let mut state = self.state.write().unwrap();
         state.current_tick = 0.into();
