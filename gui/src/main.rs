@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use hexencer_core::data::{ClipId, StorageInterface};
-use hexencer_core::{Tick, TrackId};
+use hexencer_core::{DataId, Tick, TrackId};
 use hexencer_engine::{midi_engine, Sequencer, SequencerCommand, SequencerHandle};
 use iced::advanced::graphics::color;
 use iced::advanced::widget::Tree;
@@ -26,7 +26,7 @@ use iced::{Element, Length, Theme};
 use iced::{Font, Rectangle};
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
-use widget::{Arranger, Clip, DragEvent, EventEditor, Track};
+use widget::{Arranger, Clip, DragEvent, EventEditor, EventTrack, Track};
 
 #[tokio::main]
 async fn main() {
@@ -39,7 +39,7 @@ async fn main() {
         .font(include_bytes!("../../assets/fonts/5squared-pixel.ttf"))
         // .subscription(Hexencer::subscription)
         .default_font(Font::with_name("5squared pixel"))
-        .antialiasing(true)
+        .antialiasing(false)
         .run();
 }
 
@@ -619,8 +619,10 @@ impl Hexencer {
 
         for note in &self.notes {
             // info!("note lane for note {}", note);
-            let note_lane = text(note.to_string()).size(10.0).into();
-            note_lanes.push(note_lane);
+            let note_lane_label = text(note.to_string()).size(10.0);
+            let note_lane = EventTrack::new(DataId::new(), self.storage.clone(), 0, vec![]);
+            let thing = row![note_lane_label, note_lane];
+            note_lanes.push(thing.into());
         }
 
         column(note_lanes)

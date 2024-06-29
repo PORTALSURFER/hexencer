@@ -9,4 +9,5 @@ pub use arranger::Arranger;
 pub use clip::Clip;
 pub use clip::DragEvent;
 pub use event_editor::EventEditor;
+pub use event_track::EventTrack;
 pub use track::Track;
