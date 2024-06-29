@@ -5,6 +5,7 @@ use iced::advanced::widget::{tree, Tree, Widget};
 use iced::{advanced::renderer, Border, Color, Element, Shadow};
 use iced::{Background, Length, Rectangle, Size, Theme};
 
+/// EventEditor widget
 pub struct EventEditor<'a, Message, Theme, Renderer>
 where
     Renderer: renderer::Renderer,
@@ -27,6 +28,7 @@ where
     Renderer: renderer::Renderer,
     Theme: Catalog,
 {
+    /// creates a new ['EventEditor'] widget
     pub fn new(
         content: impl Into<Element<'a, Message, Theme, Renderer>>,
         storage: StorageInterface,
@@ -42,9 +44,11 @@ where
     }
 }
 
+/// state of the ['EventEditor']
 #[derive(Debug, Clone, Copy)]
 struct State {}
 impl State {
+    /// creates a new ['State']
     fn new() -> Self {
         Self {}
     }
@@ -186,6 +190,7 @@ impl Catalog for Theme {
     }
 }
 
+/// Default style of the editor
 pub fn default(theme: &Theme, status: Status) -> Style {
     let palette = theme.extended_palette();
 
