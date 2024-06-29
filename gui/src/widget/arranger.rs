@@ -1,5 +1,3 @@
-mod cursor;
-
 use iced::{
     advanced::{
         layout, mouse, renderer,
@@ -25,10 +23,14 @@ pub enum Alignment {
 /// offset of the [`Viewport`].
 #[derive(Debug, Clone, Copy)]
 enum Offset {
+    /// abosolute offset
     Absolute(f32),
+    /// relative offset
     Relative(f32),
 }
+
 impl Offset {
+    /// Returns the absolute offset of the [`Viewport`].
     fn absolute(self, viewport: f32, content: f32) -> f32 {
         match self {
             Offset::Absolute(absolute) => absolute.min((content - viewport).max(0.0)),
@@ -36,6 +38,7 @@ impl Offset {
         }
     }
 
+    /// Returns the translation of the [`Viewport`] in one direction.
     fn translation(self, viewport: f32, content: f32, alignment: Alignment) -> f32 {
         let offset = self.absolute(viewport, content);
 
@@ -45,12 +48,17 @@ impl Offset {
         }
     }
 }
+
 /// The current [`Viewport`] of the [`Scrollable`].
 #[derive(Debug, Clone, Copy)]
 pub struct Viewport {
+    /// The horizontal offset of the [`Viewport`].
     _bounds: Rectangle,
+    /// bounds of the contents
     _content_bounds: Rectangle,
+    /// The vertical offset of the [`Viewport`].
     _offset_x: Offset,
+    /// The horizontal offset of the ['Viewport'].
     _offset_y: Offset,
 }
 
@@ -60,10 +68,15 @@ where
     Theme: Catalog,
     Renderer: renderer::Renderer,
 {
+    /// The width of the [`Arranger`].
     width: Length,
+    /// The height of the [`Arranger`].
     height: Length,
+    /// contents of the arranger
     content: Element<'a, Message, Theme, Renderer>,
+    /// handler for scroll events
     on_scroll: Option<Box<dyn Fn(Viewport) -> Message + 'a>>,
+    /// class of the [`Arranger`].
     class: Theme::Class<'a>,
 }
 
@@ -129,10 +142,12 @@ struct State {
 
 /// The state of a [`Arranger`].
 impl State {
+    /// Creates a new [`State`] with default values.
     fn new() -> Self {
         State::default()
     }
 
+    /// Returns the translation of the [`Viewport`] in one direction.
     fn translation(&self, bounds: Rectangle, content_bounds: Rectangle) -> iced::Vector {
         Vector::new(
             self.offset
@@ -182,6 +197,7 @@ impl State {
         //         );
     }
 
+    /// unsnap the scrolling
     fn unsnap(&self, _bounds: Rectangle, _content_bounds: Rectangle) {}
 }
 
@@ -200,15 +216,20 @@ impl Default for State {
 /// Properties of a scrollbar within a [`Scrollable`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Properties {
+    /// width of the scrollbar
     width: f32,
+    /// height of the scrollbar
     margin: f32,
+    /// width of the scroller handle
     scroller_width: f32,
+    /// preferred alignemnent of the scrollbar handle
     alignment: Alignment,
 }
 
 #[derive(Debug)]
 /// State of both [`Scrollbar`]s.
 struct ScrollbarWrapper {
+    /// inner scrollbar
     inner: Option<internals::Scrollbar>,
 }
 impl ScrollbarWrapper {
@@ -694,6 +715,7 @@ where
     }
 }
 
+/// Notifies the given function of the current [`Viewport`] if it has changed.
 fn notify_on_scroll<Message>(
     _state: &mut State,
     _on_scroll: &Option<Box<dyn Fn(Viewport) -> Message + '_>>,
@@ -704,6 +726,7 @@ fn notify_on_scroll<Message>(
     false
 }
 
+/// Catalog trait of the arranger
 pub trait Catalog {
     /// The item class of the [`Catalog`].
     type Class<'a>;
@@ -715,6 +738,7 @@ pub trait Catalog {
     fn style(&self, class: &Self::Class<'_>, status: Status) -> Style;
 }
 
+/// function type of the style function, used to the style of the widget
 pub type StyleFn<'a, Theme> = Box<dyn Fn(&Theme, Status) -> Style + 'a>;
 
 impl Catalog for Theme {
@@ -728,9 +752,14 @@ impl Catalog for Theme {
         class(self, status)
     }
 }
+
+/// The status of an arranger
 pub enum Status {
+    /// normal
     Normal,
+    /// hovered
     Hovered,
+    /// dragged
     Dragged,
 }
 /// The appearance of an arrangere

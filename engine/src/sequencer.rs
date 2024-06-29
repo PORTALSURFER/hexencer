@@ -72,6 +72,12 @@ impl SequencerState {
     }
 }
 
+impl Default for SequencerState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Sequencer {
     /// creates a new 'Sequencer'
     pub fn new(
@@ -224,12 +230,14 @@ impl Sequencer {
         }
     }
 
+    /// reset the sequencer
     async fn reset(&self) {
         let mut state = self.state.write().unwrap();
         state.current_tick = 0.into();
         state.running = false;
     }
 
+    /// pause the sequencer
     async fn pause(&self) {
         let mut state = self.state.write().unwrap();
         state.running = false;

@@ -1,12 +1,19 @@
+//! some internal scrollbar objects
+
 use iced::{Point, Rectangle};
 
 use super::Alignment;
 
+/// The state of the scrollbar.
 #[derive(Debug, Copy, Clone)]
 pub struct Scrollbar {
+    /// The total bounds of the scrollbar.
     pub total_bounds: Rectangle,
+    /// The bounds of the scrollbar.
     pub bounds: Rectangle,
+    /// The handle of the scrollbar.
     pub scroll_handle: ScrollHandle,
+    /// The alignment of the scrollbar.
     pub alignment: Alignment,
 }
 
