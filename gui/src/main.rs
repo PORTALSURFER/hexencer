@@ -223,6 +223,11 @@ pub enum Message {
     ResetSequencer,
     /// pauses the sequencer
     PauseSequencer,
+    /// set clip to selected
+    SelectClip {
+        /// id of the recently selected clip
+        clip_id: ClipId,
+    },
 }
 
 #[derive(Debug)]
@@ -391,6 +396,11 @@ impl Hexencer {
                     .expect("unable to send command");
                 info!("pause sequencer command sent");
             }
+            Message::SelectClip { clip_id } => {
+                println!("test");
+                info!("selected clip {}", clip_id);
+                self.selected_clip = Some(clip_id);
+            }
         }
     }
 
@@ -471,7 +481,7 @@ impl Hexencer {
         window::frames().map(Message::Tick)
     }
 
-    // New method to create track elements
+    /// New method to create track elements
     // TODO make this faster, now causing visual glitches
     fn create_track_elements(&self) -> Vec<Element<Message>> {
         let storage = self.storage.read().unwrap();
@@ -486,6 +496,7 @@ impl Hexencer {
             .collect()
     }
 
+    /// create a new track widget element
     fn create_track_element(
         &self,
         index: usize,
@@ -506,6 +517,7 @@ impl Hexencer {
             .into()
     }
 
+    /// create new clip widget element
     fn create_clip_elements(&self, track_index: usize) -> Vec<Element<Message>> {
         let storage = self.storage.read().unwrap();
         let clip_collection = &storage
@@ -519,7 +531,8 @@ impl Hexencer {
             .iter()
             .map(|(key, clip)| {
                 let id = clip.id;
-                Clip::new(id, self.storage.clone(), text("clip"))
+                let selected = self.selected_clip.is_some() && self.selected_clip.unwrap() == id;
+                Clip::new(id, selected, self.storage.clone(), text("clip"))
                     .on_drag(|drag_event| {
                         let (origin, clip_id) = match drag_event {
                             DragEvent::DragStarted {
@@ -531,6 +544,7 @@ impl Hexencer {
                         Message::DragClip { clip_id, origin }
                     })
                     .on_drop(|clip_id| Message::DroppedClip { clip_id })
+                    .on_selected(|clip_id| Message::SelectClip { clip_id })
                     .into()
             })
             .collect()

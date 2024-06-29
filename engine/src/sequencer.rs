@@ -8,6 +8,7 @@ use hexencer_core::{
     Tick,
 };
 use tokio::time;
+use tracing::info;
 
 use crate::midi_engine::MidiEngineSender;
 
@@ -236,6 +237,7 @@ impl Sequencer {
         state.running = false;
     }
 
+    /// pause the sequencer
     async fn pause(&self) {
         let mut state = self.state.write().unwrap();
         state.running = false;
