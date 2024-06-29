@@ -50,6 +50,8 @@ where
     on_drag: Option<Box<dyn Fn(DragEvent) -> Message + 'a>>,
     /// on drop event
     on_drop: Option<Box<dyn Fn(DragEvent) -> Message + 'a>>,
+    /// on selected event
+    on_selected: Option<Box<dyn Fn(ClipId) -> Message + 'a>>,
 }
 
 impl<'a, Message, Theme, Renderer> Clip<'a, Message, Theme, Renderer>
@@ -313,6 +315,9 @@ where
                     }
                     State::Pressed => {
                         *state = State::Selected;
+                        if let Some(on_selected) = &self.on_selected {
+                            shell.publish(on_selected(self.clip_id));
+                        }
                         return event::Status::Captured;
                     }
                     _ => {
