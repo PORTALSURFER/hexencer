@@ -26,7 +26,7 @@ use iced::{Element, Length, Theme};
 use iced::{Font, Rectangle};
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
-use widget::{Arranger, Clip, DragEvent, Track};
+use widget::{Arranger, Clip, DragEvent, EventEditor, Track};
 
 #[tokio::main]
 async fn main() {
@@ -579,9 +579,8 @@ impl Hexencer {
         if let Some(id) = self.selected_clip {
             let mut clip = None;
             for track in track_collection.iter() {
-                match track.clip_collection.find(id) {
-                    Some(track_clip) => clip = Some(track_clip),
-                    _ => {}
+                if let Some(track_clip) = track.clip_collection.find(id) {
+                    clip = Some(track_clip)
                 };
             }
 
@@ -592,7 +591,9 @@ impl Hexencer {
 
         let notes = text(label.to_string());
         let content = column![header, notes];
-        container(content).into()
+        let editor = EventEditor::new(content, self.storage.clone());
+
+        editor.into()
     }
 }
 
