@@ -1,6 +1,7 @@
 mod arranger;
 mod clip;
 mod event_editor;
+mod event_track;
 mod track;
 
 pub use arranger::Arranger;

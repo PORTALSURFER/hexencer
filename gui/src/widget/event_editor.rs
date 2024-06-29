@@ -5,7 +5,8 @@ use iced::advanced::layout::{self, Node};
 use iced::advanced::renderer::Quad;
 use iced::advanced::widget::{tree, Tree, Widget};
 use iced::{advanced::renderer, Border, Color, Element, Shadow};
-use iced::{Background, Length, Rectangle, Size, Theme};
+use iced::{Background, Length, Point, Rectangle, Size, Theme, Vector};
+use tracing::info;
 
 /// EventEditor widget
 pub struct EventEditor<'a, Message, Theme, Renderer>
@@ -49,13 +50,47 @@ where
 /// state of the ['EventEditor']
 #[derive(Debug, Clone, Copy)]
 struct State {
-    scrolling: bool,    
+    scrolling: bool,
+    offset_x: Offset,
+    offset_y: Offset,
+    scroll_origin: Point,
 }
+
 impl State {
     /// creates a new ['State']
     fn new() -> Self {
         Self {
             scrolling: false,
+            offset_x: Offset::Relative(0.0),
+            offset_y: Offset::Relative(0.0),
+            scroll_origin: Point::ORIGIN,
+        }
+    }
+
+    fn translation(&self, bounds: Rectangle, content_bounds: Rectangle) -> Vector {
+        Vector::new(
+            self.offset_x
+                .translation(bounds.width, content_bounds.width),
+            self.offset_y
+                .translation(bounds.width, content_bounds.width),
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Offset {
+    Relative(f32),
+}
+impl Offset {
+    fn translation(&self, viewport: f32, content: f32) -> f32 {
+        let offset = self.absolute(viewport, content);
+
+        offset
+    }
+
+    fn absolute(&self, viewport: f32, content: f32) -> f32 {
+        match self {
+            Offset::Relative(percentage) => ((content - viewport) * percentage).max(0.0),
         }
     }
 }
@@ -111,8 +146,19 @@ where
         cursor: iced::advanced::mouse::Cursor,
         viewport: &iced::Rectangle,
     ) {
+        let state = tree.state.downcast_ref::<State>();
+
         let bounds = layout.bounds();
         let content_layout = layout.children().next().unwrap();
+        let content_bounds = content_layout.bounds();
+
+        let Some(visible_bounds) = bounds.intersection(viewport) else {
+            return;
+        };
+        info!("bounds: {:?}", bounds);
+        info!("content_bounds: {:?}", content_bounds);
+        let translation = state.translation(bounds, content_bounds);
+        info!("translation: {:?}", translation);
 
         let quad = Quad {
             bounds: Rectangle::new(layout.bounds().position(), layout.bounds().size()),
@@ -121,39 +167,94 @@ where
         };
         renderer.fill_quad(quad, Background::Color(Color::BLACK));
 
-        self.content.as_widget().draw(
-            &tree.children[0],
-            renderer,
-            theme,
-            defaults,
-            content_layout,
-            cursor,
-            &layout.bounds(),
-        );
+        renderer.with_layer(visible_bounds, |renderer| {
+            renderer.with_translation(Vector::new(-translation.x, -translation.y), |renderer| {
+                self.content.as_widget().draw(
+                    &tree.children[0],
+                    renderer,
+                    theme,
+                    defaults,
+                    content_layout,
+                    cursor,
+                    &Rectangle {
+                        y: bounds.y + translation.y,
+                        x: bounds.x + translation.x,
+                        ..bounds
+                    },
+                );
+            });
+        });
     }
 
-    fn on_event(
-            &mut self,
-            tree: &mut Tree,
-            event: iced::Event,
-            _layout: layout::Layout<'_>,
-            _cursor: iced::advanced::mouse::Cursor,
-            _renderer: &Renderer,
-            _clipboard: &mut dyn iced::advanced::Clipboard,
-            _shell: &mut iced::advanced::Shell<'_, Message>,
-            _viewport: &Rectangle,
-        ) -> iced::advanced::graphics::core::event::Status {
+    fn on_event(
+        &mut self,
+        tree: &mut Tree,
+        event: iced::Event,
+        layout: layout::Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
+        _renderer: &Renderer,
+        _clipboard: &mut dyn iced::advanced::Clipboard,
+        _shell: &mut iced::advanced::Shell<'_, Message>,
+        _viewport: &Rectangle,
+    ) -> iced::advanced::graphics::core::event::Status {
         let state = tree.state.downcast_mut::<State>();
+        let bounds = layout.bounds();
+
         match event {
             iced::Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Right)) => {
-                state.scrolling = true;
-                iced::event::Status::Captured
+                if cursor.is_over(bounds) {
+                    state.scrolling = true;
+                    if let Some(point) = cursor.position_in(bounds) {
+                        state.scroll_origin = point;
+                    }
+                    info!("scrolling initiated");
+                    return iced::event::Status::Captured;
+                }
             }
-            _ => {
-                iced::event::Status::Ignored
+            iced::Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Right)) => {
+                if state.scrolling {
+                    state.scrolling = false;
+                    info!("scrolling exited");
+                    return iced::event::Status::Captured;
+                }
             }
+            iced::Event::Mouse(iced::mouse::Event::CursorMoved { position }) => {
+                if state.scrolling {
+                    // info!("scrolling editor");
+                    state.offset_x = Offset::Relative(scroll_percentage_x(
+                        state.scroll_origin,
+                        position,
+                        bounds.size().width,
+                    ));
+                    state.offset_y = Offset::Relative(scroll_percentage_y(
+                        state.scroll_origin,
+                        position,
+                        bounds.size().width,
+                    ));
+                    return iced::event::Status::Captured;
+                }
+            }
+            _ => {}
         }
+
+        iced::event::Status::Ignored
     }
+}
+
+/// calculate the desired scrolling percentage
+fn scroll_percentage_y(scroll_origin: Point, cursor_position: Point, width: f32) -> f32 {
+    info!("so{scroll_origin}, cp{cursor_position}, width{width}");
+    let percentage = (cursor_position.y - scroll_origin.y) / width;
+    info!("scroll percentage: {}", percentage);
+    percentage
+}
+
+/// calculate the desired scrolling percentage
+fn scroll_percentage_x(scroll_origin: Point, cursor_position: Point, width: f32) -> f32 {
+    info!("so{scroll_origin}, cp{cursor_position}, width{width}");
+    let percentage = (cursor_position.x - scroll_origin.x) / width;
+    info!("scroll percentage: {}", percentage);
+    percentage
 }
 
 /// Catalog of the editor

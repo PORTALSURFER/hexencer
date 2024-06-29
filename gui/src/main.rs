@@ -37,7 +37,7 @@ async fn main() {
     let _ = iced::application("Hexencer", Hexencer::update, Hexencer::view)
         .theme(Hexencer::theme)
         .font(include_bytes!("../../assets/fonts/5squared-pixel.ttf"))
-        .subscription(Hexencer::subscription)
+        // .subscription(Hexencer::subscription)
         .default_font(Font::with_name("5squared pixel"))
         .antialiasing(true)
         .run();
@@ -626,8 +626,8 @@ impl Hexencer {
         column(note_lanes)
             .spacing(1)
             .align_items(Alignment::Start)
-            .width(Length::Fill)
-            .height(Length::Fill)
+            .width(Length::Fixed(2000.0))
+            .height(Length::Fixed(2000.0))
             .into()
     }
 }
