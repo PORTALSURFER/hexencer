@@ -555,12 +555,44 @@ impl Hexencer {
 
     /// create the editor ui section
     fn create_editor(&self) -> Element<Message> {
-        let header = match self.selected_clip {
+        let header_string = match self.selected_clip {
             Some(id) => format!("editing clip {}", id),
-            None => format!("nothing selected"),
+            None => "nothing selected".to_string(),
         };
 
-        container(text(header)).height(Length::Fixed(100.0)).into()
+        let header = text(header_string);
+
+        let height = match self.selected_clip {
+            Some(_) => 150.0,
+            None => 50.0,
+        };
+
+        let track_collection = &self
+            .storage
+            .read()
+            .unwrap()
+            .project_manager
+            .track_collection;
+
+        let mut label = "null".to_string();
+
+        if let Some(id) = self.selected_clip {
+            let mut clip = None;
+            for track in track_collection.iter() {
+                match track.clip_collection.find(id) {
+                    Some(track_clip) => clip = Some(track_clip),
+                    _ => {}
+                };
+            }
+
+            if let Some(clip) = clip {
+                label = clip.start.to_string();
+            }
+        }
+
+        let notes = text(label.to_string());
+        let content = column![header, notes];
+        container(content).into()
     }
 }
 

@@ -179,6 +179,17 @@ impl ClipCollection {
 
         key_to_remove.and_then(|key| self.inner.remove(&key))
     }
+
+    /// find clip by key
+    pub fn find(&self, id: ClipId) -> Option<&Clip> {
+        for (key, clip) in &self.inner {
+            if clip.id() == id {
+                return Some(clip);
+            }
+        }
+
+        None
+    }
 }
 
 impl Deref for ClipCollection {
