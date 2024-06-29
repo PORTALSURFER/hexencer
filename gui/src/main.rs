@@ -221,7 +221,9 @@ pub enum Message {
     Tick(Instant),
     /// play the sequencer
     PlaySequencer,
+    /// resets the sequencer
     ResetSequencer,
+    /// pauses the sequencer
     PauseSequencer,
 }
 
@@ -431,64 +433,7 @@ impl Hexencer {
 
         let bottom = status_bar(self.storage.clone(), &self.sequencer_handle);
 
-        let mut elements = Vec::new();
-        let data = self.storage.read().unwrap();
-        let track_list = &data.project_manager.track_collection;
-
-        // let ooverlay = overlay::Element::new(
-        //     canvas(&self.state)
-        //         .width(Length::Fill)
-        //         .height(Length::Fixed(200.0)),
-        // );
-
-        for (index, track) in track_list.iter().enumerate() {
-            let clips = &track.clip_collection;
-            let mut clip_elements = Vec::new();
-
-            for (clip_id, _clip) in clips.iter() {
-                let clip_key = clip_id.clone();
-                let clip_element = Clip::new(
-                    clip_key.id,
-                    &self.storage,
-                    text("drag drop system in place...yay"),
-                )
-                .on_drag(move |drag_event| {
-                    let mut origin = 0.0;
-                    if let DragEvent::DragStarted { grab_position } = drag_event {
-                        info!("clip drag started at {:?}", grab_position);
-                        origin = grab_position;
-                    }
-                    Message::DragClip {
-                        clip_id: clip_key.id,
-                        origin,
-                    }
-                })
-                .on_drop(move |_| Message::DroppedClip {
-                    clip_id: clip_key.id,
-                });
-                clip_elements.push(clip_element.into());
-            }
-
-            let track_id = track.id;
-
-            let track = Track::new(
-                &self.storage,
-                index,
-                track_id,
-                clip_elements,
-                self.dropped_clip,
-            )
-            .on_drop(move |clip_id, track_id, cursor_position| {
-                info!("dropped clip: {:?} onto trarg``ck {}", clip_id, index);
-                Message::MoveClipRequest {
-                    clip_id,
-                    track_id,
-                    cursor_position,
-                }
-            });
-
-            elements.push(track.into())
-        }
+        let elements = self.create_track_elements();
 
         let line_canvas = canvas(&self.state)
             .width(Length::Fill)
@@ -522,6 +467,71 @@ impl Hexencer {
     /// get the subscription for the application
     fn subscription(&self) -> Subscription<Message> {
         window::frames().map(Message::Tick)
+    }
+
+    // New method to create track elements
+    // TODO make this faster, now causing visual glitches
+    fn create_track_elements(&self) -> Vec<Element<Message>> {
+        let storage = self.storage.read().unwrap();
+        let track_collection = &storage.project_manager.track_collection;
+
+        track_collection
+            .iter()
+            .enumerate()
+            .map(|(index, track)| {
+                self.create_track_element(index, track, self.storage.clone(), self.dropped_clip)
+            })
+            .collect()
+    }
+
+    fn create_track_element(
+        &self,
+        index: usize,
+        track: &hexencer_core::data::Track,
+        storage: StorageInterface,
+        dropped_clip: Option<ClipId>,
+    ) -> Element<Message> {
+        let children = self.create_clip_elements(index);
+        Track::new(storage, index, track.id, children, dropped_clip)
+            .on_drop(move |clip_id, track_id, cursor_position| {
+                info!("dropped clip: {:?} onto track {}", clip_id, index);
+                Message::MoveClipRequest {
+                    clip_id,
+                    track_id,
+                    cursor_position,
+                }
+            })
+            .into()
+    }
+
+    fn create_clip_elements(&self, track_index: usize) -> Vec<Element<Message>> {
+        let storage = self.storage.read().unwrap();
+        let clip_collection = &storage
+            .project_manager
+            .track_collection
+            .get(track_index)
+            .unwrap()
+            .clip_collection;
+
+        clip_collection
+            .iter()
+            .map(|(key, clip)| {
+                let id = clip.id;
+                Clip::new(id, self.storage.clone(), text("clip"))
+                    .on_drag(|drag_event| {
+                        let (origin, clip_id) = match drag_event {
+                            DragEvent::DragStarted {
+                                grab_position,
+                                clip_id,
+                            } => (grab_position, clip_id),
+                            _ => panic!("invalid drag event"),
+                        };
+                        Message::DragClip { clip_id, origin }
+                    })
+                    .on_drop(|clip_id| Message::DroppedClip { clip_id })
+                    .into()
+            })
+            .collect()
     }
 }
 

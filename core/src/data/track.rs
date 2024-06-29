@@ -43,8 +43,13 @@ impl TrackCollection {
         &self.inner
     }
 
+    /// get by index
+    pub fn get(&self, index: usize) -> Option<&Track> {
+        self.inner.get(index)
+    }
+
     /// get a reference to a track at a given index, or 'None' if it doesn't exist
-    pub fn get(&self, index: TrackId) -> Option<&Track> {
+    pub fn get_by_id(&self, index: TrackId) -> Option<&Track> {
         self.inner.iter().find(|t| t.id == index)
     }
 

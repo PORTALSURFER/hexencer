@@ -4,7 +4,7 @@ use std::{
 };
 
 use hexencer_core::{
-    data::{ClipId, ClipKey, StorageInterface},
+    data::{ClipKey, StorageInterface},
     Tick,
 };
 use tokio::time;
@@ -198,7 +198,6 @@ impl Sequencer {
         for track in tracks.iter() {
             let clip_key = ClipKey {
                 start: state.current_tick,
-                id: ClipId::new(),
             };
 
             if let Some(clip) = track.clip_collection.get(&clip_key) {

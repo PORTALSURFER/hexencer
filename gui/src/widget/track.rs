@@ -47,7 +47,7 @@ where
     /// Is the track hovered?
     hovered: bool,
     /// The storage interface for the track.
-    storage: &'a StorageInterface,
+    storage: StorageInterface,
     /// The index of the track.
     _track_index: usize,
     /// The children of the track.
@@ -65,7 +65,7 @@ where
 {
     /// Creates a new [`Track`] with the given [`StorageInterface`], index, track id, children, and dropped clip.
     pub(crate) fn new(
-        storage: &'a hexencer_core::data::StorageInterface,
+        storage: hexencer_core::data::StorageInterface,
         index: usize,
         track_id: TrackId,
         children: Vec<Element<'a, Message, Theme, Renderer>>,
