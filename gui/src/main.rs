@@ -246,6 +246,8 @@ struct Hexencer {
     line_state: LineState,
     /// selected clip
     selected_clip: Option<ClipId>,
+    /// available notes
+    notes: Vec<String>,
 }
 
 /// state type used for canvas drawing of the transport line
@@ -321,8 +323,21 @@ impl Default for Hexencer {
 
         tokio::spawn(sequencer.run());
 
-        // let sequencer_sender = start_sequencer_engine(midi_sender, storage.clone());
-        // let sequencer_handle =
+        let note_steps = [
+            "c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b",
+        ];
+
+        let mut notes = Vec::new();
+        for index in 0..120 {
+            let step = index % note_steps.len();
+            let note_num = index / note_steps.len();
+            info!("note: {}{note_num}", note_steps[step]);
+            let note = format!("{}{}", note_steps[step], note_num);
+            notes.push(note);
+        }
+
+        info!("notes added {}", notes.len());
+
         Self {
             theme: Theme::KanagawaDragon,
             storage,
@@ -331,6 +346,7 @@ impl Default for Hexencer {
             line_state: LineState::new(),
             sequencer_handle,
             selected_clip: None,
+            notes,
         }
     }
 }
@@ -563,7 +579,7 @@ impl Hexencer {
         let header = text(header_string);
 
         let height = match self.selected_clip {
-            Some(_) => 150.0,
+            Some(_) => 250.0,
             None => 50.0,
         };
 
@@ -589,11 +605,30 @@ impl Hexencer {
             }
         }
 
-        let notes = text(label.to_string());
+        let notes = self.draw_notes(label);
         let content = column![header, notes];
         let editor = EventEditor::new(content, self.storage.clone());
 
         editor.into()
+    }
+
+    /// creates the notes for the note editor
+    fn draw_notes(&self, label: String) -> Element<Message> {
+        // draw lanes for every note
+        let mut note_lanes = Vec::new();
+
+        for note in &self.notes {
+            // info!("note lane for note {}", note);
+            let note_lane = text(note.to_string()).size(10.0).into();
+            note_lanes.push(note_lane);
+        }
+
+        column(note_lanes)
+            .spacing(1)
+            .align_items(Alignment::Start)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
 }
 

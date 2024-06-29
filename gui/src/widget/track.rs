@@ -1,3 +1,5 @@
+//! track widget
+
 use hexencer_core::{
     data::{ClipId, StorageInterface},
     TrackId,

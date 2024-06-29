@@ -1,3 +1,5 @@
+//! event editor widget
+
 use hexencer_core::data::StorageInterface;
 use iced::advanced::layout::{self, Node};
 use iced::advanced::renderer::Quad;
@@ -46,11 +48,15 @@ where
 
 /// state of the ['EventEditor']
 #[derive(Debug, Clone, Copy)]
-struct State {}
+struct State {
+    scrolling: bool,    
+}
 impl State {
     /// creates a new ['State']
     fn new() -> Self {
-        Self {}
+        Self {
+            scrolling: false,
+        }
     }
 }
 
@@ -86,7 +92,7 @@ where
         layout::contained(limits, self.width, self.height, |limits| {
             let child_limits = layout::Limits::new(
                 Size::new(limits.min().width, limits.min().height),
-                Size::new(limits.min().height, limits.max().height),
+                Size::new(f32::INFINITY, f32::INFINITY),
             );
 
             self.content
@@ -122,12 +128,31 @@ where
             defaults,
             content_layout,
             cursor,
-            &Rectangle {
-                x: bounds.x,
-                y: bounds.y,
-                ..bounds
-            },
+            &layout.bounds(),
         );
+    }
+
+    fn on_event(
+            &mut self,
+            tree: &mut Tree,
+            event: iced::Event,
+            _layout: layout::Layout<'_>,
+            _cursor: iced::advanced::mouse::Cursor,
+            _renderer: &Renderer,
+            _clipboard: &mut dyn iced::advanced::Clipboard,
+            _shell: &mut iced::advanced::Shell<'_, Message>,
+            _viewport: &Rectangle,
+        ) -> iced::advanced::graphics::core::event::Status {
+        let state = tree.state.downcast_mut::<State>();
+        match event {
+            iced::Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Right)) => {
+                state.scrolling = true;
+                iced::event::Status::Captured
+            }
+            _ => {
+                iced::event::Status::Ignored
+            }
+        }
     }
 }
 
@@ -196,7 +221,7 @@ pub fn default(theme: &Theme, status: Status) -> Style {
 
     match status {
         Status::Idle => Style {
-            background: Some(palette.background.weak.color.into()),
+            background: Some(palette.background.weak.color),
             text_color: Color::from_rgb(1.0, 1.0, 1.0),
             border: Border::default(),
             shadow: Shadow::default(),
