@@ -17,6 +17,8 @@ use std::sync::RwLock;
 
 pub use clip::Clip;
 pub use clip::ClipId;
+pub use clip::ClipKey;
+
 pub use common::DataId;
 pub use midi_message::MidiMessage;
 pub use track::Track;

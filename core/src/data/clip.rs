@@ -21,15 +21,15 @@ use crate::{event::EventType, Tick};
 pub struct ClipKey {
     /// start tick of the clip
     pub start: Tick,
-    /// id of the clip
-    pub id: ClipId,
+    // / id of the clip
+    // pub id: ClipId,
 }
 
 impl From<&Clip> for ClipKey {
     fn from(value: &Clip) -> Self {
         Self {
             start: value.start,
-            id: value.id,
+            // id: value.id,
         }
     }
 }
@@ -57,7 +57,7 @@ impl ClipCollection {
     fn split_overlapped_clip(&mut self, overlapped_outer: Vec<(ClipKey, Clip)>, new_clip: &Clip) {
         for (overlap_clip_key, mut overlap_clip) in overlapped_outer {
             self.insert_left_of_tick(&mut overlap_clip, &new_clip.start);
-            self.insert_right_of_tick(overlap_clip, &new_clip.end());
+            self.insert_right_of_tick(&mut overlap_clip, &new_clip.end());
 
             // Remove the original clip because it has been split into 2 new clips
             self.inner.remove(&overlap_clip_key);
@@ -67,15 +67,15 @@ impl ClipCollection {
     /// clips a partially overlapped clip
     fn clip_partial_overlapped_clips_to_the_right(&mut self, new_clip: &Clip) {
         let inner_clip = self.get_overlapped_inner(new_clip);
-        for (key, clip) in inner_clip {
+        for (key, mut clip) in inner_clip {
             info!("Clipping partial overlapped clips");
             self.remove_overlapped(&clip, new_clip, key);
-            self.split_right_clip(clip, new_clip, key);
+            self.split_right_clip(&mut clip, new_clip, key);
         }
     }
 
     /// adds a clip to the right of the overlapping clip, splitting the original
-    fn insert_right_of_tick(&mut self, mut overlapped_clip: Clip, tick: &Tick) {
+    fn insert_right_of_tick(&mut self, overlapped_clip: &mut Clip, tick: &Tick) {
         if overlapped_clip.start + overlapped_clip.duration > *tick {
             // Split the end part
             let right_duration = overlapped_clip.start + overlapped_clip.duration - *tick;
@@ -117,7 +117,7 @@ impl ClipCollection {
     }
 
     /// splits a clip on the right side
-    fn split_right_clip(&mut self, clip: Clip, new_clip: &Clip, key: ClipKey) {
+    fn split_right_clip(&mut self, clip: &mut Clip, new_clip: &Clip, key: ClipKey) {
         // handle partial overlapped clip on the right side
         if clip.start > new_clip.start && clip.end() > new_clip.end() {
             self.inner.remove(&key);
@@ -138,7 +138,7 @@ impl ClipCollection {
         let new_clip_key = ClipKey::from(sample);
         let end_clip_key = ClipKey {
             start: new_clip_key.start + sample.duration,
-            id: sample.id(),
+            // id: sample.id(),
         };
 
         // handle partial and full overlapping
@@ -221,7 +221,7 @@ pub struct Clip {
     /// tick at which the clip starts
     pub start: Tick,
     /// id used to identify data objects
-    id: ClipId,
+    pub id: ClipId,
     /// visual name of the clip
     pub name: Box<String>,
     /// notes in this clip
@@ -334,7 +334,7 @@ mod tests {
         let clip_key = ClipKey::from(&clip);
 
         assert_eq!(clip_key.start, Tick::from(999));
-        assert_eq!(clip_key.id, clip.id);
+        // assert_eq!(clip_key.id, clip.id);
     }
 
     #[test]

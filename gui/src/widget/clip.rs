@@ -19,15 +19,10 @@ pub enum DragEvent {
     DragStarted {
         /// position of the grab, relative to the clip
         grab_position: f32,
-    },
-    /// clip was dropped
-    Dropped {
-        /// id of the clip which was dropped
         clip_id: ClipId,
     },
-
     /// drag was canceled
-    Canceled {},
+    Canceled { clip_id: ClipId },
 }
 
 /// A widget that represents a clip in the gui
@@ -39,7 +34,7 @@ where
     /// inner element of the clip
     content: Element<'a, Message, Theme, Renderer>,
     /// link to the hexencer storage interface
-    storage: &'a StorageInterface,
+    storage: StorageInterface,
     /// id of the clip, identifier in the storage
     clip_id: ClipId,
     /// style of the clip
@@ -62,7 +57,7 @@ where
     /// create a new clip
     pub(crate) fn new(
         clip_id: ClipId,
-        storage: &'a StorageInterface,
+        storage: StorageInterface,
         content: impl Into<Element<'a, Message, Theme, Renderer>>,
     ) -> Self {
         let content = content.into();
@@ -89,7 +84,7 @@ where
     /// bind an on drop event
     pub fn on_drop<F>(mut self, f: F) -> Self
     where
-        F: 'a + Fn(DragEvent) -> Message,
+        F: 'a + Fn(ClipId) -> Message,
     {
         self.on_drop = Some(Box::new(f));
         self
@@ -296,7 +291,6 @@ where
             }
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 let state = tree.state.downcast_mut::<State>();
-
                 match *state {
                     State::Dragged {
                         origin: _,
@@ -341,6 +335,7 @@ where
                         if let Some(on_drag) = &self.on_drag {
                             shell.publish(on_drag(DragEvent::DragStarted {
                                 grab_position: relative_mouse,
+                                clip_id: self.clip_id,
                             }));
                         }
                         return event::Status::Captured;
