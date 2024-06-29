@@ -467,7 +467,10 @@ impl Hexencer {
         .padding(10);
 
         let arranger = stack![arranger_background, line_canvas];
-        let content = column![header, arranger, bottom];
+
+        let editor = self.create_editor();
+
+        let content = column![header, arranger, editor, bottom];
         center(content).into()
     }
 
@@ -548,6 +551,16 @@ impl Hexencer {
                     .into()
             })
             .collect()
+    }
+
+    /// create the editor ui section
+    fn create_editor(&self) -> Element<Message> {
+        let header = match self.selected_clip {
+            Some(id) => format!("editing clip {}", id),
+            None => format!("nothing selected"),
+        };
+
+        container(text(header)).height(Length::Fixed(100.0)).into()
     }
 }
 

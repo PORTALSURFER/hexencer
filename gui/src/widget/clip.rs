@@ -279,7 +279,7 @@ where
                         .fill_quad(quad, Background::Color(Color::from_rgb(1.00, 0.24, 0.28))),
                     false => renderer
                         .fill_quad(quad, Background::Color(Color::from_rgb(1.00, 0.74, 0.98))),
-                }
+                };
             }
             State::Pressed => {
                 renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.52, 0.84, 1.0)));
