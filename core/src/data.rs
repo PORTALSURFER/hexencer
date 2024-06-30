@@ -64,9 +64,7 @@ impl Deref for StorageInterface {
 impl StorageInterface {
     /// creates a new interface for data
     pub fn new() -> Self {
-        Self {
-            inner: Arc::new(RwLock::new(DataLayer::fake_data())),
-        }
+        Self { inner: Arc::new(RwLock::new(DataLayer::fake_data())) }
     }
 }
 
@@ -141,19 +139,19 @@ impl DataLayer {
         project_manager.add_track(track_0);
 
         let mut track_1 = Track::new(TrackId::new(), "track_1");
-        track_1.add_clip(clip::Clip::new(0.into(), "clip_0", 240.into()));
+        track_1.add_clip(clip::Clip::test_clip());
         project_manager.add_track(track_1);
 
-        let mut track_2 = Track::new(TrackId::new(), "track_2");
-        track_2.add_clip(clip::Clip::new(120.into(), "clip_1", 10.into()));
-        track_2.add_clip(clip::Clip::new(480.into(), "clip_2", 120.into()));
-        project_manager.add_track(track_2);
+        // let mut track_2 = Track::new(TrackId::new(), "track_2");
+        // track_2.add_clip(clip::Clip::new(120.into(), "clip_1", 10.into()));
+        // track_2.add_clip(clip::Clip::new(480.into(), "clip_2", 120.into()));
+        // project_manager.add_track(track_2);
 
-        let mut track_3 = Track::new(TrackId::new(), "track_2");
-        track_3.add_clip(clip::Clip::new(0.into(), "clip_3", 10.into()));
-        track_3.add_clip(clip::Clip::new(120.into(), "clip_4", 20.into()));
-        track_3.add_clip(clip::Clip::new(240.into(), "clip_5", 420.into()));
-        project_manager.add_track(track_3);
+        // let mut track_3 = Track::new(TrackId::new(), "track_2");
+        // track_3.add_clip(clip::Clip::new(0.into(), "clip_3", 10.into()));
+        // track_3.add_clip(clip::Clip::new(120.into(), "clip_4", 20.into()));
+        // track_3.add_clip(clip::Clip::new(240.into(), "clip_5", 420.into()));
+        // project_manager.add_track(track_3);
 
         Self {
             project_manager,
@@ -222,9 +220,6 @@ mod tests {
     #[test]
     fn deref_should_return_inner() {
         let storage = StorageInterface::new();
-        assert_eq!(
-            storage.inner.read().unwrap().tick,
-            storage.read().unwrap().tick
-        );
+        assert_eq!(storage.inner.read().unwrap().tick, storage.read().unwrap().tick);
     }
 }

@@ -142,11 +142,8 @@ impl ClipCollection {
         };
 
         // handle partial and full overlapping
-        let inner_clip: Vec<_> = self
-            .inner
-            .range(new_clip_key..=end_clip_key)
-            .map(|(&k, v)| (k, v.clone()))
-            .collect();
+        let inner_clip: Vec<_> =
+            self.inner.range(new_clip_key..=end_clip_key).map(|(&k, v)| (k, v.clone())).collect();
         inner_clip
     }
 
@@ -162,20 +159,21 @@ impl ClipCollection {
 
     /// creates a new, empty, 'ClipCollection'
     pub fn new() -> ClipCollection {
-        ClipCollection {
-            inner: BTreeMap::new(),
-        }
+        ClipCollection { inner: BTreeMap::new() }
     }
 
     /// returns the clip at the given tick, if any
     pub fn find_take(&mut self, clip_id: ClipId) -> Option<Clip> {
-        let key_to_remove = self.inner.iter().find_map(|(key, clip)| {
-            if clip.id() == clip_id {
-                Some(*key)
-            } else {
-                None
-            }
-        });
+        let key_to_remove =
+            self.inner.iter().find_map(
+                |(key, clip)| {
+                    if clip.id() == clip_id {
+                        Some(*key)
+                    } else {
+                        None
+                    }
+                },
+            );
 
         key_to_remove.and_then(|key| self.inner.remove(&key))
     }
@@ -244,49 +242,47 @@ pub struct Clip {
 impl Clip {
     /// Create a new clip
     pub fn new(start: Tick, name: &str, duration: Tick) -> Self {
-        let mut test_events = EventCollection::new();
+        Self {
+            start,
+            id: ClipId::new(),
+            name: Box::new(String::from(name)),
+            events: EventCollection::new(),
+            duration,
+        }
+    }
 
+    /// test clip
+    pub fn test_clip() -> Self {
+        let mut clip = Self::new(0.into(), "test", 120.into());
+
+        let mut test_events = EventCollection::new();
         let event1 = EventSegment::new(
             DataId::new(),
             Tick::from(0),
             Tick::from(480),
-            EventType::Midi(MidiMessage::NoteOn {
-                key: 46,
-                velocity: 64,
-            }),
+            EventType::Midi(MidiMessage::NoteOn { key: 46, velocity: 64 }),
             true,
         );
         let event2 = EventSegment::new(
             DataId::new(),
             Tick::from(240),
             Tick::from(700),
-            EventType::Midi(MidiMessage::NoteOn {
-                key: 47,
-                velocity: 64,
-            }),
+            EventType::Midi(MidiMessage::NoteOn { key: 47, velocity: 64 }),
             true,
         );
         let event3 = EventSegment::new(
             DataId::new(),
             Tick::from(960),
             Tick::from(1440),
-            EventType::Midi(MidiMessage::NoteOn {
-                key: 50,
-                velocity: 64,
-            }),
+            EventType::Midi(MidiMessage::NoteOn { key: 50, velocity: 64 }),
             true,
         );
-        test_events.add_event(Tick::from(0), event1);
-        test_events.add_event(Tick::from(480), event2);
-        test_events.add_event(Tick::from(960), event3);
+        test_events.add_event(event1);
+        test_events.add_event(event2);
+        test_events.add_event(event3);
 
-        Self {
-            start,
-            id: ClipId::new(),
-            name: Box::new(String::from(name)),
-            events: test_events,
-            duration,
-        }
+        clip.events = test_events;
+        clip
     }
     /// get this clip's id as a string
     pub fn id_as_string(&self) -> String {

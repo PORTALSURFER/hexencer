@@ -6,31 +6,25 @@
 /// contains custom widgets for hexencer
 mod widget;
 
-use std::sync::Arc;
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
 
-use hexencer_core::data::{ClipId, StorageInterface};
-use hexencer_core::{DataId, Tick, TrackId};
-use hexencer_engine::{midi_engine, Sequencer, SequencerCommand, SequencerHandle};
-use iced::advanced::graphics::color;
-use iced::advanced::widget::Tree;
-use iced::advanced::{layout, mouse, renderer, Layout, Widget};
-use iced::keyboard::Key;
-use iced::mouse::Cursor;
-use iced::widget::canvas::{stroke, Path, Stroke};
-use iced::widget::scrollable::Properties;
-use iced::widget::{button, canvas, horizontal_space, stack};
-use iced::widget::{center, text};
-use iced::widget::{column, container, row};
-use iced::{
-    event, keyboard, Alignment, Color, Event, Point, Renderer, Size, Subscription, Transformation,
-    Vector,
+use hexencer_core::{
+    data::{ClipId, StorageInterface},
+    DataId, Tick, TrackId,
 };
-use iced::{Element, Length, Theme};
-use iced::{Font, Rectangle};
+use hexencer_engine::{midi_engine, Sequencer, SequencerCommand, SequencerHandle};
+use iced::{event, keyboard, Alignment, Element, Event, Font, Length, Subscription, Theme};
+use iced::{keyboard::Key, widget::row};
+use iced::{
+    widget::{
+        button, canvas, center, column, container, horizontal_space, scrollable::Properties, stack,
+        text,
+    },
+    window,
+};
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
-use widget::{Arranger, Clip, DragEvent, EventEditor, EventTrack, Track};
+use widget::{Arranger, ArrangerLine, Clip, DragEvent, EventEditor, EventTrack, Track};
 
 use crate::widget::EventSegment;
 
@@ -55,114 +49,6 @@ pub fn init_logger() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
     tracing::info!("hexencer started");
-}
-
-/// test for sequencer line widget
-pub struct SequencerLine {
-    /// width of the line
-    width: f32,
-    /// height of the line
-    height: f32,
-}
-
-impl<Message> Widget<Message, Theme, Renderer> for SequencerLine {
-    fn size(&self) -> Size<Length> {
-        Size { width: Length::Fixed(50.0), height: Length::Fixed(50.0) }
-    }
-
-    fn layout(
-        &self,
-        _tree: &mut Tree,
-        _renderer: &Renderer,
-        limits: &layout::Limits,
-    ) -> layout::Node {
-        let size = limits.resolve(self.width, self.height, Size::ZERO);
-
-        layout::Node::new(size)
-    }
-
-    fn draw(
-        &self,
-        _tree: &Tree,
-        renderer: &mut Renderer,
-        _theme: &Theme,
-        _style: &renderer::Style,
-        layout: Layout<'_>,
-        cursor: mouse::Cursor,
-        _viewport: &Rectangle,
-    ) {
-        use iced::advanced::graphics::mesh::{self, Mesh, Renderer as _, SolidVertex2D};
-        use iced::advanced::Renderer as _;
-
-        let bounds = layout.bounds();
-
-        // R O Y G B I V
-        let color_r = [1.0, 0.0, 0.0, 1.0];
-        let color_o = [1.0, 0.5, 0.0, 1.0];
-        let color_y = [1.0, 1.0, 0.0, 1.0];
-        let color_g = [0.0, 1.0, 0.0, 1.0];
-        let color_gb = [0.0, 1.0, 0.5, 1.0];
-        let color_b = [0.0, 0.2, 1.0, 1.0];
-        let color_i = [0.5, 0.0, 1.0, 1.0];
-        let color_v = [0.75, 0.0, 0.5, 1.0];
-
-        let posn_center = {
-            if let Some(cursor_position) = cursor.position_in(bounds) {
-                [cursor_position.x, cursor_position.y]
-            } else {
-                [bounds.width / 2.0, bounds.height / 2.0]
-            }
-        };
-
-        let posn_tl = [0.0, 0.0];
-        let posn_t = [bounds.width / 2.0, 0.0];
-        let posn_tr = [bounds.width, 0.0];
-        let posn_r = [bounds.width, bounds.height / 2.0];
-        let posn_br = [bounds.width, bounds.height];
-        let posn_b = [(bounds.width / 2.0), bounds.height];
-        let posn_bl = [0.0, bounds.height];
-        let posn_l = [0.0, bounds.height / 2.0];
-
-        let mesh = Mesh::Solid {
-            buffers: mesh::Indexed {
-                vertices: vec![
-                    SolidVertex2D {
-                        position: posn_center,
-                        color: color::pack([1.0, 1.0, 1.0, 1.0]),
-                    },
-                    SolidVertex2D { position: posn_tl, color: color::pack(color_r) },
-                    SolidVertex2D { position: posn_t, color: color::pack(color_o) },
-                    SolidVertex2D { position: posn_tr, color: color::pack(color_y) },
-                    SolidVertex2D { position: posn_r, color: color::pack(color_g) },
-                    SolidVertex2D { position: posn_br, color: color::pack(color_gb) },
-                    SolidVertex2D { position: posn_b, color: color::pack(color_b) },
-                    SolidVertex2D { position: posn_bl, color: color::pack(color_i) },
-                    SolidVertex2D { position: posn_l, color: color::pack(color_v) },
-                ],
-                indices: vec![
-                    0, 1, 2, // TL
-                    0, 2, 3, // T
-                    0, 3, 4, // TR
-                    0, 4, 5, // R
-                    0, 5, 6, // BR
-                    0, 6, 7, // B
-                    0, 7, 8, // BL
-                    0, 8, 1, // L
-                ],
-            },
-            transformation: Transformation::IDENTITY,
-            clip_bounds: Rectangle::INFINITE,
-        };
-
-        renderer.with_translation(Vector::new(bounds.x, bounds.y), |renderer| {
-            renderer.draw_mesh(mesh);
-        });
-    }
-}
-impl<'a, Message> From<SequencerLine> for Element<'a, Message> {
-    fn from(line: SequencerLine) -> Self {
-        Self::new(line)
-    }
 }
 
 /// Message enum for the application
@@ -205,6 +91,7 @@ pub enum Message {
         /// id of the recently selected clip
         clip_id: ClipId,
     },
+    /// if any event occured, currently used for esc deselect of clips
     EventOccured(Event),
 }
 
@@ -221,66 +108,11 @@ struct Hexencer {
     /// the origin of the drag for the clip that was dropped
     drag_origin: f32,
     /// state used for drawing a canvas, used for the transport line drawing
-    line_state: LineState,
+    line_state: ArrangerLine,
     /// selected clip
     selected_clip: Option<ClipId>,
     /// available notes
     notes: Vec<String>,
-}
-
-/// state type used for canvas drawing of the transport line
-#[derive(Debug)]
-struct LineState {
-    /// unused clock taken from example
-    now: Instant,
-    /// cache which stores the canvas drawing elements
-    system_cache: canvas::Cache,
-    /// the current tick for the sequencer
-    tick: f64,
-}
-impl LineState {
-    /// create a new state
-    fn new() -> LineState {
-        let now = Instant::now();
-        Self { now, system_cache: canvas::Cache::default(), tick: 0.0 }
-    }
-
-    /// update the canvas state
-    pub fn update2(&mut self, now: Instant, tick: f64) {
-        self.now = now;
-        self.system_cache.clear();
-        self.tick = tick;
-    }
-}
-
-impl<Message> canvas::Program<Message> for LineState {
-    type State = ();
-
-    fn draw(
-        &self,
-        _state: &Self::State,
-        renderer: &Renderer,
-        _theme: &Theme,
-        bounds: Rectangle,
-        _cursor: Cursor,
-    ) -> Vec<canvas::Geometry<Renderer>> {
-        let start_point = Point::new(self.tick as f32 * 240.0, 0.0);
-        let line_length = 500.0;
-        let target = Point::new(start_point.x, start_point.y + line_length);
-        let line_cache = self.system_cache.draw(renderer, bounds.size(), |frame| {
-            let line = Path::line(start_point, target);
-            frame.stroke(
-                &line,
-                Stroke {
-                    style: stroke::Style::Solid(Color::from_rgba8(200, 240, 255, 0.5)),
-                    width: 1.0,
-                    ..Stroke::default()
-                },
-            );
-        });
-
-        vec![line_cache]
-    }
 }
 
 impl Default for Hexencer {
@@ -315,7 +147,7 @@ impl Default for Hexencer {
             storage,
             dropped_clip: None,
             drag_origin: 0.0,
-            line_state: LineState::new(),
+            line_state: ArrangerLine::new(),
             sequencer_handle,
             selected_clip: None,
             notes,
@@ -420,10 +252,8 @@ impl Hexencer {
 
     /// draw the view
     fn view(&self) -> Element<Message> {
-        let wgpu_box = SequencerLine { width: 50.0, height: 50.0 };
-
         let header = container(
-            row![horizontal_space(), "Header!", horizontal_space(),]
+            row![horizontal_space(), "HEXENCER", horizontal_space(),]
                 .padding(10)
                 .align_items(Alignment::Center),
         );
@@ -439,7 +269,7 @@ impl Hexencer {
 
         let arranger_background = container(
             Arranger::new(
-                column!["Track list", tracks_column, wgpu_box]
+                column!["Track list", tracks_column]
                     .spacing(40)
                     .align_items(Alignment::Center)
                     .width(Length::Fixed(5000.0))
@@ -464,9 +294,10 @@ impl Hexencer {
 
     /// get the subscription for the application
     fn subscription(&self) -> Subscription<Message> {
-        event::listen().map(Message::EventOccured)
+        let test = event::listen().map(Message::EventOccured);
 
-        // window::frames().map(Message::Tick)
+        let test2 = window::frames().map(Message::Tick);
+        Subscription::batch(vec![test, test2])
     }
 
     /// New method to create track elements
@@ -543,8 +374,6 @@ impl Hexencer {
             None => "nothing selected".to_string(),
         };
 
-        let header = text(header_string);
-
         let height = match self.selected_clip {
             Some(_) => 250.0,
             None => 50.0,
@@ -568,9 +397,7 @@ impl Hexencer {
         }
 
         let notes = self.draw_notes(label);
-        let content = column![header, notes];
-        let editor = EventEditor::new(content, self.storage.clone());
-
+        let editor = EventEditor::new(notes, self.storage.clone());
         editor.into()
     }
 
@@ -580,7 +407,7 @@ impl Hexencer {
         let mut note_lanes = Vec::new();
 
         for (index, note) in self.notes.iter().enumerate() {
-            // let note_lane_label = text(note.to_string()).size(10.0);
+            let header = note.to_string();
             let mut segments = vec![];
 
             if let Some(selected_clip) = self.selected_clip {
@@ -591,11 +418,12 @@ impl Hexencer {
                             match segment.event_type {
                                 hexencer_core::event::EventType::Midi(message) => match message {
                                     hexencer_core::data::MidiMessage::NoteOn { key, velocity } => {
-                                        info!("note on {}", key);
                                         if key == index as u8 {
+                                            let position = tick.as_f32();
                                             let new_segment = EventSegment::new(
                                                 self.storage.clone(),
                                                 DataId::new(),
+                                                position,
                                                 text("note"),
                                             )
                                             .into();
@@ -616,7 +444,8 @@ impl Hexencer {
                 }
             }
 
-            let note_lane = EventTrack::new(DataId::new(), self.storage.clone(), 0, segments);
+            let note_lane =
+                EventTrack::new(DataId::new(), self.storage.clone(), 0, segments, header);
             let thing = row![note_lane];
             note_lanes.push(thing.into());
         }

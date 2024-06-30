@@ -1,5 +1,8 @@
 //! arranger widget
 
+mod internals;
+mod line;
+
 use iced::{
     advanced::{
         layout, mouse, renderer,
@@ -10,7 +13,8 @@ use iced::{
     widget::container,
     Background, Border, Color, Element, Event, Length, Point, Rectangle, Size, Theme, Vector,
 };
-mod internals;
+
+pub use line::ArrangerLine;
 
 /// Alignment of the scrollable's content relative to it's [`Viewport`] in one direction.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -152,8 +156,7 @@ impl State {
     /// Returns the translation of the [`Viewport`] in one direction.
     fn translation(&self, bounds: Rectangle, content_bounds: Rectangle) -> iced::Vector {
         Vector::new(
-            self.offset
-                .translation(bounds.width, content_bounds.width, Alignment::Start),
+            self.offset.translation(bounds.width, content_bounds.width, Alignment::Start),
             0.0,
         )
     }
@@ -291,9 +294,7 @@ impl ScrollbarWrapper {
             Some(internals::Scrollbar {
                 total_bounds: total_scrollbar_bounds,
                 bounds: scrollbar_bounds,
-                scroll_handle: internals::ScrollHandle {
-                    bounds: scroll_handle_bounds,
-                },
+                scroll_handle: internals::ScrollHandle { bounds: scroll_handle_bounds },
                 alignment: Alignment::Start,
             })
         } else {
@@ -324,14 +325,12 @@ impl ScrollbarWrapper {
     fn grab_scroll_handle(&self, cursor_position: Point) -> Option<f32> {
         self.inner.and_then(|scrollbar| {
             if scrollbar.total_bounds.contains(cursor_position) {
-                Some(
-                    if scrollbar.scroll_handle.bounds.contains(cursor_position) {
-                        (cursor_position.x - scrollbar.scroll_handle.bounds.x)
-                            / scrollbar.scroll_handle.bounds.width
-                    } else {
-                        0.5
-                    },
-                )
+                Some(if scrollbar.scroll_handle.bounds.contains(cursor_position) {
+                    (cursor_position.x - scrollbar.scroll_handle.bounds.x)
+                        / scrollbar.scroll_handle.bounds.width
+                } else {
+                    0.5
+                })
             } else {
                 None
             }
@@ -362,10 +361,7 @@ where
     }
 
     fn size(&self) -> Size<Length> {
-        Size {
-            width: self.width,
-            height: self.height,
-        }
+        Size { width: self.width, height: self.height }
     }
 
     fn layout(
@@ -380,9 +376,7 @@ where
                 Size::new(f32::INFINITY, limits.max().height),
             );
 
-            self.content
-                .as_widget()
-                .layout(&mut tree.children[0], renderer, &child_limits)
+            self.content.as_widget().layout(&mut tree.children[0], renderer, &child_limits)
         })
     }
 
@@ -470,9 +464,7 @@ where
                                 border: style.border,
                                 ..renderer::Quad::default()
                             },
-                            style
-                                .background
-                                .unwrap_or(Background::Color(Color::TRANSPARENT)),
+                            style.background.unwrap_or(Background::Color(Color::TRANSPARENT)),
                         );
                     }
 
@@ -532,11 +524,7 @@ where
                 defaults,
                 content_layout,
                 cursor,
-                &Rectangle {
-                    x: bounds.x + translation.x,
-                    y: bounds.y + translation.y,
-                    ..bounds
-                },
+                &Rectangle { x: bounds.x + translation.x, y: bounds.y + translation.y, ..bounds },
             );
         }
     }
@@ -617,10 +605,9 @@ where
                     return event::Status::Ignored;
                 };
 
-                if let (Some(scroller_grabbed_at), Some(scrollbar)) = (
-                    scrollbars.grab_scroll_handle(cursor_position),
-                    scrollbars.inner,
-                ) {
+                if let (Some(scroller_grabbed_at), Some(scrollbar)) =
+                    (scrollbars.grab_scroll_handle(cursor_position), scrollbars.inner)
+                {
                     state.scroll_x_to(
                         scrollbar.scroll_percentage(scroller_grabbed_at, cursor_position),
                         bounds,
@@ -654,18 +641,11 @@ where
                 renderer,
                 clipboard,
                 shell,
-                &Rectangle {
-                    y: bounds.y + translation.y,
-                    x: bounds.x + translation.x,
-                    ..bounds
-                },
+                &Rectangle { y: bounds.y + translation.y, x: bounds.x + translation.x, ..bounds },
             )
         };
 
-        if matches!(
-            event,
-            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
-        ) {
+        if matches!(event, Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))) {
             state.scroll_area_touched_at = None;
             state.scroller_grabbed_at = None;
 
@@ -802,19 +782,13 @@ pub fn default(theme: &Theme, status: Status) -> Style {
     let scrollbar = Scrollbar {
         background: Some(palette.background.weak.color.into()),
         border: Border::rounded(2),
-        scroller: Scroller {
-            color: palette.background.strong.color,
-            border: Border::rounded(2),
-        },
+        scroller: Scroller { color: palette.background.strong.color, border: Border::rounded(2) },
     };
 
     match status {
         Status::Hovered => {
             let hovered_scrollbar = Scrollbar {
-                scroller: Scroller {
-                    color: palette.primary.strong.color,
-                    ..scrollbar.scroller
-                },
+                scroller: Scroller { color: palette.primary.strong.color, ..scrollbar.scroller },
                 ..scrollbar
             };
 
@@ -824,17 +798,10 @@ pub fn default(theme: &Theme, status: Status) -> Style {
                 gap: None,
             }
         }
-        Status::Normal => Style {
-            container: container::Style::default(),
-            scrollbar,
-            gap: None,
-        },
+        Status::Normal => Style { container: container::Style::default(), scrollbar, gap: None },
         Status::Dragged => {
             let pressed_scrollbar = Scrollbar {
-                scroller: Scroller {
-                    color: palette.primary.strong.color,
-                    ..scrollbar.scroller
-                },
+                scroller: Scroller { color: palette.primary.strong.color, ..scrollbar.scroller },
                 ..scrollbar
             };
 

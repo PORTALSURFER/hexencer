@@ -37,6 +37,7 @@ where
     /// inner element of the clip
     content: Element<'a, Message, Theme, Renderer>,
     storage: StorageInterface,
+    position: f32,
     id: DataId,
     class: Theme::Class<'a>,
     selected: bool,
@@ -56,12 +57,14 @@ where
     pub fn new(
         storage: StorageInterface,
         id: DataId,
+        position: f32,
         content: impl Into<Element<'a, Message, Theme, Renderer>>,
     ) -> Self {
         let content = content.into();
         Self {
             storage,
             id,
+            position,
             class: Theme::default(),
             content,
             selected: false,
@@ -105,10 +108,9 @@ pub fn primary(theme: &Theme, status: Status) -> Style {
 
     match status {
         Status::Active | Status::Pressed => base,
-        Status::Hovered => Style {
-            background: Some(Background::Color(palette.primary.base.color)),
-            ..base
-        },
+        Status::Hovered => {
+            Style { background: Some(Background::Color(palette.primary.base.color)), ..base }
+        }
     }
 }
 /// The state of the [`Clip`].
@@ -157,10 +159,7 @@ where
     }
 
     fn size(&self) -> iced::Size<iced::Length> {
-        Size {
-            width: Length::Fixed(120.0),
-            height: Length::Fixed(18.0),
-        }
+        Size { width: Length::Fixed(120.0), height: Length::Fixed(18.0) }
     }
 
     fn children(&self) -> Vec<Tree> {
@@ -179,17 +178,7 @@ where
     ) -> iced::advanced::layout::Node {
         let mut out_node =
             layout::Node::new(limits.resolve(self.size().width, self.size().height, Size::ZERO));
-        // todo: move to outside of the function when reading the clip, just store in the clip struct on creation
-        if let Ok(storage) = self.storage.read() {
-            // if let Some(clip) = storage.project_manager.find_clip(self.id) {
-            //     let width = Length::Fixed(clip.duration.as_f32());
-            //     let height = Length::Fixed(18.0);
-            //     let size = limits.resolve(width, height, Size::ZERO);
-            //     let node = layout::Node::new(size);
-            //     let position = Point::new(clip.start.as_f32(), 0.0);
-            //     out_node = node.move_to(position);
-            // }
-        }
+        out_node = out_node.move_to(Point::new(self.position, 0.0));
         out_node
     }
 
@@ -206,11 +195,7 @@ where
         let bounds = layout.bounds();
         let quad = Quad {
             bounds,
-            border: Border {
-                color: Color::from_rgb(0.0, 0.0, 0.0),
-                width: 1.0,
-                radius: 2.into(),
-            },
+            border: Border { color: Color::from_rgb(0.0, 0.0, 0.0), width: 1.0, radius: 2.into() },
             shadow: Shadow::default(),
         };
 
@@ -249,8 +234,6 @@ where
                 renderer.fill_quad(quad, Background::Color(Color::from_rgb(0.52, 0.84, 1.0)));
             }
         }
-
-        renderer.with_layer(bounds, |_renderer| {});
     }
 
     fn on_event(
@@ -304,18 +287,13 @@ where
                 // if let State::Dragged { .. } = *state {
             }
             // }
-            Event::Mouse(mouse::Event::CursorMoved {
-                position: _position,
-            }) => {
+            Event::Mouse(mouse::Event::CursorMoved { position: _position }) => {
                 let state = tree.state.downcast_mut::<State>();
                 if *state == State::Pressed {
                     if let Some(cursor_position) = cursor.position_over(bounds) {
                         let relative_mouse = cursor_position.x - bounds.position().x;
                         if *state == State::Pressed {
-                            *state = State::Dragged {
-                                origin: cursor_position,
-                                id: self.id,
-                            };
+                            *state = State::Dragged { origin: cursor_position, id: self.id };
                             if let Some(on_drag) = &self.on_drag {
                                 shell.publish(on_drag(DragEvent::DragStarted {
                                     grab_position: relative_mouse,

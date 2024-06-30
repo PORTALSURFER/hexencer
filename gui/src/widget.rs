@@ -1,12 +1,14 @@
 mod arranger;
 mod clip;
 mod event_editor;
+mod event_editor_new;
 mod event_segment;
 mod event_track;
 mod track;
 
 pub use arranger::Arranger;
 // pub use arranger::TickCursor;
+pub use arranger::ArrangerLine;
 pub use clip::Clip;
 pub use clip::DragEvent;
 pub use event_editor::EventEditor;

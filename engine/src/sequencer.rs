@@ -64,11 +64,7 @@ pub struct SequencerState {
 impl SequencerState {
     /// creates new sequencer state
     pub fn new() -> Self {
-        Self {
-            running: false,
-            current_tick: Tick::zero(),
-            ppqn: 480,
-        }
+        Self { running: false, current_tick: Tick::zero(), ppqn: 480 }
     }
 }
 
@@ -146,44 +142,6 @@ impl Sequencer {
         (tick_duration * 1000.0) as u64
     }
 
-    // /// starts listening for and processing commands
-    // pub async fn listen(mut self, mut command_receiver: SequencerReceiver) {
-    //     tracing::info!("sequencer listening for commands");
-    //     let mut interval = time::interval(Duration::from_micros(self.tick_duration()));
-    //     loop {
-    //         tokio::select! {
-    //             _ = interval.tick() => {
-    //                     let mut state = self.state.write().unwrap();
-    //                     // self.process_events();
-    //                     state.current_tick.tick();
-    //                     if let Ok(mut storage) = self.storage.write() { storage.set_tick(state.current_tick) }
-    //             },
-    //             Some(command) = command_receiver.recv() => {
-    //                 match command {
-    //                     SequencerCommand::Play => {
-    //                         tracing::info!("play command received");
-    //                         self.play().await;
-    //                     }
-    //                     SequencerCommand::Stop => {
-    //                         tracing::info!("stop");
-    //                         self.stop().await;
-    //                     }
-    //                     SequencerCommand::Reset => {
-    //                         let mut state = self.state.write().unwrap();
-    //                         tracing::info!("reset");
-    //                         state.current_tick.reset();
-    //                     }
-    //                     SequencerCommand::Pause => {
-    //                         let mut state = self.state.write().unwrap();
-    //                         tracing::info!("pause");
-    //                         state.running = false;
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     /// sends stop signals to both midi ports
     async fn stop(&mut self) {
         let mut state = self.state.write().unwrap();
@@ -201,32 +159,17 @@ impl Sequencer {
         let storage = self.storage.read().unwrap();
         let state = self.state.read().unwrap();
         let tracks = &storage.project_manager.track_collection;
-        for track in tracks.iter() {
-            let clip_key = ClipKey {
-                start: state.current_tick,
-            };
 
-            if let Some(clip) = track.clip_collection.get(&clip_key) {
+        for track in tracks.iter() {
+            for (key, clip) in track.clip_collection.iter() {
                 for (tick, event_segments) in clip.events.iter() {
                     if *tick == state.current_tick {
                         for segment in event_segments {
-                            info!("process event {:?}", segment);
+                            info!("tick:{} process event {:?}", tick, segment);
                         }
                     }
                 }
             }
-            // for event in event_entry.iter() {
-            //     let event_type = event.event_type;
-            //     tracing::info!("{} - {}", track, event_type);
-
-            //     if event.is_active {
-            //         let message = event_type.get_message();
-            //         let instrument = &track.instrument;
-            //         self.midi_engine_sender.as_mut().map(|sender| {
-            //             sender.send((message, instrument.port, instrument.channel))
-            //         });
-            //     }
-            // }
         }
     }
 
@@ -243,14 +186,3 @@ impl Sequencer {
         state.running = false;
     }
 }
-
-///// starts up the sequencer engine and listens for commands, returns the sender to send commands to the sequencer
-// pub fn start_sequencer_engine(
-//     midi_sender: MidiEngineSender,
-//     data_layer: StorageInterface,
-// ) -> SequencerSender {
-//     let (sequencer_sender, sequencer_receiver) = tokio::sync::mpsc::unbounded_channel();
-//     let sequencer = Sequencer::new(data_layer, midi_sender);
-//     task::spawn(sequencer.listen(sequencer_receiver));
-//     sequencer_sender
-// }

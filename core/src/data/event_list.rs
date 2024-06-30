@@ -27,12 +27,12 @@ impl EventCollection {
     }
 
     /// adds a new event to the 'EventList'
-    pub fn add_event(&mut self, tick: Tick, event_entry: EventSegment) {
+    pub fn add_event(&mut self, event_entry: EventSegment) {
         self.0
-            .get_mut(&tick)
+            .get_mut(&event_entry.start)
             .map(move |events| events.push(event_entry))
             .unwrap_or_else(|| {
-                self.0.insert(tick, vec![event_entry]);
+                self.0.insert(event_entry.start, vec![event_entry]);
             });
     }
 
@@ -79,13 +79,7 @@ impl EventSegment {
     /// creates a new 'EventBlock' with a `NoteOn` and a `NoteOff` 'Event'
     pub fn new2(start_tick: Tick, end_tick: Tick, key: u8, velocity: u8, is_active: bool) -> Self {
         let event = EventType::Midi(MidiMessage::NoteOn { key, velocity });
-        Self {
-            id: DataId::new(),
-            start: start_tick,
-            end: end_tick,
-            event_type: event,
-            is_active,
-        }
+        Self { id: DataId::new(), start: start_tick, end: end_tick, event_type: event, is_active }
     }
 
     /// create a new event segment
@@ -96,13 +90,7 @@ impl EventSegment {
         event_type: EventType,
         is_active: bool,
     ) -> EventSegment {
-        Self {
-            id,
-            start,
-            end,
-            event_type,
-            is_active,
-        }
+        Self { id, start, end, event_type, is_active }
     }
 
     /// gets the key of this event

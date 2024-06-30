@@ -1,16 +1,18 @@
 use hexencer_core::{data::StorageInterface, DataId};
 use iced::{
     advanced::{
-        graphics::core::Element,
+        graphics::{core::Element, geometry, text},
         layout::{self, Node},
         mouse,
         renderer::{self, Quad},
-        widget::{self, Tree},
-        Layout, Widget,
+        text::Paragraph,
+        widget::{self, text::LineHeight::Absolute, Tree},
+        Layout, Text, Widget,
     },
     event,
     theme::palette,
-    Background, Border, Color, Event, Length, Rectangle, Shadow, Size, Theme,
+    widget::canvas,
+    Background, Border, Color, Event, Font, Length, Pixels, Point, Rectangle, Shadow, Size, Theme,
 };
 use tracing::info;
 
@@ -20,6 +22,7 @@ where
     Theme: Catalog,
     Renderer: renderer::Renderer,
 {
+    note: String,
     /// id of the data type for this track
     id: DataId,
     /// height of the track
@@ -46,13 +49,16 @@ where
     Renderer: renderer::Renderer,
     Theme: Catalog,
 {
+    /// create a new track
     pub fn new(
         id: DataId,
         storage: StorageInterface,
         index: usize,
         children: Vec<Element<'a, Message, Theme, Renderer>>,
+        note: String,
     ) -> Self {
         Self {
+            note,
             id,
             height: Length::Fixed(10.0),
             width: Length::Fill,
@@ -68,12 +74,12 @@ where
     /// draws the track background    
     fn draw_background(
         &self,
-        _storage: std::sync::RwLockReadGuard<hexencer_core::data::DataLayer>,
-        _tree: &widget::Tree,
+        storage: std::sync::RwLockReadGuard<hexencer_core::data::DataLayer>,
+        tree: &widget::Tree,
         theme: &Theme,
         renderer: &mut Renderer,
         layout: Layout,
-        _cursor: mouse::Cursor,
+        cursor: mouse::Cursor,
     ) {
         let size = layout.bounds().size();
 
@@ -98,6 +104,9 @@ where
                 appearance.background.unwrap(),
             );
         }
+        let position = bounds.position();
+        let color = Color::WHITE;
+        let bounds = layout.bounds();
     }
 }
 
@@ -133,7 +142,7 @@ impl<'a, Message, Theme, Renderer> From<EventTrack<'a, Message, Theme, Renderer>
 where
     Message: 'a,
     Theme: 'a + Catalog,
-    Renderer: 'a + renderer::Renderer,
+    Renderer: 'a + renderer::Renderer + iced::advanced::text::Renderer<Font = iced::Font>,
 {
     fn from(track: EventTrack<'a, Message, Theme, Renderer>) -> Self {
         Self::new(track)
@@ -156,12 +165,16 @@ pub struct Style {
     pub background_hovered: Color,
 }
 
+/// The internal state of a [`Text`] widget.
+#[derive(Debug, Default)]
+pub struct State<P: Paragraph>(P);
+
 impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
     for EventTrack<'a, Message, Theme, Renderer>
 where
     Message: 'a,
     Theme: 'a + Catalog,
-    Renderer: 'a + renderer::Renderer,
+    Renderer: 'a + renderer::Renderer + iced::advanced::text::Renderer<Font = iced::Font>,
 {
     fn children(&self) -> Vec<Tree> {
         self.children.iter().map(Tree::new).collect()
@@ -204,13 +217,39 @@ where
         viewport: &iced::Rectangle,
     ) {
         let storage = self.storage.read().unwrap();
+
         self.draw_background(storage, tree, theme, renderer, layout, cursor);
 
-        for ((child, tree), child_layout) in
-            self.children.iter().zip(&tree.children).zip(layout.children())
-        {
-            child.as_widget().draw(tree, renderer, theme, style, child_layout, cursor, viewport);
-        }
+        // Draw text
+        let bounds = layout.bounds();
+        let color = Color::WHITE;
+        let text = Text {
+            content: self.note.to_string(),
+            bounds: bounds.size(),
+            size: 8.into(),
+            line_height: 0.0.into(),
+            font: Font::default(),
+            horizontal_alignment: iced::alignment::Horizontal::Left,
+            vertical_alignment: iced::alignment::Vertical::Bottom,
+            shaping: widget::text::Shaping::Basic,
+        };
+        renderer.fill_text(text, Point::new(bounds.x, bounds.y + 4.0), color, bounds);
+
+        renderer.with_layer(bounds, |renderer| {
+            for ((child, tree), child_layout) in
+                self.children.iter().zip(&tree.children).zip(layout.children())
+            {
+                child.as_widget().draw(
+                    tree,
+                    renderer,
+                    theme,
+                    style,
+                    child_layout,
+                    cursor,
+                    viewport,
+                );
+            }
+        })
     }
 
     fn on_event(
@@ -319,6 +358,6 @@ fn disabled(style: Style) -> Style {
     Style {
         background: style.background.map(|background| background.scale_alpha(0.5)),
         text_color: style.text_color.scale_alpha(0.5),
-        ..style
+        ..Style::default()
     }
 }
