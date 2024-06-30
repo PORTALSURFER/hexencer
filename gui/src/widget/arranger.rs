@@ -1,3 +1,5 @@
+//! arranger widget
+
 use iced::{
     advanced::{
         layout, mouse, renderer,

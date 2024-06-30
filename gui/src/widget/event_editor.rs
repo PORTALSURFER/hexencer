@@ -1,9 +1,12 @@
+//! event editor widget
+
 use hexencer_core::data::StorageInterface;
 use iced::advanced::layout::{self, Node};
 use iced::advanced::renderer::Quad;
 use iced::advanced::widget::{tree, Tree, Widget};
 use iced::{advanced::renderer, Border, Color, Element, Shadow};
-use iced::{Background, Length, Rectangle, Size, Theme};
+use iced::{Background, Length, Point, Rectangle, Size, Theme, Vector};
+use tracing::info;
 
 /// EventEditor widget
 pub struct EventEditor<'a, Message, Theme, Renderer>
@@ -46,11 +49,49 @@ where
 
 /// state of the ['EventEditor']
 #[derive(Debug, Clone, Copy)]
-struct State {}
+struct State {
+    scrolling: bool,
+    offset_x: Offset,
+    offset_y: Offset,
+    scroll_origin: Point,
+}
+
 impl State {
     /// creates a new ['State']
     fn new() -> Self {
-        Self {}
+        Self {
+            scrolling: false,
+            offset_x: Offset::Relative(0.0),
+            offset_y: Offset::Relative(0.0),
+            scroll_origin: Point::ORIGIN,
+        }
+    }
+
+    fn translation(&self, bounds: Rectangle, content_bounds: Rectangle) -> Vector {
+        Vector::new(
+            self.offset_x
+                .translation(bounds.width, content_bounds.width),
+            self.offset_y
+                .translation(bounds.width, content_bounds.width),
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Offset {
+    Relative(f32),
+}
+impl Offset {
+    fn translation(&self, viewport: f32, content: f32) -> f32 {
+        let offset = self.absolute(viewport, content);
+
+        offset
+    }
+
+    fn absolute(&self, viewport: f32, content: f32) -> f32 {
+        match self {
+            Offset::Relative(percentage) => ((content - viewport) * percentage).max(0.0),
+        }
     }
 }
 
@@ -86,7 +127,7 @@ where
         layout::contained(limits, self.width, self.height, |limits| {
             let child_limits = layout::Limits::new(
                 Size::new(limits.min().width, limits.min().height),
-                Size::new(limits.min().height, limits.max().height),
+                Size::new(f32::INFINITY, f32::INFINITY),
             );
 
             self.content
@@ -105,9 +146,16 @@ where
         cursor: iced::advanced::mouse::Cursor,
         viewport: &iced::Rectangle,
     ) {
+        let state = tree.state.downcast_ref::<State>();
+
         let bounds = layout.bounds();
         let content_layout = layout.children().next().unwrap();
+        let content_bounds = content_layout.bounds();
 
+        let Some(visible_bounds) = bounds.intersection(viewport) else {
+            return;
+        };
+        let translation = state.translation(bounds, content_bounds);
         let quad = Quad {
             bounds: Rectangle::new(layout.bounds().position(), layout.bounds().size()),
             border: Border::default(),
@@ -115,20 +163,87 @@ where
         };
         renderer.fill_quad(quad, Background::Color(Color::BLACK));
 
-        self.content.as_widget().draw(
-            &tree.children[0],
-            renderer,
-            theme,
-            defaults,
-            content_layout,
-            cursor,
-            &Rectangle {
-                x: bounds.x,
-                y: bounds.y,
-                ..bounds
-            },
-        );
+        renderer.with_layer(visible_bounds, |renderer| {
+            renderer.with_translation(Vector::new(-translation.x, -translation.y), |renderer| {
+                self.content.as_widget().draw(
+                    &tree.children[0],
+                    renderer,
+                    theme,
+                    defaults,
+                    content_layout,
+                    cursor,
+                    &Rectangle {
+                        y: bounds.y + translation.y,
+                        x: bounds.x + translation.x,
+                        ..bounds
+                    },
+                );
+            });
+        });
     }
+
+    fn on_event(
+        &mut self,
+        tree: &mut Tree,
+        event: iced::Event,
+        layout: layout::Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
+        _renderer: &Renderer,
+        _clipboard: &mut dyn iced::advanced::Clipboard,
+        _shell: &mut iced::advanced::Shell<'_, Message>,
+        _viewport: &Rectangle,
+    ) -> iced::advanced::graphics::core::event::Status {
+        let state = tree.state.downcast_mut::<State>();
+        let bounds = layout.bounds();
+
+        match event {
+            iced::Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Right)) => {
+                if cursor.is_over(bounds) {
+                    state.scrolling = true;
+                    if let Some(point) = cursor.position_in(bounds) {
+                        state.scroll_origin = point;
+                    }
+                    return iced::event::Status::Captured;
+                }
+            }
+            iced::Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Right)) => {
+                if state.scrolling {
+                    state.scrolling = false;
+                    return iced::event::Status::Captured;
+                }
+            }
+            iced::Event::Mouse(iced::mouse::Event::CursorMoved { position }) => {
+                if state.scrolling {
+                    state.offset_x = Offset::Relative(scroll_percentage_x(
+                        state.scroll_origin,
+                        position,
+                        bounds.size().width,
+                    ));
+                    state.offset_y = Offset::Relative(scroll_percentage_y(
+                        state.scroll_origin,
+                        position,
+                        bounds.size().width,
+                    ));
+                    return iced::event::Status::Captured;
+                }
+            }
+            _ => {}
+        }
+
+        iced::event::Status::Ignored
+    }
+}
+
+/// calculate the desired scrolling percentage
+fn scroll_percentage_y(scroll_origin: Point, cursor_position: Point, width: f32) -> f32 {
+    let percentage = (cursor_position.y - scroll_origin.y) / width;
+    percentage
+}
+
+/// calculate the desired scrolling percentage
+fn scroll_percentage_x(scroll_origin: Point, cursor_position: Point, width: f32) -> f32 {
+    let percentage = (cursor_position.x - scroll_origin.x) / width;
+    percentage
 }
 
 /// Catalog of the editor
@@ -196,7 +311,7 @@ pub fn default(theme: &Theme, status: Status) -> Style {
 
     match status {
         Status::Idle => Style {
-            background: Some(palette.background.weak.color.into()),
+            background: Some(palette.background.weak.color),
             text_color: Color::from_rgb(1.0, 1.0, 1.0),
             border: Border::default(),
             shadow: Shadow::default(),
