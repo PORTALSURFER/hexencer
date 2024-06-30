@@ -155,11 +155,7 @@ where
         let Some(visible_bounds) = bounds.intersection(viewport) else {
             return;
         };
-        info!("bounds: {:?}", bounds);
-        info!("content_bounds: {:?}", content_bounds);
         let translation = state.translation(bounds, content_bounds);
-        info!("translation: {:?}", translation);
-
         let quad = Quad {
             bounds: Rectangle::new(layout.bounds().position(), layout.bounds().size()),
             border: Border::default(),
@@ -207,20 +203,17 @@ where
                     if let Some(point) = cursor.position_in(bounds) {
                         state.scroll_origin = point;
                     }
-                    info!("scrolling initiated");
                     return iced::event::Status::Captured;
                 }
             }
             iced::Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Right)) => {
                 if state.scrolling {
                     state.scrolling = false;
-                    info!("scrolling exited");
                     return iced::event::Status::Captured;
                 }
             }
             iced::Event::Mouse(iced::mouse::Event::CursorMoved { position }) => {
                 if state.scrolling {
-                    // info!("scrolling editor");
                     state.offset_x = Offset::Relative(scroll_percentage_x(
                         state.scroll_origin,
                         position,
@@ -243,17 +236,13 @@ where
 
 /// calculate the desired scrolling percentage
 fn scroll_percentage_y(scroll_origin: Point, cursor_position: Point, width: f32) -> f32 {
-    info!("so{scroll_origin}, cp{cursor_position}, width{width}");
     let percentage = (cursor_position.y - scroll_origin.y) / width;
-    info!("scroll percentage: {}", percentage);
     percentage
 }
 
 /// calculate the desired scrolling percentage
 fn scroll_percentage_x(scroll_origin: Point, cursor_position: Point, width: f32) -> f32 {
-    info!("so{scroll_origin}, cp{cursor_position}, width{width}");
     let percentage = (cursor_position.x - scroll_origin.x) / width;
-    info!("scroll percentage: {}", percentage);
     percentage
 }
 

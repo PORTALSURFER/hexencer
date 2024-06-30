@@ -15,6 +15,7 @@ use hexencer_engine::{midi_engine, Sequencer, SequencerCommand, SequencerHandle}
 use iced::advanced::graphics::color;
 use iced::advanced::widget::Tree;
 use iced::advanced::{layout, mouse, renderer, Layout, Widget};
+use iced::futures::SinkExt;
 use iced::mouse::Cursor;
 use iced::widget::canvas::{stroke, Path, Stroke};
 use iced::widget::scrollable::Properties;
@@ -24,9 +25,12 @@ use iced::widget::{column, container, row};
 use iced::{window, Alignment, Color, Point, Renderer, Size, Subscription, Transformation, Vector};
 use iced::{Element, Length, Theme};
 use iced::{Font, Rectangle};
+use tracing::instrument::WithSubscriber;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 use widget::{Arranger, Clip, DragEvent, EventEditor, EventTrack, Track};
+
+use crate::widget::EventSegment;
 
 #[tokio::main]
 async fn main() {
@@ -617,11 +621,45 @@ impl Hexencer {
         // draw lanes for every note
         let mut note_lanes = Vec::new();
 
-        for note in &self.notes {
-            // info!("note lane for note {}", note);
-            let note_lane_label = text(note.to_string()).size(10.0);
-            let note_lane = EventTrack::new(DataId::new(), self.storage.clone(), 0, vec![]);
-            let thing = row![note_lane_label, note_lane];
+        for (index, note) in self.notes.iter().enumerate() {
+            // let note_lane_label = text(note.to_string()).size(10.0);
+            let mut segments = vec![];
+
+            if let Some(selected_clip) = self.selected_clip {
+                let storage = self.storage.read().unwrap();
+                if let Some(clip) = storage.project_manager.find_clip(selected_clip) {
+                    for (tick, event) in clip.events.iter() {
+                        for segment in event {
+                            match segment.event_type {
+                                hexencer_core::event::EventType::Midi(message) => match message {
+                                    hexencer_core::data::MidiMessage::NoteOn { key, velocity } => {
+                                        info!("note on {}", key);
+                                        if key == index as u8 {
+                                            let new_segment = EventSegment::new(
+                                                self.storage.clone(),
+                                                DataId::new(),
+                                                text("note"),
+                                            )
+                                            .into();
+
+                                            segments.push(new_segment);
+                                        }
+                                    }
+                                    hexencer_core::data::MidiMessage::NoteOff { key, velocity } => {
+                                        info!("note off {}", key);
+                                    }
+                                    hexencer_core::data::MidiMessage::AllNoteOff => {
+                                        info!("all notes of");
+                                    }
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+
+            let note_lane = EventTrack::new(DataId::new(), self.storage.clone(), 0, segments);
+            let thing = row![note_lane];
             note_lanes.push(thing.into());
         }
 
