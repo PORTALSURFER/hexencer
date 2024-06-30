@@ -16,13 +16,14 @@ use iced::advanced::graphics::color;
 use iced::advanced::widget::Tree;
 use iced::advanced::{layout, mouse, renderer, Layout, Widget};
 use iced::futures::SinkExt;
+use iced::keyboard::Key;
 use iced::mouse::Cursor;
 use iced::widget::canvas::{stroke, Path, Stroke};
 use iced::widget::scrollable::Properties;
 use iced::widget::{button, canvas, horizontal_space, stack};
 use iced::widget::{center, text};
 use iced::widget::{column, container, row};
-use iced::{window, Alignment, Color, Point, Renderer, Size, Subscription, Transformation, Vector};
+use iced::{event, keyboard, window, Alignment, Color, Event, Point, Renderer, Size, Subscription, Transformation, Vector};
 use iced::{Element, Length, Theme};
 use iced::{Font, Rectangle};
 use tracing::instrument::WithSubscriber;
@@ -41,7 +42,7 @@ async fn main() {
     let _ = iced::application("Hexencer", Hexencer::update, Hexencer::view)
         .theme(Hexencer::theme)
         .font(include_bytes!("../../assets/fonts/5squared-pixel.ttf"))
-        // .subscription(Hexencer::subscription)
+        .subscription(Hexencer::subscription)
         .default_font(Font::with_name("5squared pixel"))
         .antialiasing(false)
         .run();
@@ -193,7 +194,7 @@ impl<'a, Message> From<SequencerLine> for Element<'a, Message> {
 }
 
 /// Message enum for the application
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Message {
     /// exit this application
     Exit,
@@ -232,6 +233,7 @@ pub enum Message {
         /// id of the recently selected clip
         clip_id: ClipId,
     },
+    EventOccured(Event),
 }
 
 #[derive(Debug)]
@@ -358,6 +360,7 @@ impl Default for Hexencer {
 impl Hexencer {
     /// update the application state
     fn update(&mut self, message: Message) {
+        
         if let Some(dropped_clip) = self.dropped_clip {
             tracing::info!("dropped clip: {:?}", dropped_clip);
             self.dropped_clip = None;
@@ -420,6 +423,14 @@ impl Hexencer {
                 println!("test");
                 info!("selected clip {}", clip_id);
                 self.selected_clip = Some(clip_id);
+            }
+            Message::EventOccured(event) => {
+                if let Event::Keyboard(keyboard::Event::KeyPressed {key, location: _, modifiers, text: _}) = event {
+                    if key == Key::Named(keyboard::key::Named::Escape) {
+                        self.selected_clip = None;
+                    }
+                    info!("key pressed: {:?} with modifiers: {:?}", key, modifiers);
+                }
             }
         }
     }
@@ -501,7 +512,9 @@ impl Hexencer {
 
     /// get the subscription for the application
     fn subscription(&self) -> Subscription<Message> {
-        window::frames().map(Message::Tick)
+        event::listen().map(Message::EventOccured)
+        
+        // window::frames().map(Message::Tick)
     }
 
     /// New method to create track elements
