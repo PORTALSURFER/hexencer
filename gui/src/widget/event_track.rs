@@ -14,22 +14,33 @@ use iced::{
 };
 use tracing::info;
 
+/// A track for events
 pub struct EventTrack<'a, Message, Theme, Renderer>
 where
     Theme: Catalog,
     Renderer: renderer::Renderer,
 {
+    /// id of the data type for this track
     id: DataId,
+    /// height of the track
     height: Length,
+    /// width of the track
     width: Length,
+    /// thememing class for the track
     class: Theme::Class<'a>,
+    /// interface to the data storage
     storage: StorageInterface,
+    /// child contents of the track, events
     children: Vec<Element<'a, Message, Theme, Renderer>>,
+    /// handler for drop events on this track
     on_drop: DropHandler<'a, Message>,
+    /// true if the track is hovered
     hovered: bool,
+    /// id of the event that was dropped on this track
     dropped_event: Option<DataId>,
 }
 
+/// Implementation of the track
 impl<'a, Message, Theme, Renderer> EventTrack<'a, Message, Theme, Renderer>
 where
     Renderer: renderer::Renderer,
@@ -68,12 +79,7 @@ where
 
         let bounds = layout.bounds();
         let quad = Quad {
-            bounds: Rectangle {
-                x: bounds.x,
-                y: bounds.y,
-                width: size.width,
-                height: size.height,
-            },
+            bounds: Rectangle { x: bounds.x, y: bounds.y, width: size.width, height: size.height },
             border: Border::default(),
             shadow: Shadow::default(),
         };
@@ -166,10 +172,7 @@ where
     }
 
     fn size(&self) -> Size<Length> {
-        Size {
-            width: Length::Shrink,
-            height: Length::Shrink,
-        }
+        Size { width: Length::Shrink, height: Length::Shrink }
     }
 
     fn layout(
@@ -203,15 +206,10 @@ where
         let storage = self.storage.read().unwrap();
         self.draw_background(storage, tree, theme, renderer, layout, cursor);
 
-        for ((child, tree), child_layout) in self
-            .children
-            .iter()
-            .zip(&tree.children)
-            .zip(layout.children())
+        for ((child, tree), child_layout) in
+            self.children.iter().zip(&tree.children).zip(layout.children())
         {
-            child
-                .as_widget()
-                .draw(tree, renderer, theme, style, child_layout, cursor, viewport);
+            child.as_widget().draw(tree, renderer, theme, style, child_layout, cursor, viewport);
         }
     }
 
@@ -301,10 +299,9 @@ pub fn primary(theme: &Theme, status: Status) -> Style {
 
     match status {
         Status::Active | Status::Pressed => base,
-        Status::Hovered => Style {
-            background: Some(Background::Color(palette.primary.weak.color)),
-            ..base
-        },
+        Status::Hovered => {
+            Style { background: Some(Background::Color(palette.primary.weak.color)), ..base }
+        }
         Status::Disabled => disabled(base),
     }
 }
@@ -320,9 +317,7 @@ fn styled(pair: palette::Pair) -> Style {
 /// disabled style
 fn disabled(style: Style) -> Style {
     Style {
-        background: style
-            .background
-            .map(|background| background.scale_alpha(0.5)),
+        background: style.background.map(|background| background.scale_alpha(0.5)),
         text_color: style.text_color.scale_alpha(0.5),
         ..style
     }

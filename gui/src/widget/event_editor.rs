@@ -52,8 +52,12 @@ where
 struct State {
     scrolling: bool,
     offset_x: Offset,
+    new_offset_x: f32,
     offset_y: Offset,
     scroll_origin: Point,
+    scroll: Point,
+    previous_mouse_position: Point,
+    current_mouse_position: Point,
 }
 
 impl State {
@@ -62,18 +66,32 @@ impl State {
         Self {
             scrolling: false,
             offset_x: Offset::Relative(0.0),
+            new_offset_x: 0.0,
             offset_y: Offset::Relative(0.0),
             scroll_origin: Point::ORIGIN,
+            scroll: Point::ORIGIN,
+            previous_mouse_position: Point::ORIGIN,
+            current_mouse_position: Point::ORIGIN,
         }
     }
 
+    /// calculate the translation of the editor
     fn translation(&self, bounds: Rectangle, content_bounds: Rectangle) -> Vector {
         Vector::new(
-            self.offset_x
-                .translation(bounds.width, content_bounds.width),
-            self.offset_y
-                .translation(bounds.width, content_bounds.width),
+            self.offset_x.translation(bounds.width, content_bounds.width),
+            self.offset_y.translation(bounds.width, content_bounds.width),
         )
+    }
+
+    /// updates the mouse positions
+    fn update_mouse(&mut self, new_pos: Point) {
+        self.previous_mouse_position = self.current_mouse_position;
+        self.current_mouse_position = new_pos;
+    }
+
+    /// get the delta between the mouse position of the previous frame and the current mouse position
+    fn get_delta(&self) -> Vector {
+        self.previous_mouse_position - self.current_mouse_position
     }
 }
 
@@ -82,13 +100,14 @@ enum Offset {
     Relative(f32),
 }
 impl Offset {
+    /// Calculate the translation of the offset
     fn translation(&self, viewport: f32, content: f32) -> f32 {
-        let offset = self.absolute(viewport, content);
-
+        let offset = self.calc(viewport, content);
         offset
     }
 
-    fn absolute(&self, viewport: f32, content: f32) -> f32 {
+    /// Calculate the offset
+    fn calc(&self, viewport: f32, content: f32) -> f32 {
         match self {
             Offset::Relative(percentage) => ((content - viewport) * percentage).max(0.0),
         }
@@ -130,9 +149,7 @@ where
                 Size::new(f32::INFINITY, f32::INFINITY),
             );
 
-            self.content
-                .as_widget()
-                .layout(&mut tree.children[0], renderer, &child_limits)
+            self.content.as_widget().layout(&mut tree.children[0], renderer, &child_limits)
         })
     }
 
@@ -155,7 +172,9 @@ where
         let Some(visible_bounds) = bounds.intersection(viewport) else {
             return;
         };
-        let translation = state.translation(bounds, content_bounds);
+        // let translation = state.translation(bounds, content_bounds);
+        let translation = Vector::new(state.scroll.x, state.scroll.y);
+
         let quad = Quad {
             bounds: Rectangle::new(layout.bounds().position(), layout.bounds().size()),
             border: Border::default(),
@@ -163,22 +182,16 @@ where
         };
         renderer.fill_quad(quad, Background::Color(Color::BLACK));
 
-        renderer.with_layer(visible_bounds, |renderer| {
-            renderer.with_translation(Vector::new(-translation.x, -translation.y), |renderer| {
-                self.content.as_widget().draw(
-                    &tree.children[0],
-                    renderer,
-                    theme,
-                    defaults,
-                    content_layout,
-                    cursor,
-                    &Rectangle {
-                        y: bounds.y + translation.y,
-                        x: bounds.x + translation.x,
-                        ..bounds
-                    },
-                );
-            });
+        renderer.with_translation(Vector::new(-translation.x, -translation.y), |renderer| {
+            self.content.as_widget().draw(
+                &tree.children[0],
+                renderer,
+                theme,
+                defaults,
+                content_layout,
+                cursor,
+                &Rectangle { y: bounds.y + translation.y, x: bounds.x + translation.x, ..bounds },
+            );
         });
     }
 
@@ -200,7 +213,7 @@ where
             iced::Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Right)) => {
                 if cursor.is_over(bounds) {
                     state.scrolling = true;
-                    if let Some(point) = cursor.position_in(bounds) {
+                    if let Some(point) = cursor.position() {
                         state.scroll_origin = point;
                     }
                     return iced::event::Status::Captured;
@@ -213,17 +226,12 @@ where
                 }
             }
             iced::Event::Mouse(iced::mouse::Event::CursorMoved { position }) => {
+                state.update_mouse(position);
                 if state.scrolling {
-                    state.offset_x = Offset::Relative(scroll_percentage_x(
-                        state.scroll_origin,
-                        position,
-                        bounds.size().width,
-                    ));
-                    state.offset_y = Offset::Relative(scroll_percentage_y(
-                        state.scroll_origin,
-                        position,
-                        bounds.size().width,
-                    ));
+                    let delta = state.get_delta();
+                    let factor = 0.5;
+                    state.scroll.x += delta.x * factor;
+                    state.scroll.y += delta.y * factor;
                     return iced::event::Status::Captured;
                 }
             }
