@@ -15,7 +15,6 @@ use hexencer_engine::{midi_engine, Sequencer, SequencerCommand, SequencerHandle}
 use iced::advanced::graphics::color;
 use iced::advanced::widget::Tree;
 use iced::advanced::{layout, mouse, renderer, Layout, Widget};
-use iced::futures::SinkExt;
 use iced::keyboard::Key;
 use iced::mouse::Cursor;
 use iced::widget::canvas::{stroke, Path, Stroke};
@@ -23,10 +22,12 @@ use iced::widget::scrollable::Properties;
 use iced::widget::{button, canvas, horizontal_space, stack};
 use iced::widget::{center, text};
 use iced::widget::{column, container, row};
-use iced::{event, keyboard, window, Alignment, Color, Event, Point, Renderer, Size, Subscription, Transformation, Vector};
+use iced::{
+    event, keyboard, Alignment, Color, Event, Point, Renderer, Size, Subscription, Transformation,
+    Vector,
+};
 use iced::{Element, Length, Theme};
 use iced::{Font, Rectangle};
-use tracing::instrument::WithSubscriber;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 use widget::{Arranger, Clip, DragEvent, EventEditor, EventTrack, Track};
@@ -50,9 +51,7 @@ async fn main() {
 
 /// initialize the logging system
 pub fn init_logger() {
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
-        .finish();
+    let subscriber = FmtSubscriber::builder().with_max_level(Level::INFO).finish();
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
     tracing::info!("hexencer started");
@@ -68,10 +67,7 @@ pub struct SequencerLine {
 
 impl<Message> Widget<Message, Theme, Renderer> for SequencerLine {
     fn size(&self) -> Size<Length> {
-        Size {
-            width: Length::Fixed(50.0),
-            height: Length::Fixed(50.0),
-        }
+        Size { width: Length::Fixed(50.0), height: Length::Fixed(50.0) }
     }
 
     fn layout(
@@ -134,38 +130,14 @@ impl<Message> Widget<Message, Theme, Renderer> for SequencerLine {
                         position: posn_center,
                         color: color::pack([1.0, 1.0, 1.0, 1.0]),
                     },
-                    SolidVertex2D {
-                        position: posn_tl,
-                        color: color::pack(color_r),
-                    },
-                    SolidVertex2D {
-                        position: posn_t,
-                        color: color::pack(color_o),
-                    },
-                    SolidVertex2D {
-                        position: posn_tr,
-                        color: color::pack(color_y),
-                    },
-                    SolidVertex2D {
-                        position: posn_r,
-                        color: color::pack(color_g),
-                    },
-                    SolidVertex2D {
-                        position: posn_br,
-                        color: color::pack(color_gb),
-                    },
-                    SolidVertex2D {
-                        position: posn_b,
-                        color: color::pack(color_b),
-                    },
-                    SolidVertex2D {
-                        position: posn_bl,
-                        color: color::pack(color_i),
-                    },
-                    SolidVertex2D {
-                        position: posn_l,
-                        color: color::pack(color_v),
-                    },
+                    SolidVertex2D { position: posn_tl, color: color::pack(color_r) },
+                    SolidVertex2D { position: posn_t, color: color::pack(color_o) },
+                    SolidVertex2D { position: posn_tr, color: color::pack(color_y) },
+                    SolidVertex2D { position: posn_r, color: color::pack(color_g) },
+                    SolidVertex2D { position: posn_br, color: color::pack(color_gb) },
+                    SolidVertex2D { position: posn_b, color: color::pack(color_b) },
+                    SolidVertex2D { position: posn_bl, color: color::pack(color_i) },
+                    SolidVertex2D { position: posn_l, color: color::pack(color_v) },
                 ],
                 indices: vec![
                     0, 1, 2, // TL
@@ -270,11 +242,7 @@ impl LineState {
     /// create a new state
     fn new() -> LineState {
         let now = Instant::now();
-        Self {
-            now,
-            system_cache: canvas::Cache::default(),
-            tick: 0.0,
-        }
+        Self { now, system_cache: canvas::Cache::default(), tick: 0.0 }
     }
 
     /// update the canvas state
@@ -329,9 +297,7 @@ impl Default for Hexencer {
 
         tokio::spawn(sequencer.run());
 
-        let note_steps = [
-            "c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b",
-        ];
+        let note_steps = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"];
 
         let mut notes = Vec::new();
         for index in 0..120 {
@@ -360,7 +326,6 @@ impl Default for Hexencer {
 impl Hexencer {
     /// update the application state
     fn update(&mut self, message: Message) {
-        
         if let Some(dropped_clip) = self.dropped_clip {
             tracing::info!("dropped clip: {:?}", dropped_clip);
             self.dropped_clip = None;
@@ -374,28 +339,14 @@ impl Hexencer {
             Message::DroppedClip { clip_id } => {
                 self.dropped_clip = Some(clip_id);
             }
-            Message::MoveClipRequest {
-                clip_id,
-                track_id,
-                cursor_position,
-            } => {
+            Message::MoveClipRequest { clip_id, track_id, cursor_position } => {
                 info!("move clip request: {:?} to {:?}", clip_id, track_id);
                 let tick = Tick::from(cursor_position - self.drag_origin);
-                self.storage
-                    .write()
-                    .unwrap()
-                    .project_manager
-                    .move_clip(clip_id, track_id, tick);
+                self.storage.write().unwrap().project_manager.move_clip(clip_id, track_id, tick);
             }
             Message::Tick(instant) => {
-                let tick = self
-                    .sequencer_handle
-                    .state
-                    .read()
-                    .unwrap()
-                    .current_tick
-                    .as_f64()
-                    / 480.0;
+                let tick =
+                    self.sequencer_handle.state.read().unwrap().current_tick.as_f64() / 480.0;
                 self.line_state.update2(instant, tick);
             }
             Message::PlaySequencer => {
@@ -425,7 +376,13 @@ impl Hexencer {
                 self.selected_clip = Some(clip_id);
             }
             Message::EventOccured(event) => {
-                if let Event::Keyboard(keyboard::Event::KeyPressed {key, location: _, modifiers, text: _}) = event {
+                if let Event::Keyboard(keyboard::Event::KeyPressed {
+                    key,
+                    location: _,
+                    modifiers,
+                    text: _,
+                }) = event
+                {
                     if key == Key::Named(keyboard::key::Named::Escape) {
                         self.selected_clip = None;
                     }
@@ -463,10 +420,7 @@ impl Hexencer {
 
     /// draw the view
     fn view(&self) -> Element<Message> {
-        let wgpu_box = SequencerLine {
-            width: 50.0,
-            height: 50.0,
-        };
+        let wgpu_box = SequencerLine { width: 50.0, height: 50.0 };
 
         let header = container(
             row![horizontal_space(), "Header!", horizontal_space(),]
@@ -478,9 +432,7 @@ impl Hexencer {
 
         let elements = self.create_track_elements();
 
-        let line_canvas = canvas(&self.line_state)
-            .width(Length::Fill)
-            .height(Length::Fixed(500.0));
+        let line_canvas = canvas(&self.line_state).width(Length::Fill).height(Length::Fixed(500.0));
         let tracks_column = column(elements).spacing(1);
 
         let _scroll_properties = Properties::default();
@@ -513,7 +465,7 @@ impl Hexencer {
     /// get the subscription for the application
     fn subscription(&self) -> Subscription<Message> {
         event::listen().map(Message::EventOccured)
-        
+
         // window::frames().map(Message::Tick)
     }
 
@@ -544,11 +496,7 @@ impl Hexencer {
         Track::new(storage, index, track.id, children, dropped_clip)
             .on_drop(move |clip_id, track_id, cursor_position| {
                 info!("dropped clip: {:?} onto track {}", clip_id, index);
-                Message::MoveClipRequest {
-                    clip_id,
-                    track_id,
-                    cursor_position,
-                }
+                Message::MoveClipRequest { clip_id, track_id, cursor_position }
             })
             .into()
     }
@@ -556,12 +504,8 @@ impl Hexencer {
     /// create new clip widget element
     fn create_clip_elements(&self, track_index: usize) -> Vec<Element<Message>> {
         let storage = self.storage.read().unwrap();
-        let clip_collection = &storage
-            .project_manager
-            .track_collection
-            .get(track_index)
-            .unwrap()
-            .clip_collection;
+        let clip_collection =
+            &storage.project_manager.track_collection.get(track_index).unwrap().clip_collection;
 
         clip_collection
             .iter()
@@ -571,10 +515,9 @@ impl Hexencer {
                 Clip::new(id, selected, self.storage.clone(), text("clip"))
                     .on_drag(|drag_event| {
                         let (origin, clip_id) = match drag_event {
-                            DragEvent::DragStarted {
-                                grab_position,
-                                clip_id,
-                            } => (grab_position, clip_id),
+                            DragEvent::DragStarted { grab_position, clip_id } => {
+                                (grab_position, clip_id)
+                            }
                             _ => panic!("invalid drag event"),
                         };
                         Message::DragClip { clip_id, origin }
@@ -600,12 +543,7 @@ impl Hexencer {
             None => 50.0,
         };
 
-        let track_collection = &self
-            .storage
-            .read()
-            .unwrap()
-            .project_manager
-            .track_collection;
+        let track_collection = &self.storage.read().unwrap().project_manager.track_collection;
 
         let mut label = "null".to_string();
 
