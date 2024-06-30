@@ -43,6 +43,10 @@ where
     storage: StorageInterface,
     /// should be selected
     selected: bool,
+    /// position offset of the clip, tick of clip on track
+    start: f32,
+    /// position offset of the clip, tick of clip on track
+    duration: f32,
     /// id of the clip, identifier in the storage
     clip_id: ClipId,
     /// style of the clip
@@ -66,12 +70,16 @@ where
     pub(crate) fn new(
         clip_id: ClipId,
         selected: bool,
+        start: f32,
+        duration: f32,
         storage: StorageInterface,
         content: impl Into<Element<'a, Message, Theme, Renderer>>,
     ) -> Self {
         let content = content.into();
         Self {
             clip_id,
+            start,
+            duration,
             storage,
             _class: Theme::default(),
             _hovered: false, //TODO #55 is this used at all?
@@ -155,10 +163,9 @@ pub fn primary(theme: &Theme, status: Status) -> Style {
 
     match status {
         Status::Active | Status::Pressed => base,
-        Status::Hovered => Style {
-            background: Some(Background::Color(palette.primary.base.color)),
-            ..base
-        },
+        Status::Hovered => {
+            Style { background: Some(Background::Color(palette.primary.base.color)), ..base }
+        }
     }
 }
 
@@ -198,10 +205,7 @@ where
     }
 
     fn size(&self) -> iced::Size<iced::Length> {
-        Size {
-            width: Length::Fixed(120.0),
-            height: Length::Fixed(18.0),
-        }
+        Size { width: Length::Fixed(120.0), height: Length::Fixed(18.0) }
     }
 
     fn children(&self) -> Vec<Tree> {
@@ -218,19 +222,14 @@ where
         _renderer: &Renderer,
         limits: &iced::advanced::layout::Limits,
     ) -> iced::advanced::layout::Node {
-        let mut out_node =
+        let mut out_node: layout::Node =
             layout::Node::new(limits.resolve(self.size().width, self.size().height, Size::ZERO));
-        // todo: move to outside of the function when reading the clip, just store in the clip struct on creation
-        if let Ok(storage) = self.storage.read() {
-            if let Some(clip) = storage.project_manager.find_clip(self.clip_id) {
-                let width = Length::Fixed(clip.duration.as_f32());
-                let height = Length::Fixed(18.0);
-                let size = limits.resolve(width, height, Size::ZERO);
-                let node = layout::Node::new(size);
-                let position = Point::new(clip.start.as_f32(), 0.0);
-                out_node = node.move_to(position);
-            }
-        }
+        let width = Length::Fixed(self.duration);
+        let height = Length::Fixed(18.0);
+        let size = limits.resolve(width, height, Size::ZERO);
+        let node = layout::Node::new(size);
+        let position = Point::new(self.start, 0.0);
+        out_node = node.move_to(position);
         out_node
     }
 
@@ -247,11 +246,7 @@ where
         let bounds = layout.bounds();
         let quad = Quad {
             bounds,
-            border: Border {
-                color: Color::from_rgb(0.0, 0.0, 0.0),
-                width: 1.0,
-                radius: 2.into(),
-            },
+            border: Border { color: Color::from_rgb(0.0, 0.0, 0.0), width: 1.0, radius: 2.into() },
             shadow: Shadow::default(),
         };
 
@@ -317,10 +312,7 @@ where
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 let state = tree.state.downcast_mut::<State>();
                 match *state {
-                    State::Dragged {
-                        origin: _,
-                        clip_id: _,
-                    } => {
+                    State::Dragged { origin: _, clip_id: _ } => {
                         if let Some(on_drop) = &self.on_drop {
                             info!("dropped clip {}", self.clip_id);
                             if let Some(_cursor_position) = cursor.position() {
@@ -348,18 +340,14 @@ where
                 // if let State::Dragged { .. } = *state {
             }
             // }
-            Event::Mouse(mouse::Event::CursorMoved {
-                position: _position,
-            }) => {
+            Event::Mouse(mouse::Event::CursorMoved { position: _position }) => {
                 let state = tree.state.downcast_mut::<State>();
                 if *state == State::Pressed {
                     if let Some(cursor_position) = cursor.position_over(bounds) {
                         let relative_mouse = cursor_position.x - bounds.position().x;
                         if *state == State::Pressed {
-                            *state = State::Dragged {
-                                origin: cursor_position,
-                                clip_id: self.clip_id,
-                            };
+                            *state =
+                                State::Dragged { origin: cursor_position, clip_id: self.clip_id };
                             if let Some(on_drag) = &self.on_drag {
                                 shell.publish(on_drag(DragEvent::DragStarted {
                                     grab_position: relative_mouse,

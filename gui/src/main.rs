@@ -512,19 +512,26 @@ impl Hexencer {
             .map(|(key, clip)| {
                 let id = clip.id;
                 let selected = self.selected_clip.is_some() && self.selected_clip.unwrap() == id;
-                Clip::new(id, selected, self.storage.clone(), text("clip"))
-                    .on_drag(|drag_event| {
-                        let (origin, clip_id) = match drag_event {
-                            DragEvent::DragStarted { grab_position, clip_id } => {
-                                (grab_position, clip_id)
-                            }
-                            _ => panic!("invalid drag event"),
-                        };
-                        Message::DragClip { clip_id, origin }
-                    })
-                    .on_drop(|clip_id| Message::DroppedClip { clip_id })
-                    .on_selected(|clip_id| Message::SelectClip { clip_id })
-                    .into()
+                Clip::new(
+                    id,
+                    selected,
+                    clip.start.as_f32(),
+                    clip.duration.as_f32(),
+                    self.storage.clone(),
+                    text("clip"),
+                )
+                .on_drag(|drag_event| {
+                    let (origin, clip_id) = match drag_event {
+                        DragEvent::DragStarted { grab_position, clip_id } => {
+                            (grab_position, clip_id)
+                        }
+                        _ => panic!("invalid drag event"),
+                    };
+                    Message::DragClip { clip_id, origin }
+                })
+                .on_drop(|clip_id| Message::DroppedClip { clip_id })
+                .on_selected(|clip_id| Message::SelectClip { clip_id })
+                .into()
             })
             .collect()
     }
